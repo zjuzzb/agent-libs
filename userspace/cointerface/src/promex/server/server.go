@@ -1,18 +1,20 @@
 package server
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
 	"log"
 
-	"golang.org/x/net/context"
-	draiosproto "protorepo/agent-be/proto"
-	pb "github.com/draios/protorepo/promex_pb"
-	"strconv"
-	"sync"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"os"
-	"time"
-	"strings"
+	draiosproto "protorepo/agent-be/proto"
 	"regexp"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	pb "github.com/draios/protorepo/promex_pb"
+	"golang.org/x/net/context"
 )
 
 type prometheusMetricValue struct {
@@ -104,7 +106,7 @@ func singleOrAggrPercentages(single []uint32, aggr *draiosproto.Aggregations64Re
 	return percentages
 }
 
-func (s* prometheusExporterServer) containerLabelValues(container *draiosproto.Container) []string {
+func (s *prometheusExporterServer) containerLabelValues(container *draiosproto.Container) []string {
 	labels := []string{
 		derefOrEmpty(container.Id),
 		derefOrEmpty(container.Name),
@@ -188,7 +190,7 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 				cpus := singleOrAggrPercentages(
 					s.lastMetrics.Hostinfo.CpuLoads,
 					s.lastMetrics.Hostinfo.AggrCpuLoads,
-					)
+				)
 				return cpus, nil
 			},
 		},
@@ -302,7 +304,7 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 					{singleOrAggrValueU64(
 						s.lastMetrics.Hostinfo.PhysicalMemorySizeBytes,
 						s.lastMetrics.Hostinfo.AggrPhysicalMemorySizeBytes,
-						), nil},
+					), nil},
 				}, nil
 			},
 		},
@@ -319,7 +321,7 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 					{singleOrAggrValueU64(
 						s.lastMetrics.Hostinfo.MemoryBytesAvailableKb,
 						s.lastMetrics.Hostinfo.AggrMemoryBytesAvailableKb,
-						) * 1024, nil},
+					) * 1024, nil},
 				}, nil
 			},
 		},
@@ -336,7 +338,7 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 					{singleOrAggrValueU32(
 						s.lastMetrics.Hostinfo.ResourceCounters.ResidentMemoryUsageKb,
 						s.lastMetrics.Hostinfo.ResourceCounters.AggrResidentMemoryUsageKb,
-						) * 1024, nil},
+					) * 1024, nil},
 				}, nil
 			},
 		},
@@ -377,7 +379,7 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 					{singleOrAggrValueU32(
 						s.lastMetrics.Hostinfo.ResourceCounters.SwapMemoryTotalKb,
 						s.lastMetrics.Hostinfo.ResourceCounters.AggrSwapMemoryTotalKb,
-						) * 1024.0, nil},
+					) * 1024.0, nil},
 				}, nil
 			},
 		},
@@ -394,7 +396,7 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 					{singleOrAggrValueU32(
 						s.lastMetrics.Hostinfo.ResourceCounters.SwapMemoryAvailableKb,
 						s.lastMetrics.Hostinfo.ResourceCounters.AggrSwapMemoryAvailableKb,
-						) * 1024.0, nil},
+					) * 1024.0, nil},
 				}, nil
 			},
 		},
@@ -411,7 +413,7 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 					{singleOrAggrValueU32(
 						s.lastMetrics.Hostinfo.ResourceCounters.SwapMemoryUsageKb,
 						s.lastMetrics.Hostinfo.ResourceCounters.AggrSwapMemoryUsageKb,
-						) * 1024.0, nil},
+					) * 1024.0, nil},
 				}, nil
 			},
 		},
@@ -431,7 +433,7 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 					containerCpu := singleOrAggrValueU32(
 						container.ResourceCounters.CpuPct,
 						container.ResourceCounters.AggrCpuPct,
-						)
+					)
 					metrics = append(metrics, prometheusMetricValue{
 						value:  containerCpu / 100.0,
 						labels: s.containerLabelValues(container),
@@ -483,7 +485,7 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 						value: singleOrAggrValueU64(
 							s.lastMetrics.Hostinfo.Tcounters.IoFile.TimeNsIn,
 							s.lastMetrics.Hostinfo.Tcounters.IoFile.AggrTimeNsIn,
-					) / 1e9,
+						) / 1e9,
 						labels: nil,
 					},
 				}, nil
@@ -529,7 +531,6 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 				}, nil
 			},
 		},
-
 
 		// File I/O metrics, per container
 		{
@@ -687,7 +688,7 @@ func filterContainerLabels(containerLabels []string) []string {
 func buildContainerLabels(containerLabels []string) []string {
 	var promLabels []string
 	for _, l := range containerLabels {
-		promLabels = append(promLabels, "label_" + l)
+		promLabels = append(promLabels, "label_"+l)
 	}
 
 	return promLabels
@@ -696,7 +697,7 @@ func buildContainerLabels(containerLabels []string) []string {
 func NewServer(containerLabels []string, timeout int) *prometheusExporterServer {
 	s := &prometheusExporterServer{
 		containerLabels: filterContainerLabels(containerLabels),
-		metricTimeout: timeout,
+		metricTimeout:   timeout,
 	}
 	prometheus.Unregister(prometheus.NewProcessCollector(os.Getpid(), ""))
 	prometheus.Unregister(prometheus.NewGoCollector())

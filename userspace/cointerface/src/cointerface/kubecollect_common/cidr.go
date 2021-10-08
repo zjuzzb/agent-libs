@@ -1,10 +1,11 @@
 package kubecollect_common
 
 import (
-	"github.com/gogo/protobuf/proto"
-	"k8s.io/api/core/v1"
-	"strings"
 	draiosproto "protorepo/agent-be/proto"
+	"strings"
+
+	"github.com/gogo/protobuf/proto"
+	v1 "k8s.io/api/core/v1"
 )
 
 // Unfortunately, kubernetes doesn't exposes networking cidr
@@ -81,29 +82,29 @@ func parseCidr(pod *v1.Pod) (map[string]string, bool) {
 }
 
 type CoClusterCidr struct {
-	Uid string
+	Uid   string
 	Cidrs map[string]string
 }
 
-func ClusterCidrEvent(cc CoClusterCidr, eventType draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType.Enum(),
+func ClusterCidrEvent(cc CoClusterCidr, eventType draiosproto.CongroupEventType) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType.Enum(),
 		Object: newClusterCidrCongroup(cc),
 	}
 }
 
-func newClusterCidrCongroup(cc CoClusterCidr) (*draiosproto.ContainerGroup) {
+func newClusterCidrCongroup(cc CoClusterCidr) *draiosproto.ContainerGroup {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_cluster_cidr"),
-			Id:proto.String(cc.Uid),
+			Kind: proto.String("k8s_cluster_cidr"),
+			Id:   proto.String(cc.Uid),
 		},
 		InternalTags: cc.Cidrs,
 	}
 	return ret
 }
 
-func SendClusterCidrEvent(pod *v1.Pod, eventType draiosproto.CongroupEventType, c chan <- draiosproto.CongroupUpdateEvent) {
+func SendClusterCidrEvent(pod *v1.Pod, eventType draiosproto.CongroupEventType, c chan<- draiosproto.CongroupUpdateEvent) {
 	cidrs, has_cidrs := parseCidr(pod)
 
 	if has_cidrs == false {
@@ -111,12 +112,12 @@ func SendClusterCidrEvent(pod *v1.Pod, eventType draiosproto.CongroupEventType, 
 	}
 
 	clusterCidr := CoClusterCidr{
-		Uid: string(pod.GetUID()),
+		Uid:   string(pod.GetUID()),
 		Cidrs: cidrs,
 	}
 
-	c <- draiosproto.CongroupUpdateEvent {
-		Type: eventType.Enum(),
+	c <- draiosproto.CongroupUpdateEvent{
+		Type:   eventType.Enum(),
 		Object: newClusterCidrCongroup(clusterCidr),
 	}
 	AddEvent("ClusterCidr", EVENT_ADD)

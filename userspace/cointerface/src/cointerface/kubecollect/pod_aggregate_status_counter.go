@@ -4,20 +4,21 @@ import (
 	"cointerface/kubecollect_common"
 	"context"
 	"fmt"
-	log "github.com/cihub/seelog"
 	draiosproto "protorepo/agent-be/proto"
+	"sort"
+	"strings"
+	"sync"
+
+	log "github.com/cihub/seelog"
 	"github.com/draios/protorepo/sdc_internal"
 	"github.com/gogo/protobuf/proto"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/watch"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	tw "k8s.io/client-go/tools/watch"
-	"sort"
-	"strings"
-	"sync"
 )
 
 type podMetaData struct {
@@ -55,7 +56,7 @@ func increaseStatusMap(namespace string, status string) {
 	statusMap[namespace][status]++
 }
 
-func decreaseStatusMap(namespace string, status string){
+func decreaseStatusMap(namespace string, status string) {
 	if statusMap[namespace] == nil {
 		panic("Invalid decrease operation on Namespace:" + namespace)
 	}
@@ -97,7 +98,6 @@ func StartPodStatusWatcher(ctx context.Context, opts *sdc_internal.OrchestratorE
 		podStatusAllowed = append(podStatusAllowed, "Running")
 	}
 
-
 	podStatusAllowed = toLowerArray(podStatusAllowed)
 
 	// sort the array to do a binary search later
@@ -130,7 +130,7 @@ func StartPodStatusWatcher(ctx context.Context, opts *sdc_internal.OrchestratorE
 		if err != nil {
 			log.Debugf("startPodStatusWatcher Could not start a RetryWatcher: %s", err.Error())
 		}
-	} ()
+	}()
 }
 
 func handleEvent(event watch.Event) bool {
@@ -144,10 +144,9 @@ func handleEvent(event watch.Event) bool {
 	podStatus := getStatusFromPod(pod)
 	podNamespace := pod.Namespace
 
-
-	if (event.Type == watch.Added) {
+	if event.Type == watch.Added {
 		//Ensure uid is not present in clusterPods
-		if  _, ok := clusterPods[podUid]; ok {
+		if _, ok := clusterPods[podUid]; ok {
 			log.Debugf("request to add pod with uid %s which is already present", string(podUid))
 		} else {
 			// 1) Insert in clusterPods
@@ -157,7 +156,7 @@ func handleEvent(event watch.Event) bool {
 			increaseStatusMap(podNamespace, podStatus)
 			ret = true
 		}
-	} else if(event.Type == watch.Deleted) {
+	} else if event.Type == watch.Deleted {
 		// Ensure uid exists in clusterPods
 		if pod, ok := clusterPods[podUid]; !ok {
 			log.Debugf("request to delete pod with uid %s which not present", podUid)
@@ -167,7 +166,7 @@ func handleEvent(event watch.Event) bool {
 			decreaseStatusMap(pod.namespace, pod.status)
 			ret = true
 		}
-	} else if(event.Type == watch.Modified) {
+	} else if event.Type == watch.Modified {
 		if pod, ok := clusterPods[podUid]; !ok {
 			log.Debugf("request to modify pod with uid %s which not present", podUid)
 		} else {
@@ -175,7 +174,7 @@ func handleEvent(event watch.Event) bool {
 			oldStatus := pod.status
 			newStatus := podStatus
 
-			if(oldStatus != newStatus) {
+			if oldStatus != newStatus {
 				decreaseStatusMap(pod.namespace, oldStatus)
 				increaseStatusMap(pod.namespace, newStatus)
 				clusterPods[podUid] = podMetaData{pod.namespace, pod.uid, newStatus}
@@ -276,7 +275,7 @@ func createCongroupUpdateEvent(ns string, status string, count int64) draiosprot
 			Kind: proto.String("podstatuscounter"),
 			Id:   proto.String(key),
 		},
-		Namespace:proto.String(ns),
+		Namespace: proto.String(ns),
 	}
 	cg.Tags = make(map[string]string)
 	cg.Tags["kubernetes.podstatuscounter.label.status"] = status
@@ -306,4 +305,3 @@ func sendPodStatusMap(evtc chan<- draiosproto.CongroupUpdateEvent) {
 		}
 	}
 }
-

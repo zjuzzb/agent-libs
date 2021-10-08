@@ -2,31 +2,32 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	draiosproto "protorepo/agent-be/proto"
 	"context"
+	draiosproto "protorepo/agent-be/proto"
+	"sync"
+
 	log "github.com/cihub/seelog"
 	"github.com/gogo/protobuf/proto"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	"sync"
 )
 
 var resourceQuotaInf cache.SharedInformer
 
 // make this a library function?
-func resourceQuotaEvent(rq *v1.ResourceQuota, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func resourceQuotaEvent(rq *v1.ResourceQuota, eventType *draiosproto.CongroupEventType) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newResourceQuotaCongroup(rq),
 	}
 }
 
-func setScope(tags map[string]string, resourcequota *v1.ResourceQuota) () {
-	scopes := resourcequota.Spec.Scopes;
-	var terminatingTag = "kubernetes.resourcequota.label.scope.terminating";
+func setScope(tags map[string]string, resourcequota *v1.ResourceQuota) {
+	scopes := resourcequota.Spec.Scopes
+	var terminatingTag = "kubernetes.resourcequota.label.scope.terminating"
 	var nonterminatingTag = "kubernetes.resourcequota.label.scope.notterminating"
 	var besteffortTag = "kubernetes.resourcequota.label.scope.besteffort"
 	var nonbesteffortTag = "kubernetes.resourcequota.label.scope.notbesteffort"
@@ -36,37 +37,37 @@ func setScope(tags map[string]string, resourcequota *v1.ResourceQuota) () {
 	tags[besteffortTag] = "false"
 	tags[nonbesteffortTag] = "false"
 
-	for i :=0; i<len(scopes); i++ {
-		if(scopes[i]=="Terminating"){
+	for i := 0; i < len(scopes); i++ {
+		if scopes[i] == "Terminating" {
 			tags[terminatingTag] = "true"
-		} else if(scopes[i] == "NotTerminating"){
+		} else if scopes[i] == "NotTerminating" {
 			tags[nonterminatingTag] = "true"
-		} else if(scopes[i]=="BestEffort"){
+		} else if scopes[i] == "BestEffort" {
 			tags[besteffortTag] = "true"
-		} else if(scopes[i]=="NotBestEffort"){
+		} else if scopes[i] == "NotBestEffort" {
 			tags[nonbesteffortTag] = "true"
 		}
 	}
 }
 
 func resourceQuotaEquals(oldResourceQuota *v1.ResourceQuota, newResourceQuota *v1.ResourceQuota) bool {
-	ret := true;
+	ret := true
 	if oldResourceQuota.GetName() != newResourceQuota.GetName() ||
 		!kubecollect_common.EqualLabels(oldResourceQuota.ObjectMeta, newResourceQuota.ObjectMeta) ||
 		!kubecollect_common.EqualAnnotations(oldResourceQuota.ObjectMeta, newResourceQuota.ObjectMeta) ||
-		!kubecollect_common.EqualResourceList(oldResourceQuota.Status.Used, newResourceQuota.Status.Used){
+		!kubecollect_common.EqualResourceList(oldResourceQuota.Status.Used, newResourceQuota.Status.Used) {
 		ret = false
 	}
 	return ret
 }
 
-func newResourceQuotaCongroup(resourceQuota *v1.ResourceQuota) (*draiosproto.ContainerGroup) {
+func newResourceQuotaCongroup(resourceQuota *v1.ResourceQuota) *draiosproto.ContainerGroup {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
 	//     should work on all v1.Object types
 	tags := make(map[string]string)
 	for k, v := range resourceQuota.GetLabels() {
-		tags["kubernetes.resourcequota.label." + k] = v
+		tags["kubernetes.resourcequota.label."+k] = v
 	}
 
 	setScope(tags, resourceQuota)
@@ -74,10 +75,10 @@ func newResourceQuotaCongroup(resourceQuota *v1.ResourceQuota) (*draiosproto.Con
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_resourcequota"),
-			Id:proto.String(string(resourceQuota.GetUID()))},
-		Tags: tags,
-		Namespace:proto.String(resourceQuota.GetNamespace()),
+			Kind: proto.String("k8s_resourcequota"),
+			Id:   proto.String(string(resourceQuota.GetUID()))},
+		Tags:      tags,
+		Namespace: proto.String(resourceQuota.GetNamespace()),
 	}
 
 	AddResourceQuotaMetrics(&ret.Metrics, resourceQuota)
@@ -92,8 +93,8 @@ func AddResourceQuotaMetrics(metrics *[]*draiosproto.AppMetric, resourceQuota *v
 
 		// Take MilliValue() and divide because
 		// we could lose precision with Value()
-		kubecollect_common.AppendMetric(metrics, prefix+k.String()+".hard", float64(hard.MilliValue())/1000);
-		kubecollect_common.AppendMetric(metrics, prefix+k.String()+".used", float64(v.MilliValue())/1000);
+		kubecollect_common.AppendMetric(metrics, prefix+k.String()+".hard", float64(hard.MilliValue())/1000)
+		kubecollect_common.AppendMetric(metrics, prefix+k.String()+".used", float64(v.MilliValue())/1000)
 	}
 }
 
@@ -152,7 +153,6 @@ func watchResourceQuotas(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				if oldRQ == nil {
 					return
 				}
-
 
 				evtc <- resourceQuotaEvent(oldRQ,
 					draiosproto.CongroupEventType_REMOVED.Enum())

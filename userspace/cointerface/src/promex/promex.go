@@ -9,14 +9,16 @@ import (
 	"strings"
 	"syscall"
 
+	"promex/server"
+
 	"github.com/draios/heartbeat"
 	"github.com/draios/install_prefix"
 	pb "github.com/draios/protorepo/promex_pb"
-	"promex/server"
+
+	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
-	"net/http"
 )
 
 func main() {
@@ -26,7 +28,7 @@ func main() {
 		os.Exit(1)
 	}
 	pbProto := flag.String("pb-proto", "unix", "Agent listen protocol (tcp, unix)")
-	pbAddr := flag.String("pb-addr", prefix + "/run/promex.sock", "Agent listen address (ip:port or Unix socket path)")
+	pbAddr := flag.String("pb-addr", prefix+"/run/promex.sock", "Agent listen address (ip:port or Unix socket path)")
 	promAddr := flag.String("prom-addr", "127.0.0.1:9544", "Prometheus listen address (ip:port)")
 	containerLabels := flag.String("container-labels", "", "Container labels to export (comma-separated)")
 	metricTimeout := flag.Int("pb-timeout", 60, "Timeout in seconds before declaring the agent down")

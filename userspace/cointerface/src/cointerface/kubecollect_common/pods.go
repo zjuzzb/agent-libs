@@ -2,13 +2,14 @@ package kubecollect_common
 
 import (
 	"errors"
+	draiosproto "protorepo/agent-be/proto"
+	"regexp"
+	"strings"
+
 	log "github.com/cihub/seelog"
 	"github.com/gogo/protobuf/proto"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	draiosproto "protorepo/agent-be/proto"
-	"regexp"
-	"strings"
 )
 
 // container IDs from k8s are of the form <scheme>://<container_id>
@@ -23,6 +24,7 @@ import (
 var containerIDRegex = regexp.MustCompile("^([a-z0-9-]+)://([0-9a-fA-F]{12})[0-9a-fA-F]*$")
 
 type CState int
+
 const (
 	Unknown CState = iota
 	Waiting
@@ -168,7 +170,7 @@ func ResourceVal(rList v1.ResourceList, rName v1.ResourceName) float64 {
 	if ok {
 		// Take MilliValue() and divide because
 		// we could lose precision with Value()
-		v = float64(qty.MilliValue())/1000
+		v = float64(qty.MilliValue()) / 1000
 	}
 	return v
 }
@@ -198,21 +200,21 @@ func NewContainerEvent(containerEvents *[]*draiosproto.CongroupUpdateEvent,
 	imageId := cstat.ImageID[strings.LastIndex(cstat.ImageID, ":")+1:]
 	imageId = imageId[:12]
 
-	*containerEvents = append(*containerEvents, &draiosproto.CongroupUpdateEvent {
+	*containerEvents = append(*containerEvents, &draiosproto.CongroupUpdateEvent{
 		Type: eventType.Enum(),
-		Object: &draiosproto.ContainerGroup {
-			Uid: &draiosproto.CongroupUid {
-				Kind:proto.String("container"),
-				Id:proto.String(containerID),
+		Object: &draiosproto.ContainerGroup{
+			Uid: &draiosproto.CongroupUid{
+				Kind: proto.String("container"),
+				Id:   proto.String(containerID),
 			},
 			Tags: map[string]string{
-				"container.name"    : cstat.Name,
-				"container.image"   : cstat.Image,
+				"container.name":     cstat.Name,
+				"container.image":    cstat.Image,
 				"container.image.id": imageId,
 			},
-			Parents: []*draiosproto.CongroupUid{&draiosproto.CongroupUid{
-				Kind:proto.String("k8s_pod"),
-				Id:proto.String(string(podUID))},
+			Parents: []*draiosproto.CongroupUid{{
+				Kind: proto.String("k8s_pod"),
+				Id:   proto.String(string(podUID))},
 			},
 		},
 	})
@@ -225,12 +227,12 @@ func NewContainerEvent(containerEvents *[]*draiosproto.CongroupUpdateEvent,
 	}
 }
 
-var ownerRefKindToCongroupKind = map[string]string {
-	"ReplicaSet": "k8s_replicaset",
+var ownerRefKindToCongroupKind = map[string]string{
+	"ReplicaSet":            "k8s_replicaset",
 	"ReplicationController": "k8s_replicationcontroller",
-	"StatefulSet": "k8s_statefulset",
-	"DaemonSet": "k8s_daemonset",
-	"Job": "k8s_job",
+	"StatefulSet":           "k8s_statefulset",
+	"DaemonSet":             "k8s_daemonset",
+	"Job":                   "k8s_job",
 }
 
 func AddParentsToPodViaOwnerRef(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
@@ -239,7 +241,7 @@ func AddParentsToPodViaOwnerRef(parents *[]*draiosproto.CongroupUid, pod *v1.Pod
 		if congroupKind != "" {
 			*parents = append(*parents, &draiosproto.CongroupUid{
 				Kind: proto.String(congroupKind),
-				Id: proto.String(string(ref.UID))})
+				Id:   proto.String(string(ref.UID))})
 		} else {
 			log.Debugf("Unexpected k8s kind %v", ref.Kind)
 		}
@@ -258,11 +260,10 @@ func GetVolumes(pod *v1.Pod) *draiosproto.K8SPod {
 		newVolume.Name = &volume.Name
 		if pvc := volume.PersistentVolumeClaim; pvc != nil {
 			newVolume.Volumesource = &draiosproto.K8SPodVolumeSource{
-				TypeList:             &draiosproto.K8SPodVolumeSource_Persistentvolumeclaim{Persistentvolumeclaim: &draiosproto.K8SPodVolumePersistentVolumeClaim{
+				TypeList: &draiosproto.K8SPodVolumeSource_Persistentvolumeclaim{Persistentvolumeclaim: &draiosproto.K8SPodVolumePersistentVolumeClaim{
 					Name:     &pvc.ClaimName,
 					Readonly: &pvc.ReadOnly,
 				}},
-
 			}
 			ret.Volumes = append(ret.Volumes, newVolume)
 		}
@@ -321,9 +322,9 @@ func CreateContainerStatus(containerStatus *v1.ContainerStatus, containerSpec *v
 
 	if containerSpec != nil {
 		cStatus.RequestsCpuCores = proto.Float64(ResourceVal(containerSpec.Resources.Requests, v1.ResourceCPU))
-        cStatus.LimitsCpuCores = proto.Float64(ResourceVal(containerSpec.Resources.Limits, v1.ResourceCPU))
-        cStatus.RequestsMemBytes = proto.Uint64(uint64(ResourceVal(containerSpec.Resources.Requests, v1.ResourceMemory)))
-        cStatus.LimitsMemBytes = proto.Uint64(uint64(ResourceVal(containerSpec.Resources.Limits, v1.ResourceMemory)))
+		cStatus.LimitsCpuCores = proto.Float64(ResourceVal(containerSpec.Resources.Limits, v1.ResourceCPU))
+		cStatus.RequestsMemBytes = proto.Uint64(uint64(ResourceVal(containerSpec.Resources.Requests, v1.ResourceMemory)))
+		cStatus.LimitsMemBytes = proto.Uint64(uint64(ResourceVal(containerSpec.Resources.Limits, v1.ResourceMemory)))
 	}
 
 	return cStatus

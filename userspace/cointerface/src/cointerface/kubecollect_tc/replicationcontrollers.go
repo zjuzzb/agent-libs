@@ -4,29 +4,29 @@ import (
 	"cointerface/kubecollect"
 	"cointerface/kubecollect_common"
 	"context"
+	draiosproto "protorepo/agent-be/proto"
+	"sync"
+
 	"github.com/gogo/protobuf/proto"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/watch"
 	kubeclient "k8s.io/client-go/kubernetes"
-	draiosproto "protorepo/agent-be/proto"
-	"sync"
 )
 
-
-func replicationControllerEvent(rc kubecollect.CoReplicationController, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func replicationControllerEvent(rc kubecollect.CoReplicationController, eventType *draiosproto.CongroupEventType, setLinks bool) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newReplicationControllerCongroup(rc),
 	}
 }
 
-func newReplicationControllerCongroup(replicationController kubecollect.CoReplicationController) (*draiosproto.ContainerGroup) {
+func newReplicationControllerCongroup(replicationController kubecollect.CoReplicationController) *draiosproto.ContainerGroup {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_replicationcontroller"),
-			Id:proto.String(string(replicationController.GetUID()))},
-		Namespace:proto.String(replicationController.GetNamespace()),
+			Kind: proto.String("k8s_replicationcontroller"),
+			Id:   proto.String(string(replicationController.GetUID()))},
+		Namespace: proto.String(replicationController.GetNamespace()),
 	}
 
 	ret.Tags = kubecollect_common.GetTags(replicationController, "kubernetes.replicationController.")
@@ -48,7 +48,7 @@ func handleReplicationControllerEvent(event watch.Event, evtc chan<- draiosproto
 		return
 	}
 
-	replicationController:= kubecollect.CoReplicationController{rc}
+	replicationController := kubecollect.CoReplicationController{rc}
 
 	if !replicationController.Filtered() {
 		if event.Type == watch.Added {
@@ -65,4 +65,3 @@ func handleReplicationControllerEvent(event watch.Event, evtc chan<- draiosproto
 		}
 	}
 }
-

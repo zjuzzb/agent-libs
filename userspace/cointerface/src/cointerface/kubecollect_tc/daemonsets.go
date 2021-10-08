@@ -4,28 +4,29 @@ import (
 	"cointerface/kubecollect"
 	"cointerface/kubecollect_common"
 	"context"
+	draiosproto "protorepo/agent-be/proto"
+	"sync"
+
 	"github.com/gogo/protobuf/proto"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/watch"
 	kubeclient "k8s.io/client-go/kubernetes"
-	draiosproto "protorepo/agent-be/proto"
-	"sync"
 )
 
-func daemonSetEvent(ds kubecollect.CoDaemonSet, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func daemonSetEvent(ds kubecollect.CoDaemonSet, eventType *draiosproto.CongroupEventType) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newDaemonSetCongroup(ds),
 	}
 }
 
-func newDaemonSetCongroup(daemonSet kubecollect.CoDaemonSet) (*draiosproto.ContainerGroup) {
+func newDaemonSetCongroup(daemonSet kubecollect.CoDaemonSet) *draiosproto.ContainerGroup {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_daemonset"),
-			Id:proto.String(string(daemonSet.GetUID()))},
-		Namespace:proto.String(daemonSet.GetNamespace()),
+			Kind: proto.String("k8s_daemonset"),
+			Id:   proto.String(string(daemonSet.GetUID()))},
+		Namespace: proto.String(daemonSet.GetNamespace()),
 	}
 
 	ret.Tags = kubecollect_common.GetTags(daemonSet, "kubernetes.daemonSet.")

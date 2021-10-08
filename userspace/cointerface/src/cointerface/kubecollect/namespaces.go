@@ -2,22 +2,23 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	draiosproto "protorepo/agent-be/proto"
 	"context"
+	draiosproto "protorepo/agent-be/proto"
 	"sync"
-	"github.com/gogo/protobuf/proto"
+
 	log "github.com/cihub/seelog"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/api/core/v1"
+	"github.com/gogo/protobuf/proto"
+	v1 "k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 )
 
 // make this a library function?
-func nsEvent(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func nsEvent(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newNSCongroup(ns, eventType),
 	}
 }
@@ -28,24 +29,24 @@ func nsEquals(lhs *v1.Namespace, rhs *v1.Namespace) bool {
 	}
 
 	if !kubecollect_common.EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) ||
-        !kubecollect_common.EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta) {
+		!kubecollect_common.EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta) {
 		return false
 	}
 
 	return true
 }
 
-func newNSCongroup(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (*draiosproto.ContainerGroup) {
-	tags:= kubecollect_common.GetTags(ns, "kubernetes.namespace.")
-	inttags:= kubecollect_common.GetAnnotations(ns.ObjectMeta, "kubernetes.namespace.")
+func newNSCongroup(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) *draiosproto.ContainerGroup {
+	tags := kubecollect_common.GetTags(ns, "kubernetes.namespace.")
+	inttags := kubecollect_common.GetAnnotations(ns.ObjectMeta, "kubernetes.namespace.")
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_namespace"),
-			Id:proto.String(string(ns.GetUID()))},
-		Tags: tags,
+			Kind: proto.String("k8s_namespace"),
+			Id:   proto.String(string(ns.GetUID()))},
+		Tags:         tags,
 		InternalTags: inttags,
-		Namespace:proto.String(tags["kubernetes.namespace.name"]),
+		Namespace:    proto.String(tags["kubernetes.namespace.name"]),
 	}
 
 	return ret
@@ -110,12 +111,12 @@ func watchNamespaces(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					return
 				}
 
-				evtc <- draiosproto.CongroupUpdateEvent {
+				evtc <- draiosproto.CongroupUpdateEvent{
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{
 						Uid: &draiosproto.CongroupUid{
-							Kind:proto.String("k8s_namespace"),
-							Id:proto.String(string(oldNS.GetUID()))},
+							Kind: proto.String("k8s_namespace"),
+							Id:   proto.String(string(oldNS.GetUID()))},
 					},
 				}
 				kubecollect_common.AddEvent("Namespace", kubecollect_common.EVENT_DELETE)

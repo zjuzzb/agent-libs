@@ -1,4 +1,5 @@
 package kubecollect
+
 import (
 	"cointerface/kubecollect_common"
 	"testing"
@@ -70,35 +71,35 @@ func createReplicaSetCopies() (CoReplicaSet, CoReplicaSet) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "oldReplicaSet",
 			Labels: map[string]string{
-				"label_key0":"label_val0",
-				"label_key1":"label_val1",
-				"label_key2":"label_val2",
+				"label_key0": "label_val0",
+				"label_key1": "label_val1",
+				"label_key2": "label_val2",
 			},
 			Annotations: map[string]string{
-				"annotation_key0":"annotation_val0",
-				"annotation_key1":"annotation_val1",
-				"annotation_key2":"annotation_val2",
+				"annotation_key0": "annotation_val0",
+				"annotation_key1": "annotation_val1",
+				"annotation_key2": "annotation_val2",
 			},
 		},
 		Spec: appsv1.ReplicaSetSpec{
 			Replicas: &numReplicas,
 		},
 		Status: appsv1.ReplicaSetStatus{
-			Replicas: numReplicas,
+			Replicas:             numReplicas,
 			FullyLabeledReplicas: numReplicas,
-			ReadyReplicas: numReplicas,
+			ReadyReplicas:        numReplicas,
 		},
 	}
 
-	orig := CoReplicaSet{ ReplicaSet: rs }
-	copy := CoReplicaSet{ ReplicaSet: rs.DeepCopy() }
+	orig := CoReplicaSet{ReplicaSet: rs}
+	copy := CoReplicaSet{ReplicaSet: rs.DeepCopy()}
 	return orig, copy
 }
 
 func replicaSetEqualsHelper(t *testing.T, old CoReplicaSet, new CoReplicaSet, expected bool) {
 	sameEntity, sameLinks := replicaSetEquals(old, new)
 	res := sameEntity && sameLinks
-	if (!sameLinks && sameEntity) || (res != expected)  {
+	if (!sameLinks && sameEntity) || (res != expected) {
 		t.Logf("replicaSetEquals expected %v, got %v", expected, res)
 		t.Logf("sameEntity is %v, sameLinks is %v", sameEntity, sameLinks)
 		t.Logf("oldReplicaSet: %#v", old)

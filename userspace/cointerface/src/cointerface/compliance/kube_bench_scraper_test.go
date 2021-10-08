@@ -1,12 +1,13 @@
 package compliance
 
 import (
-	"github.com/draios/protorepo/sdc_internal"
 	"os"
 	draiosproto "protorepo/agent-be/proto"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/draios/protorepo/sdc_internal"
 )
 
 func TestKubeBenchImpl_GenArgs(t *testing.T) {

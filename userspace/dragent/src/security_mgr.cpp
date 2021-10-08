@@ -20,6 +20,7 @@
 using namespace std;
 using nlohmann::json;
 using namespace libsanalyzer;
+using std::chrono::seconds;
 
 namespace
 {
@@ -504,21 +505,33 @@ void security_mgr::request_reload_policies_v2()
 
 bool security_mgr::wait_load_policies_v2(uint32_t secs)
 {
-	return (m_loaded_v2_policies_future.valid() &&
-		m_loaded_v2_policies_future.wait_for(std::chrono::seconds(secs)) == std::future_status::ready);
+	std::lock_guard<std::mutex> lock(m_policy_list_mutex);
+
+	if (m_loaded_v2_policies_futures.empty())
+	{
+		// Should never happen, but if it does we want to bail now
+		return false;
+	}
+
+	// There might be multiple policies pending, but we'll just wait for the first one
+	auto& future = m_loaded_v2_policies_futures.front();
+
+	return future.valid() &&
+	       future.wait_for(seconds(secs)) == std::future_status::ready;
 }
 
 void security_mgr::load_policies_v2_async()
 {
 	// If a load is already in progress, no need to do anything
-	if(m_loaded_v2_policies_future.valid())
+	std::lock_guard<std::mutex> lock(m_policy_list_mutex);
+	if (!m_loaded_v2_policies_futures.empty())
 	{
 		LOG_DEBUG("Policies v2 load already in progress, not doing anything");
 		return;
 	}
 
 	auto loader = [this](std::shared_ptr<draiosproto::policies_v2> policies_v2_msg)
-        {
+    {
 		load_policies_result ret;
 
 		ret.loaded_policies = std::make_shared<loaded_v2_policies>(m_inspector,
@@ -541,7 +554,9 @@ void security_mgr::load_policies_v2_async()
 		return ret;
 	};
 
-	m_loaded_v2_policies_future = std::async(std::launch::async, loader, m_policies_v2_msg);
+	m_loaded_v2_policies_futures.push_back(std::async(std::launch::async,
+	                                                  loader,
+	                                                  m_policies_v2_msg));
 }
 
 bool security_mgr::event_qualifies(sinsp_evt *evt)
@@ -691,35 +706,46 @@ void security_mgr::process_event(gen_event *evt)
 
 void security_mgr::process_event_v2(gen_event *evt)
 {
-	if(m_loaded_v2_policies_future.valid() &&
-	   m_loaded_v2_policies_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
 	{
-		load_policies_result ret = m_loaded_v2_policies_future.get();
-
-		if (ret.successful)
+		std::lock_guard<std::mutex> lock(m_policy_list_mutex);
+		for (auto& future : m_loaded_v2_policies_futures)
 		{
-			m_loaded_policies = ret.loaded_policies;
-
-			// The rules/policies have been loaded in the
-			// background. In this thread, we need to
-			// iterate over all existing containers and
-			// identify which containers match the scope
-			// of each policy. That can't be done in the
-			// background as infra_state/get_containers()
-			// aren't thread safe.
-			std::list<std::string> ids{
-				"" // tinfo.m_container_id is empty for host events
-			};
-			const auto &containers = *m_inspector->m_container_manager.get_containers();
-			for (const auto &c : containers)
+			if (future.valid() &&
+				future.wait_for(seconds(0)) == std::future_status::ready)
 			{
-				ids.push_back(c.first);
-			}
+				load_policies_result ret = future.get();
 
-			m_loaded_policies->match_policy_scopes(m_infra_state, ids);
-			m_last_pid = 0;
-			m_last_container_id = "";
+				if (ret.successful)
+				{
+					// Note: if there are multiple successful futures then we will
+					// do all this work multiple times. That is not expected to be
+					// a usual condition, however.
+					m_loaded_policies = ret.loaded_policies;
+
+					// The rules/policies have been loaded in the
+					// background. In this thread, we need to
+					// iterate over all existing containers and
+					// identify which containers match the scope
+					// of each policy. That can't be done in the
+					// background as infra_state/get_containers()
+					// aren't thread safe.
+					std::list<std::string> ids {
+						"" // tinfo.m_container_id is empty for host events
+					};
+					const auto &containers =
+					        *m_inspector->m_container_manager.get_containers();
+					for (const auto &c : containers)
+					{
+						ids.push_back(c.first);
+					}
+
+					m_loaded_policies->match_policy_scopes(m_infra_state, ids);
+					m_last_pid = 0;
+					m_last_container_id = "";
+				}
+			}
 		}
+		m_loaded_v2_policies_futures.clear();
 	}
 
 	if (!m_loaded_policies)

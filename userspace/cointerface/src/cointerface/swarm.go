@@ -1,17 +1,18 @@
 package main
 
 import (
-	draiosproto "protorepo/agent-be/proto"
-	"github.com/draios/protorepo/sdc_internal"
 	"context"
 	"errors"
 	"fmt"
+	draiosproto "protorepo/agent-be/proto"
+	"strings"
+
 	log "github.com/cihub/seelog"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
+	"github.com/draios/protorepo/sdc_internal"
 	"github.com/gogo/protobuf/proto"
-	"strings"
 )
 
 func labelsToProtobuf(labels map[string]string) (ret []*draiosproto.SwarmPair) {

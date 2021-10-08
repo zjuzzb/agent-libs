@@ -2,18 +2,19 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	draiosproto "protorepo/agent-be/proto"
 	"context"
+	draiosproto "protorepo/agent-be/proto"
 	"reflect"
 	"sync"
-	"github.com/gogo/protobuf/proto"
+
 	log "github.com/cihub/seelog"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
+	"github.com/gogo/protobuf/proto"
+	v1 "k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/api/core/v1"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 )
 
 // Globals are reset in startReplicationControllersSInformer
@@ -51,9 +52,9 @@ func (rc CoReplicationController) specReplicas() int32 {
 }
 
 // make this a library function?
-func replicationControllerEvent(rc CoReplicationController, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func replicationControllerEvent(rc CoReplicationController, eventType *draiosproto.CongroupEventType, setLinks bool) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newReplicationControllerCongroup(rc, setLinks),
 	}
 }
@@ -67,12 +68,12 @@ func rcEquals(lhs CoReplicationController, rhs CoReplicationController) (bool, b
 	}
 
 	sameEntity = sameEntity && kubecollect_common.EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
-        kubecollect_common.EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
+		kubecollect_common.EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
 	if lhs.Status.Replicas != rhs.Status.Replicas {
-			sameEntity = false
+		sameEntity = false
 		if (lhs.Status.Replicas == 0) || (rhs.Status.Replicas == 0) {
-			sameLinks = false;
+			sameLinks = false
 		}
 	}
 
@@ -103,12 +104,12 @@ func rcEquals(lhs CoReplicationController, rhs CoReplicationController) (bool, b
 	return sameEntity, sameLinks
 }
 
-func newReplicationControllerCongroup(replicationController CoReplicationController, setLinks bool) (*draiosproto.ContainerGroup) {
+func newReplicationControllerCongroup(replicationController CoReplicationController, setLinks bool) *draiosproto.ContainerGroup {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_replicationcontroller"),
-			Id:proto.String(string(replicationController.GetUID()))},
-		Namespace:proto.String(replicationController.GetNamespace()),
+			Kind: proto.String("k8s_replicationcontroller"),
+			Id:   proto.String(string(replicationController.GetUID()))},
+		Namespace: proto.String(replicationController.GetNamespace()),
 	}
 
 	ret.Tags = kubecollect_common.GetTags(replicationController, "kubernetes.replicationController.")
@@ -116,7 +117,7 @@ func newReplicationControllerCongroup(replicationController CoReplicationControl
 	AddReplicationControllerMetrics(&ret.Metrics, replicationController)
 	if setLinks {
 		AddPodChildrenFromOwnerRef(&ret.Children, replicationController.ObjectMeta)
-		AddHorizontalPodAutoscalerParents(&ret.Parents, replicationController.GetNamespace(), replicationController.APIVersion, replicationController.Kind, replicationController.GetName() )
+		AddHorizontalPodAutoscalerParents(&ret.Parents, replicationController.GetNamespace(), replicationController.APIVersion, replicationController.Kind, replicationController.GetName())
 	}
 	return ret
 }
@@ -126,8 +127,8 @@ func AddReplicationControllerMetrics(metrics *[]*draiosproto.AppMetric, replicat
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.replicas", replicationController.Status.Replicas)
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicationController.Status.FullyLabeledReplicas)
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.readyReplicas", replicationController.Status.ReadyReplicas)
-	// Need to have unique key for replicas_running since we only set one protobuf field per metric in 
-	// legacy_k8s_protobuf.c, and we want two protobuf fields with the ReadyReplicas value 
+	// Need to have unique key for replicas_running since we only set one protobuf field per metric in
+	// legacy_k8s_protobuf.c, and we want two protobuf fields with the ReadyReplicas value
 	// (replicas_running and replicas_ready).
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.runningReplicas", replicationController.Status.ReadyReplicas)
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.availableReplicas", replicationController.Status.AvailableReplicas)
@@ -144,8 +145,8 @@ func AddReplicationControllerChildrenByName(children *[]*draiosproto.CongroupUid
 		if (rc.GetNamespace() == namespace) &&
 			(rc.GetName() == name) {
 			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_replicationcontroller"),
-				Id:proto.String(string(rc.GetUID()))})
+				Kind: proto.String("k8s_replicationcontroller"),
+				Id:   proto.String(string(rc.GetUID()))})
 		}
 	}
 }
@@ -199,12 +200,12 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					kubecollect_common.AddEvent("ReplicationController", kubecollect_common.EVENT_UPDATE_AND_SEND)
 					return
 				} else if filterEmptyRc && oldReplicas > 0 && newReplicas == 0 {
-					evtc <- draiosproto.CongroupUpdateEvent {
+					evtc <- draiosproto.CongroupUpdateEvent{
 						Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 						Object: &draiosproto.ContainerGroup{
 							Uid: &draiosproto.CongroupUid{
-								Kind:proto.String("k8s_replicationcontroller"),
-								Id:proto.String(string(newRC.GetUID()))},
+								Kind: proto.String("k8s_replicationcontroller"),
+								Id:   proto.String(string(newRC.GetUID()))},
 						},
 					}
 					kubecollect_common.AddEvent("ReplicationController", kubecollect_common.EVENT_UPDATE_AND_SEND)
@@ -242,12 +243,12 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					return
 				}
 
-				evtc <- draiosproto.CongroupUpdateEvent {
+				evtc <- draiosproto.CongroupUpdateEvent{
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{
 						Uid: &draiosproto.CongroupUid{
-							Kind:proto.String("k8s_replicationcontroller"),
-							Id:proto.String(string(rc.GetUID()))},
+							Kind: proto.String("k8s_replicationcontroller"),
+							Id:   proto.String(string(rc.GetUID()))},
 					},
 				}
 				kubecollect_common.AddEvent("ReplicationController", kubecollect_common.EVENT_DELETE)

@@ -7,13 +7,14 @@ import (
 	"strconv"
 	"testing"
 	"time"
-	
+
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	
+
 	draiosproto "protorepo/agent-be/proto"
+
 	"github.com/draios/protorepo/sdc_internal"
-	
-	"github.com/gogo/protobuf/proto"	
+
+	"github.com/gogo/protobuf/proto"
 )
 
 // Return a pointer to a randomized resource list
@@ -21,30 +22,30 @@ import (
 // multiple resource types; each belonging to different
 // groupversions.
 // But until we have support for different grouoversions;
-// this serves as a good replica. 
+// this serves as a good replica.
 func createAPIResourceList(listSize int) (resourceList *v1meta.APIResourceList) {
 
-	resourceTypes := []string {
+	resourceTypes := []string{
 		"cronjobs", "daemonsets", "deployments", "horizontalpodautoscalers",
-		"ingress", "jobs","namespaces","nodes","pods","replicasets",
-		"replicationcontrollers", "resourcequotas","services","statefulsets"}
+		"ingress", "jobs", "namespaces", "nodes", "pods", "replicasets",
+		"replicationcontrollers", "resourcequotas", "services", "statefulsets"}
 
 	// Make random indexes for above resourceTypes
 	s1 := rand.NewSource(time.Now().UnixNano())
 	r1 := rand.New(s1)
-	
+
 	indexes := make([]int, listSize)
 	for i := 0; i < listSize; i++ {
-		indexes[i]= r1.Intn(len(resourceTypes))
+		indexes[i] = r1.Intn(len(resourceTypes))
 	}
 
 	// Create output APIResourceList
-	orig := &v1meta.APIResourceList {
+	orig := &v1meta.APIResourceList{
 		GroupVersion: "core/v1",
 	}
-	
+
 	for _, ind := range indexes {
-		orig.APIResources = append(orig.APIResources , v1meta.APIResource{
+		orig.APIResources = append(orig.APIResources, v1meta.APIResource{
 			Name: resourceTypes[ind],
 		})
 	}
@@ -58,32 +59,31 @@ func checkNoRepeatsHelper(t *testing.T, resourceOrder []string, expected bool) {
 	resourceMap := make(map[string]bool)
 
 	res := true
-	
+
 	for _, resourceType := range resourceOrder {
-		if(resourceMap[resourceType]) {
+		if resourceMap[resourceType] {
 			res = false
 			break
 		}
 		resourceMap[resourceType] = true
 	}
-	
+
 	if res != expected {
 		t.Error("There are repeats in the vector")
 		t.Fail()
 	}
-	
-}
 
+}
 
 func checkNodesAndNamespacesFirstHelper(t *testing.T, resourceOrder []string, expected bool) {
 
 	namespacesOrNodesEnd := false
 	res := true
 	for _, resource := range resourceOrder {
-		if(resource == "nodes" || resource == "namespaces") {
+		if resource == "nodes" || resource == "namespaces" {
 			// Let's hope this isn't seen after we saw
 			// a non-node or non-namespace resource
-			if(namespacesOrNodesEnd) {
+			if namespacesOrNodesEnd {
 				res = false
 				break
 			}
@@ -96,19 +96,19 @@ func checkNodesAndNamespacesFirstHelper(t *testing.T, resourceOrder []string, ex
 		t.Error("namespaces or nodes isn't beginning of the list")
 		t.Fail()
 	}
-	
+
 }
 
 // basic test to test above helper method
 func TestCheckNodesAndNamespacesFirstHelper(t *testing.T) {
 
 	// Test a pass case
-	resOrderPass := []string{"namespaces","nodes", "namespaces", "nodes", "pods", "replicasets"}
+	resOrderPass := []string{"namespaces", "nodes", "namespaces", "nodes", "pods", "replicasets"}
 	checkNodesAndNamespacesFirstHelper(t, resOrderPass, true)
 
 	// test a fail case
 	resOrderFail := []string{"namespaces", "nodes", "pods", "nodes"}
-	checkNodesAndNamespacesFirstHelper(t, resOrderFail, false)	
+	checkNodesAndNamespacesFirstHelper(t, resOrderFail, false)
 }
 
 // Test using actual APIResourceList
@@ -116,14 +116,14 @@ func TestBasicResourceOrdering(t *testing.T) {
 
 	// Create 2 different sized resourcelists and
 	// test that either nodes or namespaces are always first
-	resourceList := []*v1meta.APIResourceList{ createAPIResourceList(rand.Intn(20)),
+	resourceList := []*v1meta.APIResourceList{createAPIResourceList(rand.Intn(20)),
 		createAPIResourceList(rand.Intn(30))}
 
 	resourceOrder := kubecollect_common.GetResourceTypes(resourceList, nil)
 
 	checkNoRepeatsHelper(t, resourceOrder, true)
-	
-	checkNodesAndNamespacesFirstHelper(t ,resourceOrder, true)
+
+	checkNodesAndNamespacesFirstHelper(t, resourceOrder, true)
 
 	// Ensure you add some namespaces or nodes to the end and still it doesn't fail
 	for _, resource := range resourceList {
@@ -137,7 +137,7 @@ func TestBasicResourceOrdering(t *testing.T) {
 
 	resourceOrderNew := kubecollect_common.GetResourceTypes(resourceList, nil)
 	checkNoRepeatsHelper(t, resourceOrderNew, true)
-	checkNodesAndNamespacesFirstHelper(t ,resourceOrderNew, true)	
+	checkNodesAndNamespacesFirstHelper(t, resourceOrderNew, true)
 }
 
 // This function is a helper to test no Cronjob exists in the input list
@@ -162,22 +162,22 @@ func checkNoCronjobsExistHelper(t *testing.T, resourceOrder []string, expected b
 func TestCronjobExistsInResourceOrder(t *testing.T) {
 	// Create resourcelists and add Cronjobs to it and
 	// test that it shows up when groupVersion is correct
-	resourceList := []*v1meta.APIResourceList{ createAPIResourceList(rand.Intn(10)) }
+	resourceList := []*v1meta.APIResourceList{createAPIResourceList(rand.Intn(10))}
 	resourceList[0].APIResources = append(resourceList[0].APIResources, v1meta.APIResource{
 		Name: "cronjobs",
 	})
 
 	resourceOrderWithOutCronjobs := kubecollect_common.GetResourceTypes(resourceList, nil)
-	
+
 	// Since group version by default is
 	// v1ForTesting, no cronjobs should be added
 	checkNoCronjobsExistHelper(t, resourceOrderWithOutCronjobs, true)
 
 	// Now modify groupversion to the supported value and check cronjobs exist
-	
+
 	resourceList[0].GroupVersion = "batch/v1beta1"
 	resourceOrderWithCronjobs := kubecollect_common.GetResourceTypes(resourceList, nil)
-	checkNoCronjobsExistHelper(t,resourceOrderWithCronjobs, false)
+	checkNoCronjobsExistHelper(t, resourceOrderWithCronjobs, false)
 }
 
 // This function is a helper to test if a given type exists
@@ -202,11 +202,11 @@ func checkExtraResourceTypesHelper(t *testing.T, resources []string, rt string, 
 
 func TestResourceTypeIncludes(t *testing.T) {
 	// Create resourcelists and ensure services, hpas and resourcequotas exist
-	resourceList := []*v1meta.APIResourceList{ createAPIResourceList(rand.Intn(10)) }
+	resourceList := []*v1meta.APIResourceList{createAPIResourceList(rand.Intn(10))}
 	resourceList[0].APIResources = append(resourceList[0].APIResources,
-		v1meta.APIResource{ Name: "services", },
-		v1meta.APIResource{ Name: "horizontalpodautoscalers", },
-		v1meta.APIResource{ Name: "resourcequotas", } )
+		v1meta.APIResource{Name: "services"},
+		v1meta.APIResource{Name: "horizontalpodautoscalers"},
+		v1meta.APIResource{Name: "resourcequotas"})
 
 	resourceswithoutextras := kubecollect_common.GetResourceTypes(resourceList, nil)
 
@@ -216,7 +216,7 @@ func TestResourceTypeIncludes(t *testing.T) {
 	checkExtraResourceTypesHelper(t, resourceswithoutextras, "resourcequotas", false)
 
 	// Now add them to the include list and they should now exist
-	includeList := []string{ "services", "horizontalpodautoscalers", "resourcequotas" }
+	includeList := []string{"services", "horizontalpodautoscalers", "resourcequotas"}
 
 	resourceswithextras := kubecollect_common.GetResourceTypes(resourceList, includeList)
 	checkExtraResourceTypesHelper(t, resourceswithextras, "services", true)
@@ -226,11 +226,11 @@ func TestResourceTypeIncludes(t *testing.T) {
 
 func TestResourceTypeIncludesWithBoolFalse(t *testing.T) {
 	// Create resourcelists and ensure services, hpas and resourcequotas exist
-	resourceList := []*v1meta.APIResourceList{ createAPIResourceList(rand.Intn(10)) }
+	resourceList := []*v1meta.APIResourceList{createAPIResourceList(rand.Intn(10))}
 	resourceList[0].APIResources = append(resourceList[0].APIResources,
-		v1meta.APIResource{ Name: "services", },
-		v1meta.APIResource{ Name: "horizontalpodautoscalers", },
-		v1meta.APIResource{ Name: "resourcequotas", } )
+		v1meta.APIResource{Name: "services"},
+		v1meta.APIResource{Name: "horizontalpodautoscalers"},
+		v1meta.APIResource{Name: "resourcequotas"})
 
 	// If we pass the bool value as false for "checkIncludeOptional" parameter;
 	// then we should see the extras included ; even with include list empty
@@ -270,15 +270,15 @@ func TestEvtArrayChanEvents(t *testing.T) {
 	// tests with shorting and then have a test suite that
 	// would run without shorting. (SMAGENT-1521)
 	t.Skip("skipping test for now during compile time.")
-	
-	evtChan , evtArrChan, ctx := setupChanTestInfra()
+
+	evtChan, evtArrChan, ctx := setupChanTestInfra()
 	kubecollect_common.InformerChannel = evtChan
 
 	numNamespaces := 1000
 	queueLen := uint32(0)
 
 	go startNamespaceSends(evtChan, numNamespaces)
-	
+
 	// Call the batchEvents in client.go to UT it. Use defaults for batchsizes (for now)
 	go kubecollect_common.BatchEvents(ctx, evtArrChan, uint32(100), uint32(100), &queueLen)
 
@@ -288,7 +288,7 @@ func TestEvtArrayChanEvents(t *testing.T) {
 		evtArray, ok := <-evtArrChan
 		if !ok {
 			break // No more evtArray
-		} 
+		}
 		// Do a check of events
 		for _, item := range evtArray.Events {
 			objId, err := strconv.Atoi(*(item.Object.Uid.Id))
@@ -296,15 +296,15 @@ func TestEvtArrayChanEvents(t *testing.T) {
 				t.Error("Error during string to int conversion")
 				t.Fail()
 			}
-			if(nameSpace != objId) {
-				t.Errorf("Mis-match in namespace check: %v and %v",nameSpace, objId)
+			if nameSpace != objId {
+				t.Errorf("Mis-match in namespace check: %v and %v", nameSpace, objId)
 				t.Fail()
 			}
 			nameSpace = nameSpace + 1
 		}
 	}
-	
-	if(nameSpace != numNamespaces) {
+
+	if nameSpace != numNamespaces {
 		t.Error("Failed to receive all namespaces")
 		t.Fail()
 	}
@@ -315,11 +315,11 @@ func TestDrainChanOnEvtChan(t *testing.T) {
 	// This is a test involving goroutines and channels.
 	// Skip it during normal operation
 	t.Skip("skipping test for now during compile time.")
-	
-	evtChan , _, _ := setupChanTestInfra()
+
+	evtChan, _, _ := setupChanTestInfra()
 
 	go startNamespaceSends(evtChan, 200)
-	
+
 	// Test the DrainChan by draining on the evtChan (receive only chan)
 	kubecollect_common.DrainChan((<-chan draiosproto.CongroupUpdateEvent)(evtChan))
 
@@ -337,8 +337,8 @@ func TestDrainChanOnEvtArrayChan(t *testing.T) {
 	// This is a test involving goroutines and channels.
 	// Skip it during normal operation
 	t.Skip("skipping test for now during compile time.")
-	
-	evtChan , evtArrChan, ctx := setupChanTestInfra()
+
+	evtChan, evtArrChan, ctx := setupChanTestInfra()
 	kubecollect_common.InformerChannel = evtChan
 	queueLen := uint32(0)
 
@@ -361,7 +361,7 @@ func TestDrainChanOnEvtArrayChan(t *testing.T) {
 
 	// Drain using the receive chan (cast it to a receive-only chan)
 	kubecollect_common.DrainChan((<-chan sdc_internal.ArrayCongroupUpdateEvent)(evtArrChan))
-	
+
 	// Now check again
 	_, ok = <-evtArrChan
 	if ok {
@@ -375,15 +375,15 @@ func startNamespaceSends(
 	numNamespaces int) {
 
 	for i := 0; i < numNamespaces; i++ {
-		evtc <- draiosproto.CongroupUpdateEvent {
+		evtc <- draiosproto.CongroupUpdateEvent{
 			Type: draiosproto.CongroupEventType_ADDED.Enum(),
 			Object: &draiosproto.ContainerGroup{
 				Uid: &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_namespace"),
-					Id:proto.String(strconv.Itoa(i))},
+					Kind: proto.String("k8s_namespace"),
+					Id:   proto.String(strconv.Itoa(i))},
 			},
 		}
-		
+
 	}
 	close(evtc)
 }

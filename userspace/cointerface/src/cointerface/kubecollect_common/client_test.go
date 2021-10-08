@@ -2,12 +2,13 @@ package kubecollect_common
 
 import (
 	"context"
-	log "github.com/cihub/seelog"
-	"github.com/draios/protorepo/sdc_internal"
-	"github.com/gogo/protobuf/proto"
 	"math/rand"
 	"testing"
 	"time"
+
+	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
+	"github.com/gogo/protobuf/proto"
 )
 
 func TestMapInsert(t *testing.T) {
@@ -142,7 +143,7 @@ func TestGetBackoffValue_normalRecover(t *testing.T) {
 		t.Fail()
 	}
 
-	value = getBackoffValue(1*time.Hour + time.Second, expected)
+	value = getBackoffValue(1*time.Hour+time.Second, expected)
 	expected = 1 * time.Minute
 
 	if value != expected {
@@ -153,7 +154,7 @@ func TestGetBackoffValue_normalRecover(t *testing.T) {
 
 func TestGetBackoffValue_maxBackoff(t *testing.T) {
 
-	value := getBackoffValue(3*time.Second, WATCHER_MAXIMUM_BACKOFF - time.Second)
+	value := getBackoffValue(3*time.Second, WATCHER_MAXIMUM_BACKOFF-time.Second)
 	expected := WATCHER_MAXIMUM_BACKOFF
 
 	if value != expected {
@@ -167,7 +168,7 @@ func TestGetBackoffValue_maxBackoff(t *testing.T) {
 		t.Fail()
 	}
 
-	value = getBackoffValue(3*time.Second, WATCHER_MAXIMUM_BACKOFF + time.Second)
+	value = getBackoffValue(3*time.Second, WATCHER_MAXIMUM_BACKOFF+time.Second)
 	if value != expected {
 		t.Errorf("%s != %s", value.String(), expected.String())
 		t.Fail()
@@ -196,7 +197,7 @@ func TestGetBackoffValue_random(t *testing.T) {
 		t.Fail()
 	}
 
-	value = getBackoff(3*time.Second, 2 * time.Minute)
+	value = getBackoff(3*time.Second, 2*time.Minute)
 	min = 4 * time.Minute
 	max = min + min/2
 
@@ -216,8 +217,8 @@ func TestGetBackoffValue_random(t *testing.T) {
 }
 
 func TestColdStartClient(t *testing.T) {
-	cmd :=                  &sdc_internal.OrchestratorEventsStreamCommand{
-		Url:                      proto.String("http://localhost:8081"),
+	cmd := &sdc_internal.OrchestratorEventsStreamCommand{
+		Url:                       proto.String("http://localhost:8081"),
 		CaCert:                    proto.String(""),
 		ClientCert:                proto.String(""),
 		ClientKey:                 proto.String(""),
@@ -248,7 +249,7 @@ func TestColdStartClient(t *testing.T) {
 	}
 
 	ctx, _ := context.WithCancel(context.Background())
-	client, _, err := createLeasePoolClient(context.Background(),"/tmp/goodDayTest.sock", "goodDayTest", *cmd.ColdStartNum, cmd)
+	client, _, err := createLeasePoolClient(context.Background(), "/tmp/goodDayTest.sock", "goodDayTest", *cmd.ColdStartNum, cmd)
 
 	if err != nil {
 		t.Logf("Failed Creating cold start client: %s", err.Error())
@@ -262,19 +263,19 @@ func TestColdStartClient(t *testing.T) {
 		return
 	}
 
-	res , err := wait.Recv()
-	 if err != nil {
-		 t.Logf(err.Error())
-		 log.Flush()
-		 return
-	 }
+	res, err := wait.Recv()
+	if err != nil {
+		t.Logf(err.Error())
+		log.Flush()
+		return
+	}
 
-	 if *res.Successful {
-	 	t.Log("Hooray!!!")
-	 	log.Flush()
-	 } else {
-	 	t.Log("Could not get the lock :-(")
-	 }
+	if *res.Successful {
+		t.Log("Hooray!!!")
+		log.Flush()
+	} else {
+		t.Log("Could not get the lock :-(")
+	}
 }
 
 func TestCalculaterandomDelay(t *testing.T) {
@@ -286,9 +287,9 @@ func TestCalculaterandomDelay(t *testing.T) {
 		expectedUpperLimit float64
 		checkExpected      bool
 	}
-	cases := [] Case {
-		{0,0,1,2, 1, true},
-		{0,0,0,0, 0, true},
+	cases := []Case{
+		{0, 0, 1, 2, 1, true},
+		{0, 0, 0, 0, 0, true},
 		{0.1, 1, 0, 5, 0.1, true},
 		{0.1, 2, 0, 5, 0.2, true},
 		{0.1, 1, 1, 5, 1, true},
@@ -296,7 +297,7 @@ func TestCalculaterandomDelay(t *testing.T) {
 	}
 
 	// Let's ensure that random values does not create issues.
-	for i:=0; i<1000; i++ {
+	for i := 0; i < 1000; i++ {
 		cases = append(cases, Case{rand.Float64(), rand.Uint32(), rand.Uint32(), rand.Uint32(), 0, false})
 	}
 
@@ -318,6 +319,5 @@ func TestCalculaterandomDelay(t *testing.T) {
 			t.Fail()
 		}
 	}
-
 
 }

@@ -2,12 +2,13 @@ package leader_lib
 
 import (
 	"fmt"
+	"testing"
+	"time"
+
 	log "github.com/cihub/seelog"
 	"github.com/draios/protorepo/sdc_internal"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	"testing"
-	"time"
 )
 
 func createClientSet() *kubernetes.Clientset {
@@ -44,7 +45,7 @@ func TestBasic(t *testing.T) {
 
 	s.Run()
 
-	<- release
+	<-release
 	log.Debugf("Releasing the lease")
 	time.Sleep(time.Second)
 	s.Release()
@@ -64,7 +65,7 @@ func TestManyHosts(t *testing.T) {
 	clientset := createClientSet()
 
 	// Create the hosts
-	for i := 0; i<10; i++ {
+	for i := 0; i < 10; i++ {
 		host, _ := NewLease(clientset, fmt.Sprintf("host-%d", i), "coldstart", sdc_internal.LeaderElectionConf{}, callback)
 		hosts = append(hosts, host)
 	}
@@ -78,9 +79,9 @@ func TestManyHosts(t *testing.T) {
 	// Store the list of elected node here
 	leaderList := make(map[string]bool)
 
-	for i:=0; i<len(hosts); i++ {
+	for i := 0; i < len(hosts); i++ {
 		// wait for the current leader
-		leader := <- leaderChan
+		leader := <-leaderChan
 		log.Debugf("Got leader %s", leader.id)
 		time.Sleep(time.Second)
 		// store the leader

@@ -2,18 +2,19 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	draiosproto "protorepo/agent-be/proto"
 	"context"
+	draiosproto "protorepo/agent-be/proto"
 	"reflect"
 	"sync"
-	"github.com/gogo/protobuf/proto"
+
 	log "github.com/cihub/seelog"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
+	"github.com/gogo/protobuf/proto"
+	v1batch "k8s.io/api/batch/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	v1batch "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 )
 
 // Globals are reset in startJobsSInformer
@@ -37,9 +38,9 @@ func (job CoJob) ActiveChildren() int32 {
 }
 
 // make this a library function?
-func jobEvent(job CoJob, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func jobEvent(job CoJob, eventType *draiosproto.CongroupEventType, setLinks bool) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newJobConGroup(job, setLinks),
 	}
 }
@@ -57,7 +58,7 @@ func jobEquals(lhs CoJob, rhs CoJob) (bool, bool) {
 	if lhs.Status.Active != rhs.Status.Active {
 		sameEntity = false
 		if (lhs.Status.Active == 0) || (rhs.Status.Active == 0) {
-			sameLinks = false;
+			sameLinks = false
 		}
 	}
 
@@ -66,7 +67,7 @@ func jobEquals(lhs CoJob, rhs CoJob) (bool, bool) {
 			(lhs.Spec.Completions != rhs.Spec.Completions) ||
 			(lhs.Status.Succeeded != rhs.Status.Succeeded) ||
 			(lhs.Status.Failed != rhs.Status.Failed) {
-		sameEntity = false
+			sameEntity = false
 		}
 	}
 
@@ -81,12 +82,12 @@ func jobEquals(lhs CoJob, rhs CoJob) (bool, bool) {
 	return sameEntity, sameLinks
 }
 
-func newJobConGroup(job CoJob, setLinks bool) (*draiosproto.ContainerGroup) {
+func newJobConGroup(job CoJob, setLinks bool) *draiosproto.ContainerGroup {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_job"),
-			Id:proto.String(string(job.GetUID()))},
-			Namespace:proto.String(job.GetNamespace()),
+			Kind: proto.String("k8s_job"),
+			Id:   proto.String(string(job.GetUID()))},
+		Namespace: proto.String(job.GetNamespace()),
 	}
 
 	ret.Tags = kubecollect_common.GetTags(job, "kubernetes.job.")
@@ -110,9 +111,9 @@ func AddJobMetrics(metrics *[]*draiosproto.AppMetric, job CoJob) {
 }
 
 func startJobsSInformer(ctx context.Context,
-			kubeClient kubeclient.Interface,
-			wg *sync.WaitGroup,
-			evtc chan<- draiosproto.CongroupUpdateEvent) {
+	kubeClient kubeclient.Interface,
+	wg *sync.WaitGroup,
+	evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.BatchV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "jobs", v1meta.NamespaceAll, fields.Everything())
 	jobInf = cache.NewSharedInformer(lw, &v1batch.Job{}, kubecollect_common.RsyncInterval)

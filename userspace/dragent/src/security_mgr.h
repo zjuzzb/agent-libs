@@ -11,6 +11,7 @@
 #include <vector>
 #include <algorithm>
 #include <functional>
+#include <atomic>
 
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -644,7 +645,8 @@ private:
 		std::shared_ptr<loaded_v2_policies> loaded_policies;
 	};
 
-	std::future<load_policies_result> m_loaded_v2_policies_future;
+	std::list<std::future<load_policies_result>> m_loaded_v2_policies_futures;
+	std::mutex m_policy_list_mutex;
 
 	// The "empty" set of security rules (ones related to pid 0, which never exists).
 	security_rules_group_set m_null_security_rules;

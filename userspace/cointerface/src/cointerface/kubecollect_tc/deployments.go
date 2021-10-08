@@ -4,28 +4,29 @@ import (
 	"cointerface/kubecollect"
 	"cointerface/kubecollect_common"
 	"context"
+	draiosproto "protorepo/agent-be/proto"
+	"sync"
+
 	"github.com/gogo/protobuf/proto"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/watch"
 	kubeclient "k8s.io/client-go/kubernetes"
-	draiosproto "protorepo/agent-be/proto"
-	"sync"
 )
 
-func deploymentEvent(dep kubecollect.CoDeployment, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func deploymentEvent(dep kubecollect.CoDeployment, eventType *draiosproto.CongroupEventType, setLinks bool) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newDeploymentCongroup(dep, setLinks),
 	}
 }
 
-func newDeploymentCongroup(deployment kubecollect.CoDeployment, setLinks bool) (*draiosproto.ContainerGroup) {
+func newDeploymentCongroup(deployment kubecollect.CoDeployment, setLinks bool) *draiosproto.ContainerGroup {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_deployment"),
-			Id:proto.String(string(deployment.GetUID()))},
-		Namespace:proto.String(deployment.GetNamespace()),
+			Kind: proto.String("k8s_deployment"),
+			Id:   proto.String(string(deployment.GetUID()))},
+		Namespace: proto.String(deployment.GetNamespace()),
 	}
 
 	ret.Tags = kubecollect_common.GetTags(deployment, "kubernetes.deployment.")

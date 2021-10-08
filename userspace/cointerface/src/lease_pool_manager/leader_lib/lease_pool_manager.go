@@ -4,15 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	log "github.com/cihub/seelog"
-	"github.com/draios/protorepo/sdc_internal"
 	"io/ioutil"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeclient "k8s.io/client-go/kubernetes"
-	authorizationv1 "k8s.io/api/authorization/v1"
-	authorizationv1client "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	"sync"
 	"time"
+
+	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
+	authorizationv1 "k8s.io/api/authorization/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeclient "k8s.io/client-go/kubernetes"
+	authorizationv1client "k8s.io/client-go/kubernetes/typed/authorization/v1"
 )
 
 const PODINFO_DIR = "/etc/podinfo"
@@ -37,7 +38,7 @@ type ColdStartManagerInterface interface {
 	GetHolderIdentities() []string
 }
 
-func(lpm *LeasePoolManager) GetHolderIdentities() []string {
+func (lpm *LeasePoolManager) GetHolderIdentities() []string {
 	var ret []string
 
 	for _, lease := range lpm.leases {
@@ -55,15 +56,15 @@ func (lpm *LeasePoolManager) GetId() string {
 
 func (lpm *LeasePoolManager) haveLeasePermission(authClient authorizationv1client.AuthorizationV1Interface, verb string, leaderElectionConfig *sdc_internal.LeaderElectionConf) error {
 	sar := &authorizationv1.SelfSubjectAccessReview{
-			Spec: authorizationv1.SelfSubjectAccessReviewSpec{
-				ResourceAttributes: &authorizationv1.ResourceAttributes{
-					Namespace:   *leaderElectionConfig.Namespace,
-					Verb:        verb,
-					Group:       "coordination.k8s.io",
-					Resource:    "leases",
-				},
+		Spec: authorizationv1.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &authorizationv1.ResourceAttributes{
+				Namespace: *leaderElectionConfig.Namespace,
+				Verb:      verb,
+				Group:     "coordination.k8s.io",
+				Resource:  "leases",
 			},
-		}
+		},
+	}
 
 	response, err := authClient.SelfSubjectAccessReviews().Create(context.TODO(), sar, metav1.CreateOptions{})
 	if err != nil {
@@ -137,7 +138,7 @@ func (lpm LeasePoolManager) setLeaseNamespace(leaderElectionConf *sdc_internal.L
 	}
 }
 
-func (lpm *LeasePoolManager) Init(id string, leasePoolName string, numLeases uint32, leaderElectionConfig sdc_internal.LeaderElectionConf,p kubeclient.Interface) {
+func (lpm *LeasePoolManager) Init(id string, leasePoolName string, numLeases uint32, leaderElectionConfig sdc_internal.LeaderElectionConf, p kubeclient.Interface) {
 	// Get the namespace where creating leader election leases
 	lpm.setLeaseNamespace(&leaderElectionConfig, nil)
 
@@ -159,8 +160,8 @@ func (lpm *LeasePoolManager) Init(id string, leasePoolName string, numLeases uin
 	lpm.leases = make(map[string]*Lease)
 	for i := 0; i < int(numLeases); i++ {
 		leaseName := fmt.Sprintf("%s-%d", leasePoolName, i)
-		newSerializer, err := NewLease(p, lpm.id, leaseName, leaderElectionConfig, func(lease *Lease){
-			once.Do(func(){
+		newSerializer, err := NewLease(p, lpm.id, leaseName, leaderElectionConfig, func(lease *Lease) {
+			once.Do(func() {
 				lpm.lockAcquired <- lease.leaseName
 			})
 		})
@@ -185,17 +186,17 @@ func (lpm *LeasePoolManager) WaitLock(maxWaitSecs uint32, parentCtx context.Cont
 		lpm.acquiredLease = <-lpm.lockAcquired
 		log.Debugf("%s Acquired lock on Lease %s", lpm.leasePoolName, lpm.acquiredLease)
 		done <- struct{}{}
-	} ()
+	}()
 
 	giveUp := make(chan struct{})
 	if maxWaitSecs != 0 {
 		go func() {
 			select {
-			case <- time.After(time.Duration(maxWaitSecs) * time.Second):
+			case <-time.After(time.Duration(maxWaitSecs) * time.Second):
 				// time to give up
 				giveUp <- struct{}{}
 			}
-		} ()
+		}()
 	}
 
 	for _, lease := range lpm.leases {

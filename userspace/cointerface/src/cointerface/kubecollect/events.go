@@ -8,12 +8,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/watch"
 
-	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/draios/protorepo/sdc_internal"
 )
@@ -27,18 +27,18 @@ var eventExportChannel chan int32 = make(chan int32, 1)
 
 func SetEventExport(enable bool) {
 	i := int32(0)
-	if (enable) {
+	if enable {
 		i = 1
 	}
 	atomic.StoreInt32(&eventExportEnabled, i)
 	eventExportChannel <- i
 }
 
-func isEventExportEnabled() (bool) {
+func isEventExportEnabled() bool {
 	return atomic.LoadInt32(&eventExportEnabled) != 0
 }
 
-func newUserEvent(event *v1.Event) (sdc_internal.K8SUserEvent) {
+func newUserEvent(event *v1.Event) sdc_internal.K8SUserEvent {
 	log.Debugf("newUserEvent()")
 
 	// For timestamp, first check EventTime. If it is -ve choose `lastTimestamp`.
@@ -62,33 +62,33 @@ func newUserEvent(event *v1.Event) (sdc_internal.K8SUserEvent) {
 		}
 	}
 
-	evt := sdc_internal.K8SUserEvent {
+	evt := sdc_internal.K8SUserEvent{
 		Obj: newK8SObject(event),
 		Source: &sdc_internal.K8SSource{
 			Component: proto.String(event.Source.Component),
-			Host: proto.String(event.Source.Host),
+			Host:      proto.String(event.Source.Host),
 		},
-		Reason: proto.String(event.Reason),
-		Message: proto.String(event.Message),
+		Reason:         proto.String(event.Reason),
+		Message:        proto.String(event.Message),
 		FirstTimestamp: proto.Int64(event.FirstTimestamp.Time.UTC().Unix()),
-		LastTimestamp: proto.Int64(ts),
-		Count: proto.Int32(event.Count),
-		Type: proto.String(event.Type),
+		LastTimestamp:  proto.Int64(ts),
+		Count:          proto.Int32(event.Count),
+		Type:           proto.String(event.Type),
 	}
 	return evt
 }
 
-func newK8SObject(event *v1.Event) (*sdc_internal.K8SObject) {
+func newK8SObject(event *v1.Event) *sdc_internal.K8SObject {
 	obj := event.InvolvedObject
 
 	ret := &sdc_internal.K8SObject{
-		Kind: proto.String(obj.Kind),
-		Namespace: proto.String(obj.Namespace),
-		Name: proto.String(obj.Name),
-		Uid: proto.String(string(obj.UID)),
-		ApiVersion: proto.String(obj.APIVersion),
+		Kind:            proto.String(obj.Kind),
+		Namespace:       proto.String(obj.Namespace),
+		Name:            proto.String(obj.Name),
+		Uid:             proto.String(string(obj.UID)),
+		ApiVersion:      proto.String(obj.APIVersion),
 		ResourceVersion: proto.String(obj.ResourceVersion),
-		FieldPath: proto.String(obj.FieldPath),
+		FieldPath:       proto.String(obj.FieldPath),
 	}
 	return ret
 }
@@ -102,7 +102,7 @@ func StartUserEventsStream(userEventContext context.Context,
 	wg.Add(1)
 	go func() {
 		tryUserEventsWatch(userEventContext, userEventChannel, debugEvents, includeTypes)
-		log.Debug("UserEvents: done watching. Closing channel");
+		log.Debug("UserEvents: done watching. Closing channel")
 		close(userEventChannel)
 		wg.Done()
 	}()
@@ -115,29 +115,29 @@ func tryUserEventsWatch(userEventContext context.Context,
 	includeTypes []string) {
 
 	abort := false
-	for ; !abort; {
-		if (isEventExportEnabled()) {
+	for !abort {
+		if isEventExportEnabled() {
 			abort = !StartUserEventsWatch(userEventContext, userEventChannel, debugEvents, includeTypes)
-			log.Debugf("UserEvents: StartUserEventsWatch done. abort=%v", abort);
+			log.Debugf("UserEvents: StartUserEventsWatch done. abort=%v", abort)
 			continue
 		}
-		log.Debug("UserEvents: waiting for delegation");
+		log.Debug("UserEvents: waiting for delegation")
 		// wait for delegation or cancellation
 		startwatch := false
-		for ; !abort && !startwatch; {
+		for !abort && !startwatch {
 			select {
 			case e, ok := <-eventExportChannel:
 				if !ok {
 					// Shouldn't happen
-					log.Error("UserEvents: event export channel died");
+					log.Error("UserEvents: event export channel died")
 					abort = true
 				}
 				if e != 0 {
-					log.Debug("UserEvents: event export enabled, starting");
+					log.Debug("UserEvents: event export enabled, starting")
 					startwatch = true
 				}
 			case <-userEventContext.Done():
-				log.Debug("UserEvents: event context cancelled");
+				log.Debug("UserEvents: event context cancelled")
 				abort = true
 			}
 		}
@@ -149,7 +149,7 @@ func StartUserEventsWatch(userEventContext context.Context,
 	debugEvents bool,
 	includeTypes []string) bool {
 
-	log.Debug("UserEvents: In StartUserEventsWatch");
+	log.Debug("UserEvents: In StartUserEventsWatch")
 	kubeClient, kubeClientChan := kubecollect_common.GetKubeClient()
 	if kubeClient == nil {
 		log.Debugf("UserEvents: No kube client yet")
@@ -168,10 +168,10 @@ func StartUserEventsWatch(userEventContext context.Context,
 
 		sort.Strings(includeTypes)
 		// Add services and hpas based on includeTypes
-		if !kubecollect_common.InSortedArray("services" , includeTypes) {
+		if !kubecollect_common.InSortedArray("services", includeTypes) {
 			fieldstr = fieldstr + ",involvedObject.kind!=Services"
 		}
-		if !kubecollect_common.InSortedArray("horizontalpodautoscalars" , includeTypes) {
+		if !kubecollect_common.InSortedArray("horizontalpodautoscalars", includeTypes) {
 			fieldstr = fieldstr + ",involvedObject.kind!=HorizontalPodAutoscaler"
 		}
 	}
@@ -187,7 +187,7 @@ func StartUserEventsWatch(userEventContext context.Context,
 }
 
 func watchUserEvents(watcher watch.Interface,
-	kubeClientChan chan struct {},
+	kubeClientChan chan struct{},
 	userEventContext context.Context,
 	userEventChannel chan<- sdc_internal.K8SUserEvent) bool {
 
@@ -198,23 +198,23 @@ func watchUserEvents(watcher watch.Interface,
 	for {
 		select {
 		case <-kubeClientChan:
-			log.Debug("UserEvents: kubeClient closed, stopping stream");
+			log.Debug("UserEvents: kubeClient closed, stopping stream")
 			watcher.Stop()
 			return false
 		case e, ok := <-eventExportChannel:
 			if !ok {
 				// Shouldn't happen
-				log.Error("UserEvents: event export channel died");
+				log.Error("UserEvents: event export channel died")
 				watcher.Stop()
 				return false
 			}
 			if e == 0 {
-				log.Debug("UserEvents: event export disabled");
+				log.Debug("UserEvents: event export disabled")
 				watcher.Stop()
 				return true
 			}
 		case <-userEventContext.Done():
-			log.Debug("UserEvents: event context cancelled (in watch)");
+			log.Debug("UserEvents: event context cancelled (in watch)")
 			watcher.Stop()
 			return false
 		case event, ok := <-ch:
@@ -223,33 +223,33 @@ func watchUserEvents(watcher watch.Interface,
 				return false
 			}
 			switch event.Type {
-				case watch.Modified:
-					log.Debugf("Event: Creating event from modification: %+v", event.Object)
-					fallthrough
-				case watch.Added:
-					evt, ok := event.Object.(*v1.Event)
-					if !ok {
-						log.Errorf("UserEvents: unexpected type: %v", event.Object);
-					}
-					// Filter out old events. There doesn't seem to be a way to
-					// filter by timestamp in the fieldselector
-					now := time.Now()
-					var evttime time.Time
-					if evt.EventTime.IsZero() {
-						evttime = evt.LastTimestamp.Time
-					} else {
-						evttime = evt.EventTime.Time
-					}
-					if now.Sub(evttime).Seconds() > maxEventAge {
-						log.Debugf("Event: discarding old event: %+v", evt)
-					} else {
-						log.Debugf("Event: Event add: %+v", evt)
-						userEventChannel <- newUserEvent(evt)
-					}
-				case watch.Deleted:
-					log.Debugf("Event: Ignoring event deletion: %+v", event.Object)
-				case watch.Error:
-					log.Infof("Event: got watch error, object: %+v", event.Object)
+			case watch.Modified:
+				log.Debugf("Event: Creating event from modification: %+v", event.Object)
+				fallthrough
+			case watch.Added:
+				evt, ok := event.Object.(*v1.Event)
+				if !ok {
+					log.Errorf("UserEvents: unexpected type: %v", event.Object)
+				}
+				// Filter out old events. There doesn't seem to be a way to
+				// filter by timestamp in the fieldselector
+				now := time.Now()
+				var evttime time.Time
+				if evt.EventTime.IsZero() {
+					evttime = evt.LastTimestamp.Time
+				} else {
+					evttime = evt.EventTime.Time
+				}
+				if now.Sub(evttime).Seconds() > maxEventAge {
+					log.Debugf("Event: discarding old event: %+v", evt)
+				} else {
+					log.Debugf("Event: Event add: %+v", evt)
+					userEventChannel <- newUserEvent(evt)
+				}
+			case watch.Deleted:
+				log.Debugf("Event: Ignoring event deletion: %+v", event.Object)
+			case watch.Error:
+				log.Infof("Event: got watch error, object: %+v", event.Object)
 			}
 		}
 	}

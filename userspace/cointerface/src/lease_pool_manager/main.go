@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"os"
+	"strings"
+	"sync"
+
 	log "github.com/cihub/seelog"
 	"github.com/draios/install_prefix"
 	"github.com/wojas/genericr"
 	"k8s.io/klog/v2"
-	"os"
-	"strings"
-	"sync"
 )
 
 type LogMsg struct {
@@ -19,6 +20,7 @@ type LogMsg struct {
 	Level   string `json:"level"`
 	Message string `json:"message"`
 }
+
 var COLDSTART_SOCK = "coldstart.sock"
 var DELEGATION_SOCK = "delegation.sock"
 
@@ -128,8 +130,8 @@ func mymain() int {
 
 	klog.SetLogger(createKlogLogger())
 
-	var coldstart_sock string;
-	var delegation_sock string;
+	var coldstart_sock string
+	var delegation_sock string
 
 	if *sock_dir != "" {
 		coldstart_sock = fmt.Sprintf("%s/%s", *sock_dir, COLDSTART_SOCK)

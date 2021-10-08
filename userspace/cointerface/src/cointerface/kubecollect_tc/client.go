@@ -3,11 +3,12 @@ package kubecollect_tc
 import (
 	"cointerface/kubecollect"
 	"cointerface/kubecollect_common"
-	"golang.org/x/net/context"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"golang.org/x/net/context"
 
 	log "github.com/cihub/seelog"
 	"github.com/draios/protorepo/sdc_internal"
@@ -102,7 +103,7 @@ func startWatcherAndInformers(
 				evtcLen := 0
 				select {
 				case lastTick = <-ticker.C:
-					if (channelType == kubecollect_common.ChannelTypeInformer) {
+					if channelType == kubecollect_common.ChannelTypeInformer {
 						// Number of events is length of Informer channel
 						// plus length of events in SdcEvtArray
 						lenQueue := int(atomic.LoadUint32(queueLength))
@@ -142,7 +143,7 @@ func startWatcherAndInformers(
 		}
 	}
 
-	if ! interrupted {
+	if !interrupted {
 		fetchDone <- struct{}{}
 	} else {
 		// Inititial fetch has been aborted.
@@ -164,7 +165,7 @@ func startWatcherAndInformers(
 	}()
 }
 
-type KubecollectClientTc struct {}
+type KubecollectClientTc struct{}
 
 func (c KubecollectClientTc) StartInformers(
 	ctx context.Context,

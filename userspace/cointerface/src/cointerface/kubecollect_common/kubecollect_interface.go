@@ -2,9 +2,10 @@ package kubecollect_common
 
 import (
 	"context"
+	"sync"
+
 	"github.com/draios/protorepo/sdc_internal"
 	kubeclient "k8s.io/client-go/kubernetes"
-	"sync"
 )
 
 type KubecollectInterface interface {

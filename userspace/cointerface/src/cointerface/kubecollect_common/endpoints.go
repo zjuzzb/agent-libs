@@ -2,27 +2,28 @@ package kubecollect_common
 
 import (
 	"context"
+	draiosproto "protorepo/agent-be/proto"
+	"sync"
+
 	"github.com/gogo/protobuf/proto"
 	appsv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/watch"
 	kubeclient "k8s.io/client-go/kubernetes"
-	draiosproto "protorepo/agent-be/proto"
-	"sync"
 )
 
 type CoEndpoints struct {
 	*appsv1.Endpoints
 }
 
-func endpointsEvent(dep CoEndpoints, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func endpointsEvent(dep CoEndpoints, eventType *draiosproto.CongroupEventType, setLinks bool) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newEndpointsCongroup(dep, setLinks),
 	}
 }
 
-func newEndpointsCongroup(endpoints CoEndpoints, setLinks bool) (*draiosproto.ContainerGroup) {
+func newEndpointsCongroup(endpoints CoEndpoints, setLinks bool) *draiosproto.ContainerGroup {
 	var ports []*draiosproto.CongroupNetPort
 	var ips []string
 
@@ -52,7 +53,7 @@ func newEndpointsCongroup(endpoints CoEndpoints, setLinks bool) (*draiosproto.Co
 			}
 			if !found {
 				ports = append(ports, &draiosproto.CongroupNetPort{
-					Port: proto.Uint32(uint32(endpointsPort.Port)),
+					Port:       proto.Uint32(uint32(endpointsPort.Port)),
 					TargetPort: proto.Uint32(0),
 				})
 			}
@@ -61,13 +62,13 @@ func newEndpointsCongroup(endpoints CoEndpoints, setLinks bool) (*draiosproto.Co
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_endpoints"),
-			Id:proto.String(string(endpoints.GetUID()))},
-		Tags: tags,
+			Kind: proto.String("k8s_endpoints"),
+			Id:   proto.String(string(endpoints.GetUID()))},
+		Tags:         tags,
 		InternalTags: inttags,
-		Namespace: proto.String(endpoints.GetNamespace()),
-		IpAddresses: ips,
-		Ports: ports,
+		Namespace:    proto.String(endpoints.GetNamespace()),
+		IpAddresses:  ips,
+		Ports:        ports,
 	}
 
 	return ret

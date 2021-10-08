@@ -3,16 +3,17 @@ package kubecollect_common
 import (
 	"context"
 	"errors"
-	"os"
-	"time"
 	"fmt"
 	"net"
+	"os"
 	"sync/atomic"
-	"github.com/draios/install_prefix"
-    "github.com/draios/protorepo/sdc_internal"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"time"
+
 	log "github.com/cihub/seelog"
+	"github.com/draios/install_prefix"
+	"github.com/draios/protorepo/sdc_internal"
 	"google.golang.org/grpc"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var cointdeleg bool = false
@@ -35,28 +36,28 @@ func SetCointDelegation(enable bool, num int32) {
 	}
 }
 
-func GetCointDelegation() (bool) {
+func GetCointDelegation() bool {
 	return cointdeleg
 }
 
-func GetNumDelegated() (int32) {
+func GetNumDelegated() int32 {
 	return numdeleg
 }
 
-func IsDelegated() (bool) {
+func IsDelegated() bool {
 	return atomic.LoadInt32(&delegated) != 0
 }
 
 func setDelegated(enable bool) {
 	i := int32(0)
-	if (enable) {
+	if enable {
 		log.Debugf("Setting delegated")
 		i = 1
 	} else {
 		log.Debugf("Setting not delegated")
 	}
 	old := atomic.SwapInt32(&delegated, i)
-	if (old != i) {
+	if old != i {
 		for _, ch := range listeners {
 			ch <- enable
 		}
@@ -65,7 +66,7 @@ func setDelegated(enable bool) {
 
 func setDelegationFailure(fail bool) {
 	i := int32(0)
-	if (fail) {
+	if fail {
 		log.Infof("Delegation using leader election failed, getting all pods")
 		i = 1
 		// Also setting Delegated to true locally, so that we end up collecting
@@ -75,7 +76,7 @@ func setDelegationFailure(fail bool) {
 	atomic.StoreInt32(&delegationFailure, i)
 }
 
-func GetDelegationFailure() (bool) {
+func GetDelegationFailure() bool {
 	return atomic.LoadInt32(&delegationFailure) != 0
 }
 
@@ -112,7 +113,7 @@ func runDelegatedNodes(ctx context.Context, client *sdc_internal.LeasePoolManage
 			res, err := nodes.Recv()
 			if err != nil {
 				log.Debug("GetNodes stream closed. restarting")
-				break;
+				break
 			}
 			log.Debug("GetNodes got: %v+", *res)
 			SetDelegatedNodes(res.Node)
@@ -127,7 +128,7 @@ func StartDelegatedNodes(ctx context.Context, cmd *sdc_internal.OrchestratorEven
 	}
 	nodesClient, conn, err := createLeasePoolClient(ctx, fmt.Sprintf("unix:%s/%s", prefix, DELEGATION_SOCK), DELEGATION_LEASENAME, uint32(*cmd.DelegatedNum), cmd)
 
-	if nodesClient == nil || err != nil{
+	if nodesClient == nil || err != nil {
 		log.Error("Failed to get lease pool client for delegated nodes!")
 		return
 	}
@@ -139,7 +140,7 @@ func StartDelegatedNodes(ctx context.Context, cmd *sdc_internal.OrchestratorEven
 }
 
 // Currently blocking
-func RunDelegation (ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand) {
+func RunDelegation(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand) {
 	if !GetCointDelegation() {
 		return
 	}
@@ -164,7 +165,7 @@ func RunDelegation (ctx context.Context, opts *sdc_internal.OrchestratorEventsSt
 
 	delegationClient, conn, err = createLeasePoolClient(ctx, fmt.Sprintf("unix:%s/%s", prefix, DELEGATION_SOCK), DELEGATION_LEASENAME, uint32(*opts.DelegatedNum), opts)
 
-	if delegationClient == nil || err != nil{
+	if delegationClient == nil || err != nil {
 		log.Error("Failed to get lease pool client for delegation!")
 		setDelegationFailure(true)
 		return
@@ -176,11 +177,11 @@ func RunDelegation (ctx context.Context, opts *sdc_internal.OrchestratorEventsSt
 	log.Debug("Delegation: getting lease")
 	wait, err := (*delegationClient).WaitLease(ctx, &sdc_internal.LeasePoolNull{})
 
-    if err != nil {
-        log.Errorf("Error while waiting for delegation lease: %s", err.Error())
+	if err != nil {
+		log.Errorf("Error while waiting for delegation lease: %s", err.Error())
 		setDelegationFailure(true)
-        return
-    }
+		return
+	}
 
 	log.Info("Delegation: waiting for lease")
 	for {
@@ -194,7 +195,7 @@ func RunDelegation (ctx context.Context, opts *sdc_internal.OrchestratorEventsSt
 		if *res.Successful == true {
 			log.Debugf("Got the lease. I am delegated!")
 			setDelegated(true)
-			break;
+			break
 		} else {
 			log.Debugf("Didn't get the lease, error: %v", *res.Reason)
 			setDelegationFailure(true)
@@ -216,7 +217,7 @@ func HaveNode() bool {
 func GetNode() string {
 	InitNode()
 	node, ok := nodename.Load().(string)
-	if (!ok) {
+	if !ok {
 		return ""
 	}
 	return node
@@ -230,7 +231,7 @@ var initedNode bool = false
 
 // This may block
 func InitNode() {
-	if (initedNode) {
+	if initedNode {
 		return
 	}
 	initedNode = true
@@ -245,17 +246,17 @@ func InitNode() {
 
 	hostname, err := os.Hostname()
 	if err != nil {
-        log.Warn("couldn't retrieve hostname")
-        return
-    }
+		log.Warn("couldn't retrieve hostname")
+		return
+	}
 
 	kubeClient, _ := GetKubeClient()
-	if (kubeClient == nil) {
+	if kubeClient == nil {
 		log.Warn("No kubeclient found, can't get node list")
 		return
 	}
 	nodes, _ := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
-	if (nodes == nil) {
+	if nodes == nil {
 		log.Warn("Failed to get node list")
 		return
 	}

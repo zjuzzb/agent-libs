@@ -2,20 +2,21 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	draiosproto "protorepo/agent-be/proto"
 	"context"
-	"sync"
-	"github.com/gogo/protobuf/proto"
+	draiosproto "protorepo/agent-be/proto"
 	"reflect"
+	"sync"
+
 	log "github.com/cihub/seelog"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/api/core/v1"
+	"github.com/gogo/protobuf/proto"
+	v1 "k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 )
 
 // Globals are reset in startServicesSInformer
@@ -43,9 +44,9 @@ func (svc CoService) ActiveChildren() int32 {
 }
 
 // make this a library function?
-func serviceEvent(svc CoService, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func serviceEvent(svc CoService, eventType *draiosproto.CongroupEventType, setLinks bool) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newServiceCongroup(svc, setLinks),
 	}
 }
@@ -85,7 +86,7 @@ func lookupServiceByName(serviceName, namespace string) string {
 	return ""
 }
 
-func newServiceCongroup(service CoService, setLinks bool) (*draiosproto.ContainerGroup) {
+func newServiceCongroup(service CoService, setLinks bool) *draiosproto.ContainerGroup {
 	tags := kubecollect_common.GetTags(service, "kubernetes.service.")
 	inttags := kubecollect_common.GetAnnotations(service.ObjectMeta, "kubernetes.service.")
 
@@ -96,11 +97,11 @@ func newServiceCongroup(service CoService, setLinks bool) (*draiosproto.Containe
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_service"),
-			Id:proto.String(string(service.GetUID()))},
-		Tags: tags,
+			Kind: proto.String("k8s_service"),
+			Id:   proto.String(string(service.GetUID()))},
+		Tags:         tags,
 		InternalTags: inttags,
-		Namespace:proto.String(service.GetNamespace()),
+		Namespace:    proto.String(service.GetNamespace()),
 	}
 
 	if service.Spec.ClusterIP != "None" {
@@ -133,7 +134,7 @@ var UnresolvedPorts = map[types.UID]bool{}
 func addServicePorts(ports *[]*draiosproto.CongroupNetPort, service CoService) {
 	for _, port := range service.Spec.Ports {
 		sPort := draiosproto.CongroupNetPort{
-			Port: proto.Uint32(uint32(port.Port)),
+			Port:     proto.Uint32(uint32(port.Port)),
 			Protocol: proto.String(string(port.Protocol)),
 		}
 
@@ -180,8 +181,8 @@ func AddServiceParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 		selector, ok := SvcSelectorCache.Get(service)
 		if ok && selector.Matches(podLabels) {
 			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_service"),
-				Id:proto.String(string(service.GetUID()))})
+				Kind: proto.String("k8s_service"),
+				Id:   proto.String(string(service.GetUID()))})
 		}
 	}
 }
@@ -199,8 +200,8 @@ func AddServiceParentsFromServiceName(parents *[]*draiosproto.CongroupUid, names
 
 		if service.GetName() == serviceName {
 			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_service"),
-				Id:proto.String(string(service.GetUID()))})
+				Kind: proto.String("k8s_service"),
+				Id:   proto.String(string(service.GetUID()))})
 		}
 	}
 }
@@ -284,12 +285,12 @@ func watchServices(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				PortmapMutex.Lock()
 				delete(UnresolvedPorts, oldService.GetUID())
 				PortmapMutex.Unlock()
-				evtc <- draiosproto.CongroupUpdateEvent {
+				evtc <- draiosproto.CongroupUpdateEvent{
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{
 						Uid: &draiosproto.CongroupUid{
-							Kind:proto.String("k8s_service"),
-							Id:proto.String(string(oldService.GetUID()))},
+							Kind: proto.String("k8s_service"),
+							Id:   proto.String(string(oldService.GetUID()))},
 					},
 				}
 				kubecollect_common.AddEvent("Service", kubecollect_common.EVENT_DELETE)

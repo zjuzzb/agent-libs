@@ -2,20 +2,21 @@ package compliance
 
 import (
 	"bytes"
-	"github.com/draios/protorepo/sdc_internal"
-	draiosproto "protorepo/agent-be/proto"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/net/context"
 	"io/ioutil"
-	log "github.com/cihub/seelog"
 	"os"
 	"os/exec"
 	"path"
+	draiosproto "protorepo/agent-be/proto"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
+	"golang.org/x/net/context"
 )
 
 type Scraper interface {
@@ -40,32 +41,31 @@ type ModuleImpl interface {
 }
 
 type RunModuleReq struct {
-	Ctx context.Context
-	Stask *ScheduledTask
+	Ctx        context.Context
+	Stask      *ScheduledTask
 	RetChannel chan error
 }
 
 type Module struct {
-	Name string `json:"name"`
-	Prog string `json:"prog"`
-	Impl ModuleImpl `json:"impl"`
+	Name          string     `json:"name"`
+	Prog          string     `json:"prog"`
+	Impl          ModuleImpl `json:"impl"`
 	LastOutputDir string
-	runChannel chan *RunModuleReq
+	runChannel    chan *RunModuleReq
 }
 
 // Represents the periodic interval for how often/when a task should
 // run.
 type TaskInterval struct {
-
 	id int
 
 	// The year/month/days component of the interval between
 	// tasks. golang's native types don't have any way to store a
 	// combined date + time duration.
-	intYear int
+	intYear  int
 	intMonth int
-	intDay int
-	intWeek int
+	intDay   int
+	intWeek  int
 
 	// The hour/minutes/seconds component of the interval between tasks.
 	intTime time.Duration
@@ -86,7 +86,7 @@ func (sint *TaskInterval) FindNextRun(now time.Time) {
 	t := sint.nextRunTime
 
 	for t.Before(now) {
-		t = t.AddDate(sint.intYear, sint.intMonth, sint.intDay + (sint.intWeek * 7))
+		t = t.AddDate(sint.intYear, sint.intMonth, sint.intDay+(sint.intWeek*7))
 		t = t.Add(sint.intTime)
 	}
 
@@ -94,21 +94,21 @@ func (sint *TaskInterval) FindNextRun(now time.Time) {
 }
 
 type ScheduledTask struct {
-	mgr *ModuleMgr
-	task *draiosproto.CompTask
-	cmd *exec.Cmd
+	mgr          *ModuleMgr
+	task         *draiosproto.CompTask
+	cmd          *exec.Cmd
 	cmdStartTime time.Time
-	module *Module
-	env []string
+	module       *Module
+	env          []string
 
 	intervals []*TaskInterval
 }
 
 func NewScheduledTask(mgr *ModuleMgr, task *draiosproto.CompTask, env []string) *ScheduledTask {
 	s := &ScheduledTask{
-		mgr: mgr,
-		task: task,
-		env: env,
+		mgr:    mgr,
+		task:   task,
+		env:    env,
 		module: mgr.availModules[*task.ModName],
 	}
 
@@ -124,7 +124,7 @@ func (stask *ScheduledTask) ParseSchedule(schedule string, now time.Time) error 
 	// If the schedule starts with '[', assume it's an array of
 	// repeating durations.
 	if strings.HasPrefix(schedule, "[") {
-		if ! strings.HasSuffix(schedule, "]") {
+		if !strings.HasSuffix(schedule, "]") {
 			return fmt.Errorf("Invalid schedule specification %s", schedule)
 		}
 
@@ -160,7 +160,8 @@ func (stask *ScheduledTask) ParseSchedule(schedule string, now time.Time) error 
 					var err error
 
 					if stask.mgr.scheduleRegexpNames[j] != "start" {
-						parsed, err := strconv.ParseInt(submatch, 10, 64); if err != nil {
+						parsed, err := strconv.ParseInt(submatch, 10, 64)
+						if err != nil {
 							return fmt.Errorf("Could not parse numeric value from schedule %s: %s", schedule, err.Error())
 						}
 						num = int(parsed)
@@ -211,7 +212,8 @@ func (stask *ScheduledTask) ParseSchedule(schedule string, now time.Time) error 
 		}
 
 		if dstr != "" {
-			parsed, err := time.ParseDuration(dstr); if err != nil {
+			parsed, err := time.ParseDuration(dstr)
+			if err != nil {
 				return err
 			}
 
@@ -227,7 +229,7 @@ func (stask *ScheduledTask) ParseSchedule(schedule string, now time.Time) error 
 func (stask *ScheduledTask) RunNow(ctx context.Context) error {
 
 	if shouldRun := stask.module.Impl.ShouldRun(stask); !shouldRun {
-		log.Infof("Not running task %s (ShouldRun false)", *stask.task.Name);
+		log.Infof("Not running task %s (ShouldRun false)", *stask.task.Name)
 		return nil
 	}
 
@@ -299,17 +301,17 @@ func (stask *ScheduledTask) RunForever(ctx context.Context) {
 
 	for {
 		select {
-		case <- ch:
+		case <-ch:
 			log.Debugf("Task completed (Ran for %s)", time.Since(stask.cmdStartTime).String())
 			running = false
 
-		case <- ctx.Done():
+		case <-ctx.Done():
 			// Don't need to stop any in-progress
 			// task. That is handled through the context.
 			timer.Stop()
 			return
 
-		case <- timer.C:
+		case <-timer.C:
 
 			log.Debugf("Timer expired, will try using interval %d (run %d times so far)", sint.id, sint.numTimesRun)
 
@@ -442,45 +444,45 @@ func (d *ResultRisk) UnmarshalJSON(b []byte) error {
 // A Prettier summary of a Cmd than what you get with %v
 func CmdString(c *exec.Cmd) string {
 	return fmt.Sprintf("{Path=%s Args=[%s] Env=[%s] Dir=%s}",
-		c.Path, strings.Join(c.Args," "), strings.Join(c.Env, " "), c.Dir)
+		c.Path, strings.Join(c.Args, " "), strings.Join(c.Env, " "), c.Dir)
 }
 
 type TaskResultTest struct {
-	TestNumber string `json:"testNumber"`
-	Description string `json:"description,omitempty"`
-	Status ResultStatus `json:"status"`
-	Details string `json:"details,omitempty"`
-	Items []string `json:"items,omitempty"`
+	TestNumber  string       `json:"testNumber"`
+	Description string       `json:"description,omitempty"`
+	Status      ResultStatus `json:"status"`
+	Details     string       `json:"details,omitempty"`
+	Items       []string     `json:"items,omitempty"`
 }
 
 type TaskResultSection struct {
-	SectionId string `json:"sectionId"`
-	Description string `json:"description,omitempty"`
-	TestsRun uint64 `json:"testsRun"`
-	PassCount uint64 `json:"passCount"`
-	FailCount uint64 `json:"failCount"`
-	WarnCount uint64 `json:"warnCount"`
-	Results []TaskResultTest `json:"results,omitempty"`
+	SectionId   string           `json:"sectionId"`
+	Description string           `json:"description,omitempty"`
+	TestsRun    uint64           `json:"testsRun"`
+	PassCount   uint64           `json:"passCount"`
+	FailCount   uint64           `json:"failCount"`
+	WarnCount   uint64           `json:"warnCount"`
+	Results     []TaskResultTest `json:"results,omitempty"`
 }
 
 type TaskResultAttribute struct {
-	K8sNodeType string `json:"k8sNodeType,omitempty"`
+	K8sNodeType      string `json:"k8sNodeType,omitempty"`
 	DockerBenchScore *int64 `json:"dockerBenchScore,omitempty"`
 }
 
 type ExtendedTaskResult struct {
-	Id uint64 `json:"id"`
-	TimestampNS uint64 `json:"timestampNs"`
-	HostMac string `json:"hostMac"`
-	TaskName string `json:"taskName"`
-	ResultSchema string `json:"resultSchema,omitempty"`
-	TestsRun uint64 `json:"testsRun"`
-	PassCount uint64 `json:"passCount"`
-	FailCount uint64 `json:"failCount"`
-	WarnCount uint64 `json:"warnCount"`
-	Risk ResultRisk `json:"risk"`
-	Tests []TaskResultSection `json:"tests,omitempty"`
-	Attributes []TaskResultAttribute `json:"attributes,omitempty"`
+	Id           uint64                `json:"id"`
+	TimestampNS  uint64                `json:"timestampNs"`
+	HostMac      string                `json:"hostMac"`
+	TaskName     string                `json:"taskName"`
+	ResultSchema string                `json:"resultSchema,omitempty"`
+	TestsRun     uint64                `json:"testsRun"`
+	PassCount    uint64                `json:"passCount"`
+	FailCount    uint64                `json:"failCount"`
+	WarnCount    uint64                `json:"warnCount"`
+	Risk         ResultRisk            `json:"risk"`
+	Tests        []TaskResultSection   `json:"tests,omitempty"`
+	Attributes   []TaskResultAttribute `json:"attributes,omitempty"`
 }
 
 func GetHostDir() string {
@@ -498,13 +500,13 @@ func (module *Module) Env(mgr *ModuleMgr, runWithChroot bool) []string {
 	moduleDir := path.Join(mgr.ModulesDir, module.Name)
 
 	if runWithChroot {
-		newenv = append(newenv, "DOCKER_HOST=unix:///var/run/docker.sock");
+		newenv = append(newenv, "DOCKER_HOST=unix:///var/run/docker.sock")
 
 		moduleDir = path.Join("/benchmarks", module.Name)
 	} else {
 		// If SYSDIG_HOST_ROOT is set, use that as a part of the socket path.
 		dockerSock := fmt.Sprintf("unix://%s/var/run/docker.sock", GetHostDir())
-		newenv = append(newenv, "DOCKER_HOST=" + dockerSock);
+		newenv = append(newenv, "DOCKER_HOST="+dockerSock)
 	}
 
 	// Add the module dir to PATH
@@ -516,7 +518,7 @@ func (module *Module) Env(mgr *ModuleMgr, runWithChroot bool) []string {
 		if key == "PATH" {
 			val = val + ":" + moduleDir
 		}
-		newenv = append(newenv, key + "=" + val)
+		newenv = append(newenv, key+"="+val)
 	}
 
 	return newenv
@@ -531,9 +533,9 @@ func (module *Module) RunModules(ctx context.Context) {
 	RunModules:
 		for {
 			select {
-			case run_msg := <- module.runChannel:
+			case run_msg := <-module.runChannel:
 				run_msg.RetChannel <- module.HandleRun(run_msg.Ctx, run_msg.Stask)
-			case <- ctx.Done():
+			case <-ctx.Done():
 				break RunModules
 			}
 		}
@@ -544,14 +546,14 @@ func (module *Module) Run(start_ctx context.Context, stask *ScheduledTask) error
 	ret := make(chan error)
 
 	req := &RunModuleReq{
-		Ctx: start_ctx,
-		Stask: stask,
+		Ctx:        start_ctx,
+		Stask:      stask,
 		RetChannel: ret,
 	}
 
 	module.runChannel <- req
 
-	err := <- ret
+	err := <-ret
 
 	return err
 }
@@ -573,39 +575,41 @@ func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask)
 		runWithChroot = true
 	}
 
-	moduleArgs, err := module.Impl.GenArgs(stask); if err != nil {
+	moduleArgs, err := module.Impl.GenArgs(stask)
+	if err != nil {
 		return err
 	}
 
 	moduleDir := path.Join(stask.mgr.ModulesDir, module.Name)
 
 	if runWithChroot {
-		if err := os.Mkdir(GetHostDir() + "/benchmarks", 700); err != nil && !os.IsExist(err) {
-			err = fmt.Errorf("Could not create benchmark directory (%s)", err.Error());
+		if err := os.Mkdir(GetHostDir()+"/benchmarks", 700); err != nil && !os.IsExist(err) {
+			err = fmt.Errorf("Could not create benchmark directory (%s)", err.Error())
 			return err
 		}
 
 		// Copy benchmark binary below `/SYSDIG_HOST_ROOT` if it does not already exist
-		hostModuleDir := path.Join(GetHostDir() + "/benchmarks", module.Name)
+		hostModuleDir := path.Join(GetHostDir()+"/benchmarks", module.Name)
 		if _, err := os.Stat(hostModuleDir); os.IsNotExist(err) {
 			log.Infof("Copying %s/benchmarks/%s", GetHostDir(), module.Name)
 
 			cpCmd := exec.Command("cp", "-r", moduleDir, hostModuleDir)
 			if _, err := cpCmd.Output(); err != nil {
-				return fmt.Errorf("Could not copy benchmark directory (%s)", err.Error());
+				return fmt.Errorf("Could not copy benchmark directory (%s)", err.Error())
 			}
 
 		}
 
 		rootOutputDir := GetHostDir() + "/benchmarks/out"
 		if err := os.Mkdir(rootOutputDir, 700); err != nil && !os.IsExist(err) {
-			err = fmt.Errorf("Could not create output directory (%s)", err.Error());
+			err = fmt.Errorf("Could not create output directory (%s)", err.Error())
 			return err
 		}
 
 		// Create temp dir under /SYSDIG_HOST_ROOT/benchmark/out where this module's output will go.
-		outputDir, err = ioutil.TempDir(rootOutputDir, "module-" + module.Name + "-output"); if err != nil {
-			err = fmt.Errorf("Could not create temporary directory (%s)", err.Error());
+		outputDir, err = ioutil.TempDir(rootOutputDir, "module-"+module.Name+"-output")
+		if err != nil {
+			err = fmt.Errorf("Could not create temporary directory (%s)", err.Error())
 			return err
 		}
 
@@ -628,8 +632,9 @@ func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask)
 
 		cmd = exec.CommandContext(ctx, "chroot", GetHostDir(), "/bin/bash", "-c", moduleCmd)
 	} else {
-		outputDir, err = ioutil.TempDir("", "module-" + module.Name + "-output"); if err != nil {
-			err = fmt.Errorf("Could not create temporary directory (%s)", err.Error());
+		outputDir, err = ioutil.TempDir("", "module-"+module.Name+"-output")
+		if err != nil {
+			err = fmt.Errorf("Could not create temporary directory (%s)", err.Error())
 			return err
 		}
 
@@ -649,16 +654,18 @@ func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask)
 	log.Debugf("Running: %s", CmdString(cmd))
 
 	stderrFileName := path.Join(outputDir, "stderr.txt")
-	stderrFile, err := os.Create(stderrFileName); if err != nil {
-		err = fmt.Errorf("Could not create stderr file (%s)", err.Error());
+	stderrFile, err := os.Create(stderrFileName)
+	if err != nil {
+		err = fmt.Errorf("Could not create stderr file (%s)", err.Error())
 		return err
 	}
 
 	cmd.Stderr = stderrFile
 
 	stdoutFileName := path.Join(outputDir, "stdout.txt")
-	stdoutFile, err := os.Create(stdoutFileName); if err != nil {
-		err = fmt.Errorf("Could not create stdout file (%s)", err.Error());
+	stdoutFile, err := os.Create(stdoutFileName)
+	if err != nil {
+		err = fmt.Errorf("Could not create stdout file (%s)", err.Error())
 		return err
 	}
 
@@ -674,7 +681,8 @@ func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask)
 
 	// If an old outputDir is still around, remove it.
 	if module.LastOutputDir != "" {
-		err := os.RemoveAll(module.LastOutputDir); if err != nil {
+		err := os.RemoveAll(module.LastOutputDir)
+		if err != nil {
 			return err
 		}
 
@@ -698,12 +706,12 @@ func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask)
 	}()
 
 	// Wait for the command to complete or for us to be cancelled
-	WAIT:
+WAIT:
 	for {
 		select {
-		case err = <- ch:
+		case err = <-ch:
 			break WAIT
-		case <- start_ctx.Done():
+		case <-start_ctx.Done():
 			activelyStopped = true
 			cancel()
 		}
@@ -720,7 +728,7 @@ func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask)
 		err = fmt.Errorf("module %s via %s exited with error (%s) Stdout: \"%s\" Stderr: \"%s\"",
 			module.Name, CmdString(cmd), err, string(stdoutBuf), string(stderrBuf))
 
-		if ! activelyStopped {
+		if !activelyStopped {
 			return err
 		} else {
 			log.Debugf(err.Error())
@@ -733,10 +741,11 @@ func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask)
 		err = module.Impl.Scrape(outputDir, module.Name,
 			stask.task,
 			stask.mgr.IncludeDesc,
-			stask.mgr.evtsChannel); if err != nil {
-				err = fmt.Errorf("Could not scrape module %s output (%s)",
-					module.Name, err);
-			}
+			stask.mgr.evtsChannel)
+		if err != nil {
+			err = fmt.Errorf("Could not scrape module %s output (%s)",
+				module.Name, err)
+		}
 	}
 
 	log.Infof("Completed task %s", *stask.task.Name)

@@ -3,39 +3,39 @@ package kubecollect
 import (
 	"cointerface/kubecollect_common"
 	"encoding/json"
-	"github.com/gogo/protobuf/proto"
-	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	draiosproto "protorepo/agent-be/proto"
 	"reflect"
 	"testing"
+
+	"github.com/gogo/protobuf/proto"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func createV1PersistentVolume()(*v1.PersistentVolume) {
+func createV1PersistentVolume() *v1.PersistentVolume {
 	ret := &v1.PersistentVolume{
-		ObjectMeta: v1meta.ObjectMeta {
-			Name: string("SamePV"),
+		ObjectMeta: v1meta.ObjectMeta{
+			Name:            string("SamePV"),
 			ResourceVersion: string("abcd"),
 			Labels: map[string]string{
-				"label_key1":"label_value1",
-				"label_key2":"label_value2",
+				"label_key1": "label_value1",
+				"label_key2": "label_value2",
 			},
 		},
 
-		Spec: v1.PersistentVolumeSpec {
+		Spec: v1.PersistentVolumeSpec{
 			Capacity: v1.ResourceList{
 				"storage": resource.MustParse("500M"),
-
 			},
 			PersistentVolumeSource: v1.PersistentVolumeSource{
 				GCEPersistentDisk: &v1.GCEPersistentDiskVolumeSource{},
 			},
-			AccessModes: []v1.PersistentVolumeAccessMode {
+			AccessModes: []v1.PersistentVolumeAccessMode{
 				v1.ReadWriteOnce,
 			},
 			StorageClassName: "StorageClassName",
-			MountOptions: []string {"ro", "soft"},
+			MountOptions:     []string{"ro", "soft"},
 			PersistentVolumeReclaimPolicy: v1.PersistentVolumeReclaimPolicy(
 				v1.PersistentVolumeReclaimRecycle,
 			),
@@ -43,18 +43,17 @@ func createV1PersistentVolume()(*v1.PersistentVolume) {
 				Kind: "persistentvolumeclaim",
 				Name: "MiAllippai",
 			},
-
 		},
 		Status: v1.PersistentVolumeStatus{
-			Phase: v1.VolumeBound,
+			Phase:   v1.VolumeBound,
 			Message: "vattene amore",
-			Reason: "mio barbaro invasore",
+			Reason:  "mio barbaro invasore",
 		},
 	}
 	return ret
 }
 
-func create_label_key (name string) string {
+func create_label_key(name string) string {
 	return "kubernetes.persistentvolume.label." + name
 }
 
@@ -71,12 +70,12 @@ func getExpected() *draiosproto.ContainerGroup {
 	tags["kubernetes.persistentvolume.name"] = "SamePV"
 
 	ret := &draiosproto.ContainerGroup{
-		Uid:                  &draiosproto.CongroupUid{
-			Kind:                 proto.String("k8s_persistentvolume"),
-			Id:                   proto.String(""),
+		Uid: &draiosproto.CongroupUid{
+			Kind: proto.String("k8s_persistentvolume"),
+			Id:   proto.String(""),
 		},
-		Tags:                 tags,
-		K8SObject:            &draiosproto.K8SType{TypeList: &draiosproto.K8SType_Pv{Pv: getPVMetaData(createV1PersistentVolume())}},
+		Tags:      tags,
+		K8SObject: &draiosproto.K8SType{TypeList: &draiosproto.K8SType_Pv{Pv: getPVMetaData(createV1PersistentVolume())}},
 	}
 
 	kubecollect_common.AppendMetricInt64(&ret.Metrics, "kubernetes.persistentvolume.storage", 500000000)
@@ -85,7 +84,7 @@ func getExpected() *draiosproto.ContainerGroup {
 	return ret
 }
 
-func areEqual(expected *draiosproto.ContainerGroup, actual  *draiosproto.ContainerGroup, t* testing.T) bool {
+func areEqual(expected *draiosproto.ContainerGroup, actual *draiosproto.ContainerGroup, t *testing.T) bool {
 	ret := false
 
 	if reflect.DeepEqual(expected, actual) {
@@ -123,56 +122,56 @@ func getPVPhasePtr(phase draiosproto.K8SPersistentvolumePhase) *draiosproto.K8SP
 }
 
 func TestGetPVMetaData(t *testing.T) {
-	cases := []struct{
+	cases := []struct {
 		claimRef *v1.ObjectReference
 		phase    v1.PersistentVolumePhase
 		expected draiosproto.K8SPersistentvolume
-	} {
+	}{
 		{
 			claimRef: &v1.ObjectReference{
-				Kind:            "WindSurf",
-				Namespace:       "Portogallo",
-				Name:            "MeloDellaPlaia",
-				UID:             "IDU",
+				Kind:      "WindSurf",
+				Namespace: "Portogallo",
+				Name:      "MeloDellaPlaia",
+				UID:       "IDU",
 			},
 			phase: v1.VolumePending,
 
 			expected: draiosproto.K8SPersistentvolume{
-				Common:               kubecollect_common.CreateCommon("",""),
-				ClaimRef:             &draiosproto.K8SCommon{
-					Name:                 proto.String("MeloDellaPlaia"),
-					Uid:                  proto.String("IDU"),
-					Namespace:            proto.String("Portogallo"),
+				Common: kubecollect_common.CreateCommon("", ""),
+				ClaimRef: &draiosproto.K8SCommon{
+					Name:      proto.String("MeloDellaPlaia"),
+					Uid:       proto.String("IDU"),
+					Namespace: proto.String("Portogallo"),
 				},
-				Status:               &draiosproto.K8SPersistentvolumeStatusDetails{
-					Phase:                getPVPhasePtr(draiosproto.K8SPersistentvolumePhase_PERSISTENT_VOLUME_PHASE_PENDING),
+				Status: &draiosproto.K8SPersistentvolumeStatusDetails{
+					Phase: getPVPhasePtr(draiosproto.K8SPersistentvolumePhase_PERSISTENT_VOLUME_PHASE_PENDING),
 				},
 			},
 		},
 		{
 			claimRef: nil,
-			phase: "",
+			phase:    "",
 
 			expected: draiosproto.K8SPersistentvolume{
-				Common:               kubecollect_common.CreateCommon("",""),
+				Common: kubecollect_common.CreateCommon("", ""),
 			},
 		},
 	}
-	
+
 	for k, ut := range cases {
 		pv := v1.PersistentVolume{
-			Spec:       v1.PersistentVolumeSpec{
+			Spec: v1.PersistentVolumeSpec{
 				ClaimRef: ut.claimRef,
 			},
-			Status:     v1.PersistentVolumeStatus{
-				Phase:   ut.phase,
+			Status: v1.PersistentVolumeStatus{
+				Phase: ut.phase,
 			},
 		}
 
 		k8s_object := getPVMetaData(&pv)
 
 		if !proto.Equal(k8s_object, &ut.expected) {
-			actualJson, _  := json.Marshal(*k8s_object)
+			actualJson, _ := json.Marshal(*k8s_object)
 			expectedJson, _ := json.Marshal(ut.expected)
 			t.Logf("Fail test number %d\nExpected %s\nActual %s", k, expectedJson, actualJson)
 			t.Fail()

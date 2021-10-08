@@ -4,28 +4,29 @@ import (
 	"cointerface/kubecollect"
 	"cointerface/kubecollect_common"
 	"context"
+	draiosproto "protorepo/agent-be/proto"
+	"sync"
+
 	"github.com/gogo/protobuf/proto"
 	v1as "k8s.io/api/autoscaling/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/watch"
 	kubeclient "k8s.io/client-go/kubernetes"
-	draiosproto "protorepo/agent-be/proto"
-	"sync"
 )
 
-func horizontalPodAutoscalerEvent(ss *v1as.HorizontalPodAutoscaler, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func horizontalPodAutoscalerEvent(ss *v1as.HorizontalPodAutoscaler, eventType *draiosproto.CongroupEventType) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newHorizontalPodAutoscalerCongroup(ss),
 	}
 }
 
-func newHorizontalPodAutoscalerCongroup(hpa *v1as.HorizontalPodAutoscaler) (*draiosproto.ContainerGroup) {
+func newHorizontalPodAutoscalerCongroup(hpa *v1as.HorizontalPodAutoscaler) *draiosproto.ContainerGroup {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_hpa"),
-			Id:proto.String(string(hpa.GetUID()))},
-		Namespace:proto.String(hpa.GetNamespace()),
+			Kind: proto.String("k8s_hpa"),
+			Id:   proto.String(string(hpa.GetUID()))},
+		Namespace: proto.String(hpa.GetNamespace()),
 	}
 
 	ret.Tags = kubecollect_common.GetTags(hpa, "kubernetes.hpa.")
@@ -62,4 +63,3 @@ func handleHPAEvent(event watch.Event, evtc chan<- draiosproto.CongroupUpdateEve
 		kubecollect_common.AddEvent("deployment", kubecollect_common.EVENT_DELETE)
 	}
 }
-

@@ -3,15 +3,16 @@ package compliance
 import (
 	"encoding/json"
 	"fmt"
-	log "github.com/cihub/seelog"
-	draiosproto "protorepo/agent-be/proto"
-	"github.com/draios/protorepo/sdc_internal"
-	"github.com/gogo/protobuf/proto"
 	"io/ioutil"
+	draiosproto "protorepo/agent-be/proto"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
+	"github.com/gogo/protobuf/proto"
 )
 
 func (impl *LinuxBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
@@ -81,13 +82,13 @@ type linuxBenchResults struct {
 func (impl *LinuxBenchImpl) AssignRisk(id string, result string, curRisk ResultRisk) ResultRisk {
 	newRisk := low
 
-	if (result != "PASS" && impl.isHighRiskTest(id)) {
+	if result != "PASS" && impl.isHighRiskTest(id) {
 		newRisk = high
-	} else if (result != "PASS") {
+	} else if result != "PASS" {
 		newRisk = medium
 	}
 
-	if (newRisk == high || (newRisk == medium && curRisk == low)) {
+	if newRisk == high || (newRisk == medium && curRisk == low) {
 		return newRisk
 	}
 
@@ -112,7 +113,7 @@ func (impl *LinuxBenchImpl) AssignRisk(id string, result string, curRisk ResultR
 func (impl *LinuxBenchImpl) isHighRiskTest(id string) bool {
 	switch impl.variant {
 	case "1.1.0":
-		highTestIds := map[string]int {
+		highTestIds := map[string]int{
 			"6.1.1": 1,
 			"6.1.2": 1,
 			"6.1.3": 1,
@@ -129,7 +130,7 @@ func (impl *LinuxBenchImpl) isHighRiskTest(id string) bool {
 			strings.HasPrefix(id, "5") ||
 			strings.HasPrefix(id, "6.2")
 	case "2.0.0":
-		highTestIds := map[string]int {
+		highTestIds := map[string]int{
 			"6.1.1": 1,
 			"6.1.2": 1,
 			"6.1.3": 1,
@@ -312,7 +313,6 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 	}
 
 	results.Results = append(results.Results, compResult)
-
 
 	metricsPrefix := fmt.Sprintf("compliance.linux-bench.%v", strings.Replace(impl.variant, ".", "-", -1))
 	metrics = append(metrics, fmt.Sprintf("%v.tests_pass:%d|g", metricsPrefix, result.PassCount))

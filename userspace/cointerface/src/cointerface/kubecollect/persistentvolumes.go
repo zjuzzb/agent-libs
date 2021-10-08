@@ -4,15 +4,16 @@ import (
 	"cointerface/kubecollect_common"
 	"context"
 	"fmt"
+	draiosproto "protorepo/agent-be/proto"
+	"sync"
+
 	log "github.com/cihub/seelog"
 	"github.com/gogo/protobuf/proto"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	draiosproto "protorepo/agent-be/proto"
-	"sync"
 )
 
 var persistentVolumesInf cache.SharedInformer
@@ -32,10 +33,9 @@ func StartPersistentVolumesInformer(ctx context.Context, kubeClient kubeclient.I
 	}()
 }
 
-
-func persistentVolumeEvent(pv *v1.PersistentVolume, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func persistentVolumeEvent(pv *v1.PersistentVolume, eventType *draiosproto.CongroupEventType) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newPersistentVolumeCongroup(pv),
 	}
 }
@@ -119,9 +119,9 @@ func getPVMetaData(pv *v1.PersistentVolume) *draiosproto.K8SPersistentvolume {
 
 	if cr := pv.Spec.ClaimRef; cr != nil {
 		ret.ClaimRef = &draiosproto.K8SCommon{
-			Name:                 &cr.Name,
-			Uid:                  proto.String(string(cr.UID)),
-			Namespace:            &cr.Namespace,
+			Name:      &cr.Name,
+			Uid:       proto.String(string(cr.UID)),
+			Namespace: &cr.Namespace,
 		}
 	}
 
@@ -132,41 +132,41 @@ func getPVMetaData(pv *v1.PersistentVolume) *draiosproto.K8SPersistentvolume {
 	return ret
 }
 
-func newPersistentVolumeCongroup(pv *v1.PersistentVolume) (*draiosproto.ContainerGroup) {
+func newPersistentVolumeCongroup(pv *v1.PersistentVolume) *draiosproto.ContainerGroup {
 	label_tag_name := metricPrefix + "label."
 	internal_tag_name := metricPrefix + "label."
 
 	tags := make(map[string]string)
 	for k, v := range pv.GetLabels() {
-		tags[label_tag_name+ k] = v
+		tags[label_tag_name+k] = v
 	}
 
 	inttags := kubecollect_common.GetAnnotations(pv.ObjectMeta, internal_tag_name)
-	tags[internal_tag_name+ "storageclass"] = pv.Spec.StorageClassName
-	tags[internal_tag_name+ "status.phase"] = string(pv.Status.Phase)
-	if (pv.Spec.ClaimRef != nil) {
+	tags[internal_tag_name+"storageclass"] = pv.Spec.StorageClassName
+	tags[internal_tag_name+"status.phase"] = string(pv.Status.Phase)
+	if pv.Spec.ClaimRef != nil {
 		tags[internal_tag_name+"claim"] = pv.Spec.ClaimRef.Name
 	}
-	tags[internal_tag_name+ "reclaimpolicy"] = string(pv.Spec.PersistentVolumeReclaimPolicy)
+	tags[internal_tag_name+"reclaimpolicy"] = string(pv.Spec.PersistentVolumeReclaimPolicy)
 
 	var accessMode string
 	for _, v := range pv.Spec.AccessModes {
 		accessMode += string(v)
 	}
 
-	tags[internal_tag_name+ "accessmode"] = string(accessMode)
+	tags[internal_tag_name+"accessmode"] = string(accessMode)
 
 	tags[internal_tag_name+"source.type"] = getPersistentVolumeType(pv)
 
-	tags[metricPrefix + "name"] = pv.GetName()
+	tags[metricPrefix+"name"] = pv.GetName()
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_persistentvolume"),
-			Id:proto.String(string(pv.GetUID()))},
-		Tags: tags,
+			Kind: proto.String("k8s_persistentvolume"),
+			Id:   proto.String(string(pv.GetUID()))},
+		Tags:         tags,
 		InternalTags: inttags,
-		K8SObject: &draiosproto.K8SType{TypeList: &draiosproto.K8SType_Pv{Pv: getPVMetaData(pv)}},
+		K8SObject:    &draiosproto.K8SType{TypeList: &draiosproto.K8SType_Pv{Pv: getPVMetaData(pv)}},
 	}
 
 	addPersistentVolumeMetrics(&ret.Metrics, pv)
@@ -182,7 +182,7 @@ func addPersistentVolumeMetrics(metrics *[]*draiosproto.AppMetric, pv *v1.Persis
 	kubecollect_common.AppendMetricInt32(metrics, metricPrefix+"count", 1)
 }
 
-func watchPersistentVolumes(evtc chan <- draiosproto.CongroupUpdateEvent) {
+func watchPersistentVolumes(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In Watchpersistentvolumes()")
 
 	persistentVolumesInf.AddEventHandler(

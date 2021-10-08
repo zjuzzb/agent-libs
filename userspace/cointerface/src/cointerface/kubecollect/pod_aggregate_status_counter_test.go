@@ -6,7 +6,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
-	"k8s.io/api/core/v1"
+
+	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
@@ -44,12 +45,12 @@ func createPod() *v1.Pod {
 				Time: time.Time{},
 			},
 			InitContainerStatuses: nil,
-			QOSClass:              ""    ,
+			QOSClass:              "",
 			ContainerStatuses: []v1.ContainerStatus{
 				{
-					Name:            "sometimeCrashingPod",
-					State:           v1.ContainerState{
-						Waiting:     &v1.ContainerStateWaiting{
+					Name: "sometimeCrashingPod",
+					State: v1.ContainerState{
+						Waiting: &v1.ContainerStateWaiting{
 							Reason:  "ContainerCreating",
 							Message: "",
 						},
@@ -89,7 +90,7 @@ func setPodStatus(status v1.PodPhase, state *v1.ContainerState, pod *v1.Pod) {
 
 }
 
-func checkAggregateStatus(expected string, actual string, t* testing.T) {
+func checkAggregateStatus(expected string, actual string, t *testing.T) {
 	if expected != actual {
 		t.Logf("Got %s, expecting %s", actual, expected)
 		t.Fail()
@@ -116,7 +117,6 @@ func TestMain(m *testing.M) {
 	os.Exit(res)
 }
 
-
 func TestGetStatusFromPod(t *testing.T) {
 	// These are a number of real use cases
 
@@ -131,8 +131,8 @@ func TestGetStatusFromPod(t *testing.T) {
 	//
 	setPodStatus(v1.PodRunning,
 		&v1.ContainerState{
-			Waiting: nil,
-			Running: &v1.ContainerStateRunning{},
+			Waiting:    nil,
+			Running:    &v1.ContainerStateRunning{},
 			Terminated: nil,
 		},
 		pod)
@@ -143,8 +143,8 @@ func TestGetStatusFromPod(t *testing.T) {
 	//
 	setPodStatus(v1.PodRunning,
 		&v1.ContainerState{
-			Waiting: nil,
-			Running: nil,
+			Waiting:    nil,
+			Running:    nil,
 			Terminated: &v1.ContainerStateTerminated{Reason: "Error"},
 		},
 		pod)
@@ -155,8 +155,8 @@ func TestGetStatusFromPod(t *testing.T) {
 	//
 	setPodStatus(v1.PodRunning,
 		&v1.ContainerState{
-			Waiting: &v1.ContainerStateWaiting{Reason: "CrashLoopBackOff"},
-			Running: nil,
+			Waiting:    &v1.ContainerStateWaiting{Reason: "CrashLoopBackOff"},
+			Running:    nil,
 			Terminated: nil,
 		},
 		pod)
@@ -167,8 +167,8 @@ func TestGetStatusFromPod(t *testing.T) {
 	//
 	setPodStatus(v1.PodRunning,
 		&v1.ContainerState{
-			Waiting: &v1.ContainerStateWaiting{Reason: "LunchTime"},
-			Running: nil,
+			Waiting:    &v1.ContainerStateWaiting{Reason: "LunchTime"},
+			Running:    nil,
 			Terminated: nil,
 		},
 		pod)
@@ -177,13 +177,12 @@ func TestGetStatusFromPod(t *testing.T) {
 	//
 	// Check a pod in Pending phase without any container yet. Expected value is Pending
 	//
-	setPodStatus(v1.PodPending,nil,	pod)
+	setPodStatus(v1.PodPending, nil, pod)
 	pod.Status.ContainerStatuses = nil
 	checkAggregateStatus("pending", getStatusFromPod(pod), t)
 }
 
-
-func createPodData(namespace string, uid int)  *v1.Pod {
+func createPodData(namespace string, uid int) *v1.Pod {
 	pod := createPod()
 	pod.Namespace = namespace
 	pod.UID = types.UID(strconv.Itoa(uid))
@@ -193,7 +192,7 @@ func createPodData(namespace string, uid int)  *v1.Pod {
 func TestHandleEvent(t *testing.T) {
 	// Simulate 100 Event type ADD of pod in ContainerCreating aggregate status
 
-	for i:=0; i<100; i++ {
+	for i := 0; i < 100; i++ {
 		pod := createPodData("namespace1", i)
 
 		event := watch.Event{
@@ -208,19 +207,19 @@ func TestHandleEvent(t *testing.T) {
 	}
 
 	// Update pod with uid from 0 to 9 to AggrStatus Running
-	for i:=0; i<10; i++ {
+	for i := 0; i < 10; i++ {
 		pod := createPodData("namespace1", i)
 
 		setPodStatus(v1.PodRunning,
 			&v1.ContainerState{
-				Waiting: nil,
-				Running: &v1.ContainerStateRunning{},
+				Waiting:    nil,
+				Running:    &v1.ContainerStateRunning{},
 				Terminated: nil,
 			},
 			pod)
 
 		event := watch.Event{
-			Type: watch.Modified,
+			Type:   watch.Modified,
 			Object: pod,
 		}
 
@@ -233,11 +232,11 @@ func TestHandleEvent(t *testing.T) {
 	}
 
 	// Delete pod with uid from 0 to 19
-	for i:=0; i<20; i++ {
+	for i := 0; i < 20; i++ {
 		pod := createPodData("namespace1", i)
 
 		event := watch.Event{
-			Type: watch.Deleted,
+			Type:   watch.Deleted,
 			Object: pod,
 		}
 
@@ -254,14 +253,14 @@ func TestHandleEvent(t *testing.T) {
 	pod := createPodData("namespace1", 0)
 	setPodStatus(v1.PodRunning,
 		&v1.ContainerState{
-			Waiting: nil,
-			Running: nil,
+			Waiting:    nil,
+			Running:    nil,
 			Terminated: &v1.ContainerStateTerminated{Reason: "ByeBye"},
 		},
 		pod)
 
 	event := watch.Event{
-		Type: watch.Modified,
+		Type:   watch.Modified,
 		Object: pod,
 	}
 
@@ -274,11 +273,11 @@ func TestHandleEvent(t *testing.T) {
 	}
 
 	// Add 3 pod to another namespace
-	for i:=0; i<3; i++ {
+	for i := 0; i < 3; i++ {
 		pod := createPodData("namespace2", i)
 
 		event := watch.Event{
-			Type: watch.Added,
+			Type:   watch.Added,
 			Object: pod,
 		}
 

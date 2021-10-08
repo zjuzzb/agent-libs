@@ -3,22 +3,23 @@ package kubecollect_tc
 import (
 	"cointerface/kubecollect_common"
 	"context"
+	draiosproto "protorepo/agent-be/proto"
+	"sync"
+
 	log "github.com/cihub/seelog"
 	"github.com/draios/protorepo/sdc_internal"
 	"github.com/gogo/protobuf/proto"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	kubeclient "k8s.io/client-go/kubernetes"
-	draiosproto "protorepo/agent-be/proto"
-	"sync"
 )
 
 var podEvtcHandle chan<- draiosproto.CongroupUpdateEvent
 
 // pods get their own special version because they send events for containers too
-func sendPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, setLinks bool)  {
+func sendPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, setLinks bool) {
 	updates := newPodEvents(pod, eventType, setLinks)
 
 	kubecollect_common.SendClusterCidrEvent(pod, eventType, podEvtcHandle)
@@ -65,9 +66,9 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 
 			// All running containers need to be added to the child list
 			// even if they don't have an ADDED or REMOVED event this time
-			*podChildren = append(*podChildren, &draiosproto.CongroupUid {
-				Kind:proto.String("container"),
-				Id:proto.String(containerID)},
+			*podChildren = append(*podChildren, &draiosproto.CongroupUid{
+				Kind: proto.String("container"),
+				Id:   proto.String(containerID)},
 			)
 		}
 
@@ -111,15 +112,15 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, setLinks
 	var ctrPorts []*draiosproto.CongroupNetPort
 	for _, ctr := range pod.Spec.Containers {
 		for _, port := range ctr.Ports {
-			containerPort  := uint32(port.ContainerPort)
+			containerPort := uint32(port.ContainerPort)
 			hostPort := uint32(port.HostPort)
 			ctrPorts = append(ctrPorts, &draiosproto.CongroupNetPort{
-				Port:                 &containerPort,
-				TargetPort:           &hostPort,
-				Protocol:             (*string)(&port.Protocol),
-				NodePort:             nil,
-				PublishedPort:        nil,
-				Name:                 &port.Name,
+				Port:          &containerPort,
+				TargetPort:    &hostPort,
+				Protocol:      (*string)(&port.Protocol),
+				NodePort:      nil,
+				PublishedPort: nil,
+				Name:          &port.Name,
 			})
 		}
 	}
@@ -149,13 +150,13 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, setLinks
 	kubecollect_common.AddContainerStatusesToPod(optPod, pod)
 
 	var cg []*draiosproto.CongroupUpdateEvent
-	cg = append(cg, &draiosproto.CongroupUpdateEvent {
+	cg = append(cg, &draiosproto.CongroupUpdateEvent{
 		Type: eventType.Enum(),
 		Object: &draiosproto.ContainerGroup{
 			Uid: &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_pod"),
-				Id:proto.String(string(pod.GetUID()))},
-			Tags: tags,
+				Kind: proto.String("k8s_pod"),
+				Id:   proto.String(string(pod.GetUID()))},
+			Tags:         tags,
 			InternalTags: inttags,
 			IpAddresses:  ips,
 			Metrics:      metrics,
@@ -164,7 +165,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, setLinks
 			Ports:        ctrPorts,
 			Namespace:    proto.String(pod.GetNamespace()),
 			Node:         proto.String(pod.Spec.NodeName),
-			K8SObject: &draiosproto.K8SType{TypeList: &draiosproto.K8SType_Pod{Pod: optPod}},
+			K8SObject:    &draiosproto.K8SType{TypeList: &draiosproto.K8SType_Pod{Pod: optPod}},
 		},
 	})
 	cg = append(cg, containerEvents...)
@@ -174,7 +175,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, setLinks
 
 func startPodWatcher(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	var getTerm bool = false
-	if opts.GetTerminatedPodsEnabled()  {
+	if opts.GetTerminatedPodsEnabled() {
 		getTerm = true
 	}
 
@@ -198,9 +199,9 @@ func podWatcherLoop(ctx context.Context, getTerm bool, kubeClient kubeclient.Int
 		startPodWatcherReally(watcherCtx, getTerm, deleg, kubeClient, watcherWg)
 
 		var restart bool = false
-		for ; !restart; {
+		for !restart {
 			select {
-			case <- ctx.Done():
+			case <-ctx.Done():
 				log.Debug("PodWatcherLoop: context cancelled, waiting for watcher wg")
 				watcherWg.Wait()
 				log.Debug("PodWatcherLoop: watcher done, closing")
@@ -228,7 +229,7 @@ func podWatcherLoop(ctx context.Context, getTerm bool, kubeClient kubeclient.Int
 func startPodWatcherReally(ctx context.Context, getTerm bool, deleg bool, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 
 	var selector string = ""
-	if !getTerm  {
+	if !getTerm {
 		selector = "status.phase!=Failed,status.phase!=Unknown,status.phase!=Succeeded"
 	}
 
@@ -253,14 +254,14 @@ func handlePodEvent(event watch.Event, evtc chan<- draiosproto.CongroupUpdateEve
 
 	if event.Type == watch.Added {
 		kubecollect_common.EventReceived("pods")
-		sendPodEvents(pod, draiosproto.CongroupEventType_ADDED,  true)
+		sendPodEvents(pod, draiosproto.CongroupEventType_ADDED, true)
 		kubecollect_common.AddEvent("Pod", kubecollect_common.EVENT_ADD)
 	} else if event.Type == watch.Modified {
 		kubecollect_common.AddEvent("Pod", kubecollect_common.EVENT_UPDATE_AND_SEND)
-		sendPodEvents(pod, draiosproto.CongroupEventType_UPDATED,  true)
+		sendPodEvents(pod, draiosproto.CongroupEventType_UPDATED, true)
 	} else if event.Type == watch.Deleted {
 		kubecollect_common.AddEvent("Pod", kubecollect_common.EVENT_DELETE)
-		sendPodEvents(pod, draiosproto.CongroupEventType_REMOVED,  true)
+		sendPodEvents(pod, draiosproto.CongroupEventType_REMOVED, true)
 		kubecollect_common.AddEvent("Pod", kubecollect_common.EVENT_DELETE)
 	}
 }

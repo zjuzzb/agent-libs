@@ -2,57 +2,58 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	draiosproto "protorepo/agent-be/proto"
 	"context"
+	draiosproto "protorepo/agent-be/proto"
 	"sync"
-	"github.com/gogo/protobuf/proto"
+
 	log "github.com/cihub/seelog"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
+	"github.com/gogo/protobuf/proto"
+	"k8s.io/api/extensions/v1beta1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/api/extensions/v1beta1"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 )
 
 // make this a library function?
-func ingressEvent(ingress *v1beta1.Ingress, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func ingressEvent(ingress *v1beta1.Ingress, eventType *draiosproto.CongroupEventType) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newIngressCongroup(ingress),
 	}
 }
 
-func newIngressCongroup(ingress *v1beta1.Ingress) (*draiosproto.ContainerGroup) {
+func newIngressCongroup(ingress *v1beta1.Ingress) *draiosproto.ContainerGroup {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
 	//     should work on all v1.Object types
 	tags := make(map[string]string)
 	for k, v := range ingress.GetLabels() {
-		tags["kubernetes.ingress.label." + k] = v
+		tags["kubernetes.ingress.label."+k] = v
 	}
 	tags["kubernetes.ingress.name"] = ingress.GetName()
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_ingress"),
-			Id:proto.String(string(ingress.GetUID()))},
-		Tags: tags,
-		Namespace:proto.String(ingress.GetNamespace()),
+			Kind: proto.String("k8s_ingress"),
+			Id:   proto.String(string(ingress.GetUID()))},
+		Tags:      tags,
+		Namespace: proto.String(ingress.GetNamespace()),
 	}
 	if backend := ingress.Spec.Backend; backend != nil {
 		if serviceUid := lookupServiceByName(backend.ServiceName, ingress.GetNamespace()); serviceUid != "" {
 			ret.Children = append(ret.Children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_service"),
-				Id:proto.String(serviceUid)})
+				Kind: proto.String("k8s_service"),
+				Id:   proto.String(serviceUid)})
 		}
 	} else {
 		for _, rule := range ingress.Spec.Rules {
-			if http := rule.HTTP ; http != nil {
+			if http := rule.HTTP; http != nil {
 				for _, path := range http.Paths {
 					if serviceUid := lookupServiceByName(path.Backend.ServiceName, ingress.GetNamespace()); serviceUid != "" {
 						ret.Children = append(ret.Children, &draiosproto.CongroupUid{
-							Kind:proto.String("k8s_service"),
-							Id:proto.String(serviceUid)})
+							Kind: proto.String("k8s_service"),
+							Id:   proto.String(serviceUid)})
 					}
 				}
 			}
@@ -73,18 +74,18 @@ func AddIngressParents(parents *[]*draiosproto.CongroupUid, service CoService) {
 		if ingress.GetNamespace() != service.GetNamespace() {
 			continue
 		}
-		if backend := ingress.Spec.Backend; backend != nil && backend.ServiceName == service.GetName(){
+		if backend := ingress.Spec.Backend; backend != nil && backend.ServiceName == service.GetName() {
 			*parents = append(*parents, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_ingress"),
-				Id:proto.String(string(ingress.GetUID()))})
+				Kind: proto.String("k8s_ingress"),
+				Id:   proto.String(string(ingress.GetUID()))})
 		} else {
 			for _, rule := range ingress.Spec.Rules {
-				if http := rule.HTTP ; http != nil {
+				if http := rule.HTTP; http != nil {
 					for _, path := range http.Paths {
 						if path.Backend.ServiceName == service.GetName() {
 							*parents = append(*parents, &draiosproto.CongroupUid{
-								Kind:proto.String("k8s_ingress"),
-								Id:proto.String(string(ingress.GetUID()))})
+								Kind: proto.String("k8s_ingress"),
+								Id:   proto.String(string(ingress.GetUID()))})
 						}
 					}
 				}

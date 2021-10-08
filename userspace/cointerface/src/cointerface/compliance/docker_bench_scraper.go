@@ -2,16 +2,17 @@ package compliance
 
 import (
 	"bytes"
-	draiosproto "protorepo/agent-be/proto"
-	"github.com/draios/protorepo/sdc_internal"
 	"encoding/json"
 	"fmt"
-	"github.com/gogo/protobuf/proto"
 	"io/ioutil"
-	log "github.com/cihub/seelog"
 	"os/exec"
+	draiosproto "protorepo/agent-be/proto"
 	"strings"
 	"text/template"
+
+	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
+	"github.com/gogo/protobuf/proto"
 )
 
 func (impl *DockerBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
@@ -26,7 +27,7 @@ func (impl *DockerBenchImpl) ShouldRun(stask *ScheduledTask) bool {
 
 	out, err := cmd.Output()
 
-	if(err == nil) {
+	if err == nil {
 		log.Debugf("Output from docker ps -q: %s %v", out, err)
 	} else {
 		log.Infof("Output from docker ps -q: %s %v", out, err)
@@ -37,31 +38,31 @@ func (impl *DockerBenchImpl) ShouldRun(stask *ScheduledTask) bool {
 
 type DockerBenchImpl struct {
 	customerId string `json:"customerId"`
-	machineId string `json:"machineId"`
+	machineId  string `json:"machineId"`
 }
 
 // Used to parse the json output of the docker-bench-security script
 type dockerTestResult struct {
-	Id string `json:"id"`
-	Desc string `json:"desc,omitempty"`
-	Result string `json:"result"`
-	Details string `json:"details,omitempty"`
-	Items []string `json:"items,omitempty"`
+	Id      string   `json:"id"`
+	Desc    string   `json:"desc,omitempty"`
+	Result  string   `json:"result"`
+	Details string   `json:"details,omitempty"`
+	Items   []string `json:"items,omitempty"`
 }
 
 type dockerTestSection struct {
-	Id string `json:"id"`
-	Desc string `json:"desc"`
+	Id      string             `json:"id"`
+	Desc    string             `json:"desc"`
 	Results []dockerTestResult `json:"results"`
 }
 
 type dockerBenchResults struct {
-	DockerBenchSecurity string `json:"dockerbenchsecurity"`
-	Start uint64 `json:"start"`
-	Tests []dockerTestSection `json:"tests"`
-	Checks uint64 `json:"checks"`
-	Score int64 `json:"score"`
-	End uint64 `json:"end"`
+	DockerBenchSecurity string              `json:"dockerbenchsecurity"`
+	Start               uint64              `json:"start"`
+	Tests               []dockerTestSection `json:"tests"`
+	Checks              uint64              `json:"checks"`
+	Score               int64               `json:"score"`
+	End                 uint64              `json:"end"`
 }
 
 // Given a test id, result, and current risk, assign a new risk based
@@ -81,11 +82,11 @@ type dockerBenchResults struct {
 func (impl *DockerBenchImpl) AssignRisk(id string, result string, curRisk ResultRisk) ResultRisk {
 	newRisk := low
 
-	highTestIds := map[string]int {
-		"2.4": 1,
-		"5.1": 1,
-		"5.2": 1,
-		"5.3": 1,
+	highTestIds := map[string]int{
+		"2.4":  1,
+		"5.1":  1,
+		"5.2":  1,
+		"5.3":  1,
 		"5.15": 1,
 		"5.16": 1,
 		"5.17": 1,
@@ -95,13 +96,13 @@ func (impl *DockerBenchImpl) AssignRisk(id string, result string, curRisk Result
 		"5.25": 1,
 	}
 
-	if (result != "PASS" && (highTestIds[id] == 1 || strings.HasPrefix(id, "3"))) {
+	if result != "PASS" && (highTestIds[id] == 1 || strings.HasPrefix(id, "3")) {
 		newRisk = high
-	} else if (result != "PASS") {
+	} else if result != "PASS" {
 		newRisk = medium
 	}
 
-	if (newRisk == high || (newRisk == medium && curRisk == low)) {
+	if newRisk == high || (newRisk == medium && curRisk == low) {
 		return newRisk
 	}
 
@@ -114,16 +115,16 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 	evtsChannel chan *sdc_internal.CompTaskEvent) error {
 
 	evt := &sdc_internal.CompTaskEvent{
-		TaskName: proto.String(moduleName),
+		TaskName:       proto.String(moduleName),
 		InitSuccessful: proto.Bool(true),
 	}
 
 	cevts := &draiosproto.CompEvents{
-		MachineId: proto.String(impl.machineId),
+		MachineId:  proto.String(impl.machineId),
 		CustomerId: proto.String(impl.customerId),
 	}
 	results := &draiosproto.CompResults{
-		MachineId: proto.String(impl.machineId),
+		MachineId:  proto.String(impl.machineId),
 		CustomerId: proto.String(impl.customerId),
 	}
 
@@ -145,16 +146,16 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 	}
 
 	result := &ExtendedTaskResult{
-		Id: *task.Id,
-		TimestampNS: bres.Start * 1e9,
-		HostMac: impl.machineId,
-		TaskName: *task.Name,
+		Id:           *task.Id,
+		TimestampNS:  bres.Start * 1e9,
+		HostMac:      impl.machineId,
+		TaskName:     *task.Name,
 		ResultSchema: bres.DockerBenchSecurity,
-		TestsRun: 0,
-		PassCount: 0,
-		FailCount: 0,
-		WarnCount: 0,
-		Risk: low,
+		TestsRun:     0,
+		PassCount:    0,
+		FailCount:    0,
+		WarnCount:    0,
+		Risk:         low,
 	}
 
 	attr := &TaskResultAttribute{
@@ -166,20 +167,20 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 	// For those tests where the test can return a number of
 	// items, maps from test id to a description of the items
 	// suitable for inclusion in statsd metrics.
-	item_tests := map[string]string {
-		"1.4": "docker-users",
-		"4.1": "img-running-root",
-		"4.6": "img-no-healthcheck",
-		"4.7": "img-update-insts-found",
-		"4.9": "img-images-using-add",
-		"5.1": "c-no-apparmor",
-		"5.2": "c-no-securityopts",
-		"5.3": "c-caps-added",
-		"5.4": "c-running-privileged",
-		"5.5": "c-sensitive-dirs",
-		"5.6": "c-sshd-docker-exec-failures",
-		"5.7": "c-privileged-ports",
-		"5.9": "c-networking-host",
+	item_tests := map[string]string{
+		"1.4":  "docker-users",
+		"4.1":  "img-running-root",
+		"4.6":  "img-no-healthcheck",
+		"4.7":  "img-update-insts-found",
+		"4.9":  "img-images-using-add",
+		"5.1":  "c-no-apparmor",
+		"5.2":  "c-no-securityopts",
+		"5.3":  "c-caps-added",
+		"5.4":  "c-running-privileged",
+		"5.5":  "c-sensitive-dirs",
+		"5.6":  "c-sshd-docker-exec-failures",
+		"5.7":  "c-privileged-ports",
+		"5.9":  "c-networking-host",
 		"5.10": "c-no-mem-limits",
 		"5.11": "c-no-cpu-limits",
 		"5.12": "c-root-mounted-rw",
@@ -203,9 +204,9 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 
 	for _, section := range bres.Tests {
 
-		res_section := &TaskResultSection {
+		res_section := &TaskResultSection{
 			SectionId: section.Id,
-			TestsRun: 0,
+			TestsRun:  0,
 			PassCount: 0,
 			FailCount: 0,
 			WarnCount: 0,
@@ -219,9 +220,9 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 
 			res_section.TestsRun++
 
-			res_test := &TaskResultTest {
+			res_test := &TaskResultTest{
 				TestNumber: test.Id,
-				Items: test.Items,
+				Items:      test.Items,
 			}
 
 			if includeDesc {
@@ -249,25 +250,25 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 
 			result.Risk = impl.AssignRisk(test.Id, test.Result, result.Risk)
 
-			if ((test.Result == "WARN") ||
+			if (test.Result == "WARN") ||
 				(test.Result == "INFO" &&
-				(test.Id == "4.7" ||
-				test.Id == "5.17" ||
-				test.Id == "5.18" ||
-				test.Id == "5.29"))) {
+					(test.Id == "4.7" ||
+						test.Id == "5.17" ||
+						test.Id == "5.18" ||
+						test.Id == "5.29")) {
 				res_test.Status = warn
 				res_section.WarnCount++
-			} else if (test.Result == "NOTE") {
+			} else if test.Result == "NOTE" {
 				res_test.Status = pass
 				res_section.PassCount++
-			} else if ((test.Result != "PASS" && test.Result != "INFO")) {
+			} else if test.Result != "PASS" && test.Result != "INFO" {
 				fields := map[string]string{
-					"Task": moduleName,
-					"TestId": test.Id,
-					"TestDesc": test.Desc,
-					"TestResult": test.Result,
+					"Task":        moduleName,
+					"TestId":      test.Id,
+					"TestDesc":    test.Desc,
+					"TestResult":  test.Result,
 					"TestDetails": test.Details,
-					"falco.rule": "compliance_modules",
+					"falco.rule":  "compliance_modules",
 				}
 				tmplstr := "Compliance task \"{{.Task}}\" test {{.TestId}} ({{.TestDesc}}) result: {{.TestResult}}."
 				if test.Details != "" {
@@ -288,13 +289,13 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 				// XXX/mstemm disabled pending expanded event stream work.
 				if false {
 					cevt := &draiosproto.CompEvent{
-						TimestampNs: proto.Uint64(bres.Start * 1e9),
-						TaskName: proto.String(*task.Name),
-						Output: proto.String(outputString.String()),
+						TimestampNs:  proto.Uint64(bres.Start * 1e9),
+						TaskName:     proto.String(*task.Name),
+						Output:       proto.String(outputString.String()),
 						OutputFields: fields,
-					};
+					}
 
-					cevts.Events = append(cevts.Events, cevt);
+					cevts.Events = append(cevts.Events, cevt)
 				}
 
 				res_test.Status = fail
@@ -305,7 +306,8 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 			}
 
 			// For certain sections, we parse the details field to get counts of items.
-			mname, ok := item_tests[test.Id]; if (ok && test.Items != nil) {
+			mname, ok := item_tests[test.Id]
+			if ok && test.Items != nil {
 				metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.%v:%d|g", mname, len(test.Items)))
 			}
 
@@ -326,23 +328,24 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 			metrics = append(metrics, fmt.Sprintf("%v.pass_pct:0|g", metrics_prefix))
 		} else {
 			metrics = append(metrics, fmt.Sprintf("%v.pass_pct:%f|g",
-			                                      metrics_prefix,
-			                                      (100.0 * float64(res_section.PassCount)) / float64(res_section.TestsRun)))
+				metrics_prefix,
+				(100.0*float64(res_section.PassCount))/float64(res_section.TestsRun)))
 		}
 	}
 
-	ofbytes, err := json.Marshal(result); if err != nil {
+	ofbytes, err := json.Marshal(result)
+	if err != nil {
 		log.Errorf("Could not serialize test result: %v", err.Error())
 		return err
 	}
 
 	comp_result := &draiosproto.CompResult{
 		TimestampNs: proto.Uint64(result.TimestampNS),
-		TaskName: proto.String(result.TaskName),
-		ModName: task.ModName,
-		TaskId: proto.Uint64(result.Id),
-		Successful: proto.Bool(true),
-		ExtResult: proto.String(string(ofbytes[:])),
+		TaskName:    proto.String(result.TaskName),
+		ModName:     task.ModName,
+		TaskId:      proto.Uint64(result.Id),
+		Successful:  proto.Bool(true),
+		ExtResult:   proto.String(string(ofbytes[:])),
 	}
 
 	results.Results = append(results.Results, comp_result)
@@ -358,8 +361,8 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 	if result.TestsRun == 0 {
 		metrics = append(metrics, "compliance.docker-bench.pass_pct:0|g")
 	} else {
-		metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.pass_pct:%f|g", 
-		                                      (100.0 * float64(result.PassCount)) / float64(result.TestsRun)))
+		metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.pass_pct:%f|g",
+			(100.0*float64(result.PassCount))/float64(result.TestsRun)))
 	}
 
 	evt.Events = cevts
