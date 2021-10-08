@@ -79,19 +79,19 @@ func watchStatefulSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldSet := (*appsv1.StatefulSet)(nil)
-				switch obj.(type) {
+				switch obj := obj.(type) {
 				case *appsv1.StatefulSet:
-					oldSet = obj.(*appsv1.StatefulSet)
+					oldSet = obj
 				case cache.DeletedFinalStateUnknown:
-					d := obj.(cache.DeletedFinalStateUnknown)
+					d := obj
 					o, ok := (d.Obj).(*appsv1.StatefulSet)
 					if ok {
 						oldSet = o
 					} else {
-						log.Warn("DeletedFinalStateUnknown without statefulset object")
+						_ = log.Warn("DeletedFinalStateUnknown without statefulset object")
 					}
 				default:
-					log.Warn("Unknown object type in statefulset DeleteFunc")
+					_ = log.Warn("Unknown object type in statefulset DeleteFunc")
 				}
 				if oldSet == nil {
 					return

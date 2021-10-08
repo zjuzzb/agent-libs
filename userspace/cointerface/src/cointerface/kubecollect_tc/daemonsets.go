@@ -49,14 +49,14 @@ func handleDaemonsetEvent(event watch.Event, evtc chan<- draiosproto.CongroupUpd
 
 	if event.Type == watch.Added {
 		kubecollect_common.EventReceived("daemonsets")
-		evtc <- daemonSetEvent(kubecollect.CoDaemonSet{daemonset}, draiosproto.CongroupEventType_ADDED.Enum())
+		evtc <- daemonSetEvent(kubecollect.CoDaemonSet{DaemonSet: daemonset}, draiosproto.CongroupEventType_ADDED.Enum())
 		kubecollect_common.AddEvent("DaemonSet", kubecollect_common.EVENT_ADD)
 	} else if event.Type == watch.Modified {
 		kubecollect_common.AddEvent("DaemonSet", kubecollect_common.EVENT_UPDATE)
-		evtc <- daemonSetEvent(kubecollect.CoDaemonSet{daemonset}, draiosproto.CongroupEventType_UPDATED.Enum())
+		evtc <- daemonSetEvent(kubecollect.CoDaemonSet{DaemonSet: daemonset}, draiosproto.CongroupEventType_UPDATED.Enum())
 		kubecollect_common.AddEvent("DaemonSet", kubecollect_common.EVENT_UPDATE_AND_SEND)
 	} else if event.Type == watch.Deleted {
-		evtc <- daemonSetEvent(kubecollect.CoDaemonSet{daemonset}, draiosproto.CongroupEventType_REMOVED.Enum())
+		evtc <- daemonSetEvent(kubecollect.CoDaemonSet{DaemonSet: daemonset}, draiosproto.CongroupEventType_REMOVED.Enum())
 		kubecollect_common.AddEvent("DaemonSet", kubecollect_common.EVENT_DELETE)
 	}
 }

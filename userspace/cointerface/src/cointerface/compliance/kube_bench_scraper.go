@@ -62,15 +62,15 @@ var (
 
 func (impl *KubeBenchImpl) Variant(stask *ScheduledTask) string {
 
-	if impl.variant != "" {
-		return impl.variant
+	if impl.VariantVal != "" {
+		return impl.VariantVal
 	}
 
 	// kube-bench can either perform master or node checks,
 	// depending on whether the program is running on the host
 	// where the api server is running, or any other node.
 
-	impl.variant = "none"
+	impl.VariantVal = "none"
 
 	// If a variant was explicitly provided, use it
 	for _, param := range stask.task.TaskParams {
@@ -78,24 +78,24 @@ func (impl *KubeBenchImpl) Variant(stask *ScheduledTask) string {
 			if *param.Val != "master" && *param.Val != "node" {
 				_ = log.Errorf("Ignoring configured variant %s, as it is not \"master\" or \"node\"", *param.Val)
 			} else {
-				impl.variant = *param.Val
+				impl.VariantVal = *param.Val
 				break
 			}
 		}
 	}
 
-	if impl.variant == "none" {
+	if impl.VariantVal == "none" {
 		if findProcess(serverCmds, stask.env) {
-			impl.variant = "master"
+			impl.VariantVal = "master"
 		} else {
 			if findProcess(nodeCmds, stask.env) {
-				impl.variant = "node"
+				impl.VariantVal = "node"
 			}
 		}
 	}
 
-	log.Debugf("Variant %s", impl.variant)
-	return impl.variant
+	log.Debugf("Variant %s", impl.VariantVal)
+	return impl.VariantVal
 }
 
 func (impl *KubeBenchImpl) getBenchmark(task *draiosproto.CompTask) string {
@@ -154,9 +154,9 @@ func (impl *KubeBenchImpl) ShouldRun(stask *ScheduledTask) bool {
 }
 
 type KubeBenchImpl struct {
-	customerId string `json:"customerId"`
-	machineId  string `json:"machineId"`
-	variant    string `json:"variant"`
+	CustomerId string `json:"customerId"`
+	MachineId  string `json:"machineId"`
+	VariantVal string `json:"variant"`
 }
 
 type kubeTestResult struct {
@@ -254,19 +254,19 @@ func (impl *KubeBenchImpl) Scrape(
 		InitSuccessful: proto.Bool(true),
 	}
 	cevts := &draiosproto.CompEvents{
-		MachineId:  proto.String(impl.machineId),
-		CustomerId: proto.String(impl.customerId),
+		MachineId:  proto.String(impl.MachineId),
+		CustomerId: proto.String(impl.CustomerId),
 	}
 	results := &draiosproto.CompResults{
-		MachineId:  proto.String(impl.machineId),
-		CustomerId: proto.String(impl.customerId),
+		MachineId:  proto.String(impl.MachineId),
+		CustomerId: proto.String(impl.CustomerId),
 	}
 
 	metrics := []string{}
 	// Read kube-bench's stdout, which contains the test results as json
 	raw, err := ioutil.ReadFile(rootPath + "/stdout.txt")
 	if err != nil {
-		_ = log.Errorf("Could not read json output: %v", err.Error())
+		_ = log.Errorf("Could not read json output: %v", err)
 		return err
 	}
 
@@ -275,14 +275,14 @@ func (impl *KubeBenchImpl) Scrape(
 	err = json.Unmarshal(raw, &targets)
 	if err != nil {
 		var bRes kubeBenchResults
-		switch err.(type) {
+		switch e := err.(type) {
 		case *json.SyntaxError: // broken json array, kube-bench .024
-			err = json.Unmarshal(raw[:err.(*json.SyntaxError).Offset-1], &bRes)
+			err = json.Unmarshal(raw[:e.Offset-1], &bRes)
 		case *json.UnmarshalTypeError: // single object, kube-bench .024
 			err = json.Unmarshal(raw, &bRes)
 		}
 		if err != nil {
-			_ = log.Errorf("Could not read json output: %v", err.Error())
+			_ = log.Errorf("Could not read json output: %v", err)
 			return err
 		}
 		targets = append(targets, bRes)
@@ -293,7 +293,7 @@ func (impl *KubeBenchImpl) Scrape(
 	result := &ExtendedTaskResult{
 		Id:          *task.Id,
 		TimestampNS: timestamp_ns,
-		HostMac:     impl.machineId,
+		HostMac:     impl.MachineId,
 		TaskName:    *task.Name,
 		Risk:        low,
 	}
@@ -376,13 +376,13 @@ func (impl *KubeBenchImpl) Scrape(
 						tmplstr := "Compliance task \"{{.Task}}\" test {{.SectionDesc}}/{{.TestId}} ({{.TestDesc}}) result: {{.TestResult}}."
 						tmpl, err := template.New("test").Parse(tmplstr)
 						if err != nil {
-							log.Errorf("Could not format output string: %v", err.Error())
+							_ = log.Errorf("Could not format output string: %v", err)
 							return err
 						}
 						var outputString bytes.Buffer
 						err = tmpl.Execute(&outputString, fields)
 						if err != nil {
-							log.Errorf("Could not format output string: %v", err.Error())
+							_ = log.Errorf("Could not format output string: %v", err)
 							return err
 						}
 
@@ -410,7 +410,7 @@ func (impl *KubeBenchImpl) Scrape(
 	}
 	ofbytes, err := json.Marshal(result)
 	if err != nil {
-		log.Errorf("Could not serialize test result: %v", err.Error())
+		_ = log.Errorf("Could not serialize test result: %v", err)
 		return err
 	}
 

@@ -248,7 +248,6 @@ func TestColdStartClient(t *testing.T) {
 		CointerfaceDelegation:     proto.Bool(false),
 	}
 
-	ctx, _ := context.WithCancel(context.Background())
 	client, _, err := createLeasePoolClient(context.Background(), "/tmp/goodDayTest.sock", "goodDayTest", *cmd.ColdStartNum, cmd)
 
 	if err != nil {
@@ -256,7 +255,7 @@ func TestColdStartClient(t *testing.T) {
 		return
 	}
 
-	wait, err := (*client).WaitLease(ctx, &sdc_internal.LeasePoolNull{})
+	wait, err := (*client).WaitLease(context.Background(), &sdc_internal.LeasePoolNull{})
 
 	if err != nil {
 		t.Error(err.Error())

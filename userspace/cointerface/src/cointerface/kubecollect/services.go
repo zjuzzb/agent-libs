@@ -262,19 +262,18 @@ func watchServices(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldService := CoService{nil}
-				switch obj.(type) {
+				switch obj := obj.(type) {
 				case *v1.Service:
-					oldService = CoService{obj.(*v1.Service)}
+					oldService = CoService{Service: obj}
 				case cache.DeletedFinalStateUnknown:
-					d := obj.(cache.DeletedFinalStateUnknown)
-					o, ok := (d.Obj).(*v1.Service)
+					o, ok := (obj.Obj).(*v1.Service)
 					if ok {
 						oldService = CoService{o}
 					} else {
-						log.Warn("DeletedFinalStateUnknown without service object")
+						_ = log.Warn("DeletedFinalStateUnknown without service object")
 					}
 				default:
-					log.Warn("Unknown object type in service DeleteFunc")
+					_ = log.Warn("Unknown object type in service DeleteFunc")
 				}
 				if oldService.Service == nil {
 					return

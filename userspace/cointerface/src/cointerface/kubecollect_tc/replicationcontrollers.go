@@ -48,7 +48,7 @@ func handleReplicationControllerEvent(event watch.Event, evtc chan<- draiosproto
 		return
 	}
 
-	replicationController := kubecollect.CoReplicationController{rc}
+	replicationController := kubecollect.CoReplicationController{ReplicationController: rc}
 
 	if !replicationController.Filtered() {
 		if event.Type == watch.Added {

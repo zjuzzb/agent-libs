@@ -124,19 +124,19 @@ func watchCronJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldCronJob := (*v1beta1.CronJob)(nil)
-				switch obj.(type) {
+				switch obj := obj.(type) {
 				case *v1beta1.CronJob:
-					oldCronJob = obj.(*v1beta1.CronJob)
+					oldCronJob = obj
 				case cache.DeletedFinalStateUnknown:
-					d := obj.(cache.DeletedFinalStateUnknown)
+					d := obj
 					o, ok := (d.Obj).(*v1beta1.CronJob)
 					if ok {
 						oldCronJob = o
 					} else {
-						log.Warn("DeletedFinalStateUnknown without cronjob object")
+						_ = log.Warn("DeletedFinalStateUnknown without cronjob object")
 					}
 				default:
-					log.Warn("Unknown object type in cronjob DeleteFunc")
+					_ = log.Warn("Unknown object type in cronjob DeleteFunc")
 				}
 				if oldCronJob == nil {
 					return

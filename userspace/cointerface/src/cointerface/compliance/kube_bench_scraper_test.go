@@ -12,9 +12,9 @@ import (
 
 func TestKubeBenchImpl_GenArgs(t *testing.T) {
 	kbImpl := KubeBenchImpl{
-		customerId: "1",
-		machineId:  "2",
-		variant:    "node",
+		CustomerId: "1",
+		MachineId:  "2",
+		VariantVal: "node",
 	}
 	var x uint64 = 1
 	tName := "test"
@@ -56,7 +56,7 @@ func TestKubeBenchImpl_GenArgs(t *testing.T) {
 		t.Fatalf("expected: %v, got %v", expect, res)
 	}
 
-	kbImpl.variant = "master"
+	kbImpl.VariantVal = "master"
 	res, err = kbImpl.GenArgs(&sTask)
 	if err != nil {
 		t.Fatal(err)
@@ -81,9 +81,9 @@ func TestKubeBenchImpl_GenArgs(t *testing.T) {
 		events := make(chan *sdc_internal.CompTaskEvent)
 
 		testF := func() {
-			err1 := kbImpl.Scrape("../", "", &task, true, events)
-			if err1 != nil {
-				t.Fatal(err1)
+			err = kbImpl.Scrape("../", "", &task, true, events)
+			if err != nil {
+				t.Error(err)
 			}
 		}
 

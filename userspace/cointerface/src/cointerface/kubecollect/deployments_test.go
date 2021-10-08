@@ -47,7 +47,7 @@ func deployment_fixture() {
 		BlockOwnerDeletion: nil,
 	})
 
-	deploymentInf.GetStore().Add(deployment.Deployment)
+	_ = deploymentInf.GetStore().Add(deployment.Deployment)
 }
 
 // Creates two deployment objects that are DeepEqual

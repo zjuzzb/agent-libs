@@ -180,7 +180,7 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 			servicemap[service.ID] = service.Spec.Name
 		}
 	} else {
-		log.Errorf("Error fetching services: %s\n", err)
+		_ = log.Errorf("Error fetching services: %s\n", err)
 	}
 
 	tasks, err := cli.TaskList(ctx, types.TaskListOptions{Filters: args})
@@ -197,7 +197,7 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 			}
 		}
 	} else {
-		log.Errorf("Error fetching tasks: %s\n", err)
+		_ = log.Errorf("Error fetching tasks: %s\n", err)
 	}
 
 	for _, service := range services {
@@ -211,7 +211,7 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 		}
 		m.Quorum = quorum(nodes)
 	} else {
-		log.Errorf("Error fetching nodes: %s\n", err)
+		_ = log.Errorf("Error fetching nodes: %s\n", err)
 	}
 
 	res := &sdc_internal.SwarmStateResult{}

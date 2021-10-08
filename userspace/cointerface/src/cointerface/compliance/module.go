@@ -236,7 +236,7 @@ func (stask *ScheduledTask) RunNow(ctx context.Context) error {
 	log.Infof("Running task %s", *stask.task.Name)
 
 	if err := stask.module.Run(ctx, stask); err != nil {
-		log.Errorf("module.Run returned error: %v", err.Error())
+		_ = log.Errorf("module.Run returned error: %v", err.Error())
 		stask.mgr.FailResult(stask, err)
 		return err
 	}
@@ -321,7 +321,7 @@ func (stask *ScheduledTask) RunForever(ctx context.Context) {
 				sint.numTimesRun++
 
 				if running {
-					log.Warnf("Task %s already running (pid %d, started %s)", *stask.task.Name, stask.cmd.Process.Pid, stask.cmdStartTime.String())
+					_ = log.Warnf("Task %s already running (pid %d, started %s)", *stask.task.Name, stask.cmd.Process.Pid, stask.cmdStartTime.String())
 				} else {
 					go func() {
 						running = true
@@ -583,7 +583,7 @@ func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask)
 	moduleDir := path.Join(stask.mgr.ModulesDir, module.Name)
 
 	if runWithChroot {
-		if err := os.Mkdir(GetHostDir()+"/benchmarks", 700); err != nil && !os.IsExist(err) {
+		if err := os.Mkdir(GetHostDir()+"/benchmarks", 0700); err != nil && !os.IsExist(err) {
 			err = fmt.Errorf("Could not create benchmark directory (%s)", err.Error())
 			return err
 		}
@@ -601,7 +601,7 @@ func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask)
 		}
 
 		rootOutputDir := GetHostDir() + "/benchmarks/out"
-		if err := os.Mkdir(rootOutputDir, 700); err != nil && !os.IsExist(err) {
+		if err := os.Mkdir(rootOutputDir, 0700); err != nil && !os.IsExist(err) {
 			err = fmt.Errorf("Could not create output directory (%s)", err.Error())
 			return err
 		}

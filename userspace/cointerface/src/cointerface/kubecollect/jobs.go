@@ -154,19 +154,19 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 			DeleteFunc: func(obj interface{}) {
 				job := CoJob{nil}
-				switch obj.(type) {
+				switch obj := obj.(type) {
 				case *v1batch.Job:
-					job = CoJob{obj.(*v1batch.Job)}
+					job = CoJob{Job: obj}
 				case cache.DeletedFinalStateUnknown:
-					d := obj.(cache.DeletedFinalStateUnknown)
+					d := obj
 					o, ok := (d.Obj).(*v1batch.Job)
 					if ok {
 						job = CoJob{o}
 					} else {
-						log.Warn("DeletedFinalStateUnknown without job object")
+						_ = log.Warn("DeletedFinalStateUnknown without job object")
 					}
 				default:
-					log.Warn("Unknown object type in job DeleteFunc")
+					_ = log.Warn("Unknown object type in job DeleteFunc")
 				}
 				if job.Job == nil {
 					return

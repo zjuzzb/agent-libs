@@ -81,7 +81,7 @@ func getMetaData(pvc *v1.PersistentVolumeClaim) *draiosproto.K8SPersistentvolume
 	ret := &draiosproto.K8SPersistentvolumeclaim{Common: kubecollect_common.CreateCommon("", "")}
 	err, phase := phaseToDraiosEnum(&pvc.Status.Phase)
 	if err != nil {
-		log.Warnf(err.Error())
+		_ = log.Warnf(err.Error())
 	} else {
 		ret.Status = &draiosproto.K8SPersistentvolumeclaimStatusDetails{
 			Phase: &phase,
@@ -91,7 +91,7 @@ func getMetaData(pvc *v1.PersistentVolumeClaim) *draiosproto.K8SPersistentvolume
 	for _, condition := range pvc.Status.Conditions {
 		err, status := conditionStatusToDraiosEnum(&condition.Status)
 		if err != nil {
-			log.Warnf(err.Error())
+			_ = log.Warnf(err.Error())
 		} else {
 			newCondition := &draiosproto.K8SPersistentvolumeclaimCondition{
 				Status: &status,
@@ -104,7 +104,7 @@ func getMetaData(pvc *v1.PersistentVolumeClaim) *draiosproto.K8SPersistentvolume
 	for _, accessMode := range pvc.Status.AccessModes {
 		err, mode := accessModeToDraiosEnum(&accessMode)
 		if err != nil {
-			log.Warnf(err.Error())
+			_ = log.Warnf(err.Error())
 		} else {
 			ret.AccessModes = append(ret.AccessModes, mode)
 		}
@@ -157,7 +157,7 @@ func newPersistentVolumeClaimCongroup(pvc *v1.PersistentVolumeClaim) *draiosprot
 }
 
 func addPersistentVolumeClaimMetrics(metrics *[]*draiosproto.AppMetric, pvc *v1.PersistentVolumeClaim) {
-	storage, _ := pvc.Status.Capacity["storage"]
+	storage := pvc.Status.Capacity["storage"]
 
 	if requestStorage, ok := pvc.Spec.Resources.Requests[v1.ResourceStorage]; ok {
 		kubecollect_common.AppendMetricInt64(metrics, pvcMetricPrefix+"requests.storage", requestStorage.Value())
@@ -189,19 +189,18 @@ func watchPersistentVolumeClaims(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldPVC := (*v1.PersistentVolumeClaim)(nil)
-				switch obj.(type) {
+				switch obj := obj.(type) {
 				case *v1.PersistentVolumeClaim:
-					oldPVC = obj.(*v1.PersistentVolumeClaim)
+					oldPVC = obj
 				case cache.DeletedFinalStateUnknown:
-					d := obj.(cache.DeletedFinalStateUnknown)
-					o, ok := (d.Obj).(*v1.PersistentVolumeClaim)
+					o, ok := (obj.Obj).(*v1.PersistentVolumeClaim)
 					if ok {
 						oldPVC = o
 					} else {
-						log.Warn("DeletedFinalStateUnknown without pvc object")
+						_ = log.Warn("DeletedFinalStateUnknown without pvc object")
 					}
 				default:
-					log.Warn("Unknown object type in pvc DeleteFunc")
+					_ = log.Warn("Unknown object type in pvc DeleteFunc")
 				}
 				if oldPVC == nil {
 					return

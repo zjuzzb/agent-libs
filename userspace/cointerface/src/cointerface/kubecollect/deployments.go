@@ -218,19 +218,18 @@ func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldDeployment := CoDeployment{nil}
-				switch obj.(type) {
+				switch obj := obj.(type) {
 				case *appsv1.Deployment:
-					oldDeployment = CoDeployment{obj.(*appsv1.Deployment)}
+					oldDeployment = CoDeployment{Deployment: obj}
 				case cache.DeletedFinalStateUnknown:
-					d := obj.(cache.DeletedFinalStateUnknown)
-					o, ok := (d.Obj).(*appsv1.Deployment)
+					o, ok := (obj.Obj).(*appsv1.Deployment)
 					if ok {
 						oldDeployment = CoDeployment{o}
 					} else {
-						log.Warn("DeletedFinalStateUnknown without deployment object")
+						_ = log.Warn("DeletedFinalStateUnknown without deployment object")
 					}
 				default:
-					log.Warn("Unknown object type in deployment DeleteFunc")
+					_ = log.Warn("Unknown object type in deployment DeleteFunc")
 				}
 				if oldDeployment.Deployment == nil {
 					return

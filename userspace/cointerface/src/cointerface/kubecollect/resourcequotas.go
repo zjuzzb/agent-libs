@@ -136,19 +136,18 @@ func watchResourceQuotas(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldRQ := (*v1.ResourceQuota)(nil)
-				switch obj.(type) {
+				switch obj := obj.(type) {
 				case *v1.ResourceQuota:
-					oldRQ = obj.(*v1.ResourceQuota)
+					oldRQ = obj
 				case cache.DeletedFinalStateUnknown:
-					d := obj.(cache.DeletedFinalStateUnknown)
-					o, ok := (d.Obj).(*v1.ResourceQuota)
+					o, ok := (obj.Obj).(*v1.ResourceQuota)
 					if ok {
 						oldRQ = o
 					} else {
-						log.Warn("DeletedFinalStateUnknown without resourcequota object")
+						_ = log.Warn("DeletedFinalStateUnknown without resourcequota object")
 					}
 				default:
-					log.Warn("Unknown object type in resourcequota DeleteFunc")
+					_ = log.Warn("Unknown object type in resourcequota DeleteFunc")
 				}
 				if oldRQ == nil {
 					return

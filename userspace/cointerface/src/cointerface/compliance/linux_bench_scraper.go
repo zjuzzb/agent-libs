@@ -18,7 +18,7 @@ import (
 func (impl *LinuxBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
 	args := []string{"--json", "--outputfile", "OUTPUT_DIR/linux-bench_results.json"}
 
-	impl.variant = "2.0.0" // Run CIS benchmark 2.0.0 by default
+	impl.Variant = "2.0.0" // Run CIS benchmark 2.0.0 by default
 
 	// If "benchmark" was provided as a param, add it as a benchmark argument.
 	for _, param := range stask.task.TaskParams {
@@ -26,16 +26,16 @@ func (impl *LinuxBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
 		if *param.Key == "benchmark" {
 			switch *param.Val {
 			case "cis-1.1":
-				impl.variant = "1.1.0"
+				impl.Variant = "1.1.0"
 			case "cis-2.0":
-				impl.variant = "2.0.0"
+				impl.Variant = "2.0.0"
 			default:
-				impl.variant = "2.0.0"
+				impl.Variant = "2.0.0"
 			}
 		}
 	}
 
-	args = append(args, "--version", impl.variant)
+	args = append(args, "--version", impl.Variant)
 
 	return args, nil
 }
@@ -46,9 +46,9 @@ func (impl *LinuxBenchImpl) ShouldRun(stask *ScheduledTask) bool {
 }
 
 type LinuxBenchImpl struct {
-	customerId string `json:"customerId"`
-	machineId  string `json:"machineId"`
-	variant    string `json:"variant"`
+	CustomerId string `json:"customerId"`
+	MachineId  string `json:"machineId"`
+	Variant    string `json:"variant"`
 }
 
 type linuxTestResult struct {
@@ -111,7 +111,7 @@ func (impl *LinuxBenchImpl) AssignRisk(id string, result string, curRisk ResultR
 //    - 6.1.1-9 (Ensure critical file permissions are set)
 //    - Anything in section 6.2 (User and Group Settings)
 func (impl *LinuxBenchImpl) isHighRiskTest(id string) bool {
-	switch impl.variant {
+	switch impl.Variant {
 	case "1.1.0":
 		highTestIds := map[string]int{
 			"6.1.1": 1,
@@ -161,12 +161,12 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 		InitSuccessful: proto.Bool(true),
 	}
 	cevts := &draiosproto.CompEvents{
-		MachineId:  proto.String(impl.machineId),
-		CustomerId: proto.String(impl.customerId),
+		MachineId:  proto.String(impl.MachineId),
+		CustomerId: proto.String(impl.CustomerId),
 	}
 	results := &draiosproto.CompResults{
-		MachineId:  proto.String(impl.machineId),
-		CustomerId: proto.String(impl.customerId),
+		MachineId:  proto.String(impl.MachineId),
+		CustomerId: proto.String(impl.CustomerId),
 	}
 
 	metrics := []string{}
@@ -174,7 +174,7 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 	// Read linux-bench's output files
 	raw, err := ioutil.ReadFile(rootPath + "/linux-bench_results.json")
 	if err != nil {
-		log.Errorf("Could not read json output: %v", err.Error())
+		_ = log.Errorf("Could not read json output: %v", err.Error())
 		return err
 	}
 
@@ -182,7 +182,7 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 	err = json.Unmarshal(raw, &bres)
 
 	if err != nil {
-		log.Errorf("Could not read json output: %v", err.Error())
+		_ = log.Errorf("Could not read json output: %v", err.Error())
 		return err
 	}
 
@@ -191,9 +191,9 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 	result := &ExtendedTaskResult{
 		Id:           *task.Id,
 		TimestampNS:  timestampNs,
-		HostMac:      impl.machineId,
+		HostMac:      impl.MachineId,
 		TaskName:     *task.Name,
-		ResultSchema: impl.variant,
+		ResultSchema: impl.Variant,
 		TestsRun:     bres.TotalPass + bres.TotalFail + bres.TotalWarn,
 		PassCount:    bres.TotalPass,
 		FailCount:    bres.TotalFail,
@@ -248,7 +248,7 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 			resSection.Description = section.Desc
 		}
 
-		benchVersion := strings.Replace(impl.variant, ".", "-", -1)
+		benchVersion := strings.Replace(impl.Variant, ".", "-", -1)
 		sectionId := strings.Replace(section.Section, ".", "-", -1)
 		sectionDesc := strings.ToLower(strings.Replace(section.Desc, " ", "-", -1))
 		metricsPrefix := fmt.Sprintf("compliance.linux-bench.%v.%v.%v", benchVersion, sectionId, sectionDesc)
@@ -299,7 +299,7 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 
 	ofbytes, err := json.Marshal(result)
 	if err != nil {
-		log.Errorf("Could not serialize test result: %v", err.Error())
+		_ = log.Errorf("Could not serialize test result: %v", err.Error())
 		return err
 	}
 
@@ -314,7 +314,7 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 
 	results.Results = append(results.Results, compResult)
 
-	metricsPrefix := fmt.Sprintf("compliance.linux-bench.%v", strings.Replace(impl.variant, ".", "-", -1))
+	metricsPrefix := fmt.Sprintf("compliance.linux-bench.%v", strings.Replace(impl.Variant, ".", "-", -1))
 	metrics = append(metrics, fmt.Sprintf("%v.tests_pass:%d|g", metricsPrefix, result.PassCount))
 	metrics = append(metrics, fmt.Sprintf("%v.tests_fail:%d|g", metricsPrefix, result.FailCount))
 	metrics = append(metrics, fmt.Sprintf("%v.tests_warn:%d|g", metricsPrefix, result.WarnCount))

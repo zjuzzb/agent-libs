@@ -28,10 +28,10 @@ func ProgramStart(filename string, eventspertrace int, keeptrace int, memprofile
 
 	f, err := os.Create(logfile)
 	if err != nil {
-		log.Errorf("could not create CPU profile: ", err)
+		_ = log.Errorf("could not create CPU profile: %v", err)
 	}
 	if err := pprof.StartCPUProfile(f); err != nil {
-		log.Errorf("could not start CPU profile: ", err)
+		_ = log.Errorf("could not start CPU profile: %v", err)
 	}
 }
 
@@ -52,11 +52,11 @@ func NewEvent() {
 			logfile := fmt.Sprintf("%s.%d.mem", logfileBase, traceCount)
 			f, err := os.Create(logfile)
 			if err != nil {
-				log.Errorf("could not create Mem profile: ", err)
+				_ = log.Errorf("could not create Mem profile: %v", err)
 			}
 			runtime.GC()
 			if err := pprof.WriteHeapProfile(f); err != nil {
-				log.Errorf("could not write memory profile: ", err)
+				_ = log.Errorf("could not write memory profile: %v", err)
 			}
 		}
 
@@ -67,10 +67,10 @@ func NewEvent() {
 
 		f, err := os.Create(logfile)
 		if err != nil {
-			log.Errorf("could not create CPU profile: ", err)
+			_ = log.Errorf("could not create CPU profile: %v", err)
 		}
 		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Errorf("could not start CPU profile: ", err)
+			_ = log.Errorf("could not start CPU profile: %v", err)
 		}
 	}
 }

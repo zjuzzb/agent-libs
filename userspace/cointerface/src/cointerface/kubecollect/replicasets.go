@@ -249,19 +249,18 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 			DeleteFunc: func(obj interface{}) {
 				rs := CoReplicaSet{nil}
-				switch obj.(type) {
+				switch obj := obj.(type) {
 				case *appsv1.ReplicaSet:
-					rs = CoReplicaSet{obj.(*appsv1.ReplicaSet)}
+					rs = CoReplicaSet{ReplicaSet: obj}
 				case cache.DeletedFinalStateUnknown:
-					d := obj.(cache.DeletedFinalStateUnknown)
-					o, ok := (d.Obj).(*appsv1.ReplicaSet)
+					o, ok := (obj.Obj).(*appsv1.ReplicaSet)
 					if ok {
 						rs = CoReplicaSet{o}
 					} else {
-						log.Warn("DeletedFinalStateUnknown without replicaset object")
+						_ = log.Warn("DeletedFinalStateUnknown without replicaset object")
 					}
 				default:
-					log.Warn("Unknown object type in replicaset DeleteFunc")
+					_ = log.Warn("Unknown object type in replicaset DeleteFunc")
 				}
 				if rs.ReplicaSet == nil {
 					return

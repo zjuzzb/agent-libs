@@ -33,8 +33,8 @@ func (impl *TestModuleImpl) ShouldRun(stask *ScheduledTask) bool {
 }
 
 type TestModuleImpl struct {
-	customerId string `json:"customerId"`
-	machineId  string `json:"machineId"`
+	CustomerId string `json:"customerId"`
+	MachineId  string `json:"machineId"`
 }
 
 func (impl *TestModuleImpl) Scrape(rootPath string, moduleName string,
@@ -67,8 +67,8 @@ func (impl *TestModuleImpl) Scrape(rootPath string, moduleName string,
 	}
 
 	events := &draiosproto.CompEvents{
-		MachineId:  proto.String(impl.machineId),
-		CustomerId: proto.String(impl.customerId),
+		MachineId:  proto.String(impl.MachineId),
+		CustomerId: proto.String(impl.CustomerId),
 	}
 
 	fields := map[string]string{
@@ -91,14 +91,14 @@ func (impl *TestModuleImpl) Scrape(rootPath string, moduleName string,
 	evt.Events = events
 
 	results := &draiosproto.CompResults{
-		MachineId:  proto.String(impl.machineId),
-		CustomerId: proto.String(impl.customerId),
+		MachineId:  proto.String(impl.MachineId),
+		CustomerId: proto.String(impl.CustomerId),
 	}
 
 	result := &ExtendedTaskResult{
 		Id:          *task.Id,
 		TimestampNS: uint64(time.Now().UnixNano()),
-		HostMac:     impl.machineId,
+		HostMac:     impl.MachineId,
 		TaskName:    *task.Name,
 		TestsRun:    uint64(curIterNum),
 		PassCount:   uint64(curIterNum),
@@ -125,7 +125,7 @@ func (impl *TestModuleImpl) Scrape(rootPath string, moduleName string,
 
 	ofbytes, err := json.Marshal(result)
 	if err != nil {
-		log.Errorf("Could not serialize test result: %v", err.Error())
+		_ = log.Errorf("Could not serialize test result: %v", err.Error())
 		return err
 	}
 

@@ -60,8 +60,8 @@ func replicaset_fixture() {
 	podOwned.Name = "podOwnedName"
 
 	// Add the pods in the informe
-	podInf.GetStore().Add(podOwned)
-	podInf.GetStore().Add(podNotOwned)
+	_ = podInf.GetStore().Add(podOwned)
+	_ = podInf.GetStore().Add(podNotOwned)
 }
 
 // Creates two replicaset objects that are DeepEqual

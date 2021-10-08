@@ -82,14 +82,14 @@ func handleServiceEvent(event watch.Event, evtc chan<- draiosproto.CongroupUpdat
 
 	if event.Type == watch.Added {
 		kubecollect_common.EventReceived("services")
-		evtc <- serviceEvent(kubecollect.CoService{service}, draiosproto.CongroupEventType_ADDED.Enum(), true)
+		evtc <- serviceEvent(kubecollect.CoService{Service: service}, draiosproto.CongroupEventType_ADDED.Enum(), true)
 		kubecollect_common.AddEvent("service", kubecollect_common.EVENT_ADD)
 	} else if event.Type == watch.Modified {
 		kubecollect_common.AddEvent("service", kubecollect_common.EVENT_UPDATE)
-		evtc <- serviceEvent(kubecollect.CoService{service}, draiosproto.CongroupEventType_UPDATED.Enum(), true)
+		evtc <- serviceEvent(kubecollect.CoService{Service: service}, draiosproto.CongroupEventType_UPDATED.Enum(), true)
 		kubecollect_common.AddEvent("service", kubecollect_common.EVENT_UPDATE_AND_SEND)
 	} else if event.Type == watch.Deleted {
-		evtc <- serviceEvent(kubecollect.CoService{service}, draiosproto.CongroupEventType_REMOVED.Enum(), false)
+		evtc <- serviceEvent(kubecollect.CoService{Service: service}, draiosproto.CongroupEventType_REMOVED.Enum(), false)
 		kubecollect_common.AddEvent("service", kubecollect_common.EVENT_DELETE)
 	}
 }

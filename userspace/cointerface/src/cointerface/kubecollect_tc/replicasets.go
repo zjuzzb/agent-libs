@@ -83,7 +83,7 @@ func handleReplicaSetEvent(event watch.Event, evtc chan<- draiosproto.CongroupUp
 		return
 	}
 
-	replicaSet := kubecollect.CoReplicaSet{rs}
+	replicaSet := kubecollect.CoReplicaSet{ReplicaSet: rs}
 
 	filter, newType := filterAndConvertEventType(&replicaSet, event.Type)
 

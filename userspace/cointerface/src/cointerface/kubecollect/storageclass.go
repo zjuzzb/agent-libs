@@ -90,7 +90,7 @@ func storageClassEvent(sc *storagev1.StorageClass, eventType *draiosproto.Congro
 	newSc, err := newStorageClassConGroup(sc)
 
 	if err != nil {
-		log.Errorf(err.Error())
+		_ = log.Errorf(err.Error())
 		return draiosproto.CongroupUpdateEvent{}
 	}
 
@@ -118,19 +118,18 @@ func watchStorageClasses(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldSC := (*storagev1.StorageClass)(nil)
-				switch obj.(type) {
+				switch obj := obj.(type) {
 				case *storagev1.StorageClass:
-					oldSC = obj.(*storagev1.StorageClass)
+					oldSC = obj
 				case cache.DeletedFinalStateUnknown:
-					d := obj.(cache.DeletedFinalStateUnknown)
-					o, ok := (d.Obj).(*storagev1.StorageClass)
+					o, ok := (obj.Obj).(*storagev1.StorageClass)
 					if ok {
 						oldSC = o
 					} else {
-						log.Warn("DeletedFinalStateUnknown without storage class object")
+						_ = log.Warn("DeletedFinalStateUnknown without storage class object")
 					}
 				default:
-					log.Warn("Unknown object type in storage class DeleteFunc")
+					_ = log.Warn("Unknown object type in storage class DeleteFunc")
 				}
 				if oldSC == nil {
 					return

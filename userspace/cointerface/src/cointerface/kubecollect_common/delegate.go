@@ -105,7 +105,7 @@ func runDelegatedNodes(ctx context.Context, client *sdc_internal.LeasePoolManage
 	for {
 		nodes, err := (*client).GetNodesWithLease(ctx, &sdc_internal.LeasePoolNull{})
 		if err != nil {
-			log.Errorf("Error while getting nodes: %s", err.Error())
+			_ = log.Errorf("Error while getting nodes: %s", err.Error())
 			return
 		}
 
@@ -129,7 +129,7 @@ func StartDelegatedNodes(ctx context.Context, cmd *sdc_internal.OrchestratorEven
 	nodesClient, conn, err := createLeasePoolClient(ctx, fmt.Sprintf("unix:%s/%s", prefix, DELEGATION_SOCK), DELEGATION_LEASENAME, uint32(*cmd.DelegatedNum), cmd)
 
 	if nodesClient == nil || err != nil {
-		log.Error("Failed to get lease pool client for delegated nodes!")
+		_ = log.Error("Failed to get lease pool client for delegated nodes!")
 		return
 	}
 
@@ -155,7 +155,7 @@ func RunDelegation(ctx context.Context, opts *sdc_internal.OrchestratorEventsStr
 	}
 	prefix, err := install_prefix.GetInstallPrefix()
 	if err != nil {
-		log.Warnf("Could not get installation directory. Skipping wait lease")
+		_ = log.Warnf("Could not get installation directory. Skipping wait lease")
 		// Can't use leases. Fallback to nodename-based delegation
 		// This ends up setting delegation to true as well in cointerface so we still
 		// get all pods as they are required for the fallback delegation to work.
@@ -166,7 +166,7 @@ func RunDelegation(ctx context.Context, opts *sdc_internal.OrchestratorEventsStr
 	delegationClient, conn, err = createLeasePoolClient(ctx, fmt.Sprintf("unix:%s/%s", prefix, DELEGATION_SOCK), DELEGATION_LEASENAME, uint32(*opts.DelegatedNum), opts)
 
 	if delegationClient == nil || err != nil {
-		log.Error("Failed to get lease pool client for delegation!")
+		_ = log.Error("Failed to get lease pool client for delegation!")
 		setDelegationFailure(true)
 		return
 	}
@@ -178,7 +178,7 @@ func RunDelegation(ctx context.Context, opts *sdc_internal.OrchestratorEventsStr
 	wait, err := (*delegationClient).WaitLease(ctx, &sdc_internal.LeasePoolNull{})
 
 	if err != nil {
-		log.Errorf("Error while waiting for delegation lease: %s", err.Error())
+		_ = log.Errorf("Error while waiting for delegation lease: %s", err.Error())
 		setDelegationFailure(true)
 		return
 	}
@@ -187,12 +187,12 @@ func RunDelegation(ctx context.Context, opts *sdc_internal.OrchestratorEventsStr
 	for {
 		res, err := wait.Recv()
 		if err != nil {
-			log.Error("Delegation stream closed.")
+			_ = log.Error("Delegation stream closed.")
 			setDelegationFailure(true)
 			return
 		}
 
-		if *res.Successful == true {
+		if *res.Successful {
 			log.Debugf("Got the lease. I am delegated!")
 			setDelegated(true)
 			break
@@ -246,23 +246,23 @@ func InitNode() {
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		log.Warn("couldn't retrieve hostname")
+		_ = log.Warn("couldn't retrieve hostname")
 		return
 	}
 
 	kubeClient, _ := GetKubeClient()
 	if kubeClient == nil {
-		log.Warn("No kubeclient found, can't get node list")
+		_ = log.Warn("No kubeclient found, can't get node list")
 		return
 	}
 	nodes, _ := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
 	if nodes == nil {
-		log.Warn("Failed to get node list")
+		_ = log.Warn("Failed to get node list")
 		return
 	}
 	ips, err := externalIPs()
 	if err != nil {
-		log.Warnf("Couldn't get IP addresses: %v", err)
+		_ = log.Warnf("Couldn't get IP addresses: %v", err)
 	}
 	// log.Infof("Node list: %+v", nodes)
 	for _, node := range nodes.Items {

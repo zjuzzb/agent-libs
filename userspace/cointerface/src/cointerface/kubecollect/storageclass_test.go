@@ -66,7 +66,7 @@ func TestNewStorageClassCongroup(t *testing.T) {
 				Name:              currentCase.name,
 				Namespace:         currentCase.namespace,
 				UID:               currentCase.uid,
-				CreationTimestamp: v1meta.Time{currentCase.creationTs},
+				CreationTimestamp: v1meta.Time{Time: currentCase.creationTs},
 				Labels:            currentCase.labels,
 				Annotations:       currentCase.annotations,
 			},

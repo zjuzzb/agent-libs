@@ -89,7 +89,7 @@ func initLogging(useJson bool) {
 		fmt.Fprintf(os.Stderr, "Could not initialize logger: %s\n", err)
 		os.Exit(1)
 	}
-	log.ReplaceLogger(logger)
+	_ = log.ReplaceLogger(logger)
 
 }
 
@@ -102,7 +102,7 @@ func mymain() int {
 	flag.Usage = usage
 	prefix, err := install_prefix.GetInstallPrefix()
 	if err != nil {
-		log.Errorf("Could not determine installation directory: %s", err)
+		_ = log.Errorf("Could not determine installation directory: %s", err)
 		return 1
 	}
 	sockPtr := flag.String("sock", prefix+"/run/cointerface.sock", "domain socket for messages")

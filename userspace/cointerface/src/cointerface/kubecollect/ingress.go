@@ -132,19 +132,19 @@ func watchIngress(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldIngress := (*v1beta1.Ingress)(nil)
-				switch obj.(type) {
+				switch obj := obj.(type) {
 				case *v1beta1.Ingress:
-					oldIngress = obj.(*v1beta1.Ingress)
+					oldIngress = obj
 				case cache.DeletedFinalStateUnknown:
-					d := obj.(cache.DeletedFinalStateUnknown)
+					d := obj
 					o, ok := (d.Obj).(*v1beta1.Ingress)
 					if ok {
 						oldIngress = o
 					} else {
-						log.Warn("DeletedFinalStateUnknown without ingress object")
+						_ = log.Warn("DeletedFinalStateUnknown without ingress object")
 					}
 				default:
-					log.Warn("Unknown object type in ingress DeleteFunc")
+					_ = log.Warn("Unknown object type in ingress DeleteFunc")
 				}
 				if oldIngress == nil {
 					return

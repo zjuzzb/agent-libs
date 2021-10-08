@@ -107,7 +107,7 @@ func newClusterCidrCongroup(cc CoClusterCidr) *draiosproto.ContainerGroup {
 func SendClusterCidrEvent(pod *v1.Pod, eventType draiosproto.CongroupEventType, c chan<- draiosproto.CongroupUpdateEvent) {
 	cidrs, has_cidrs := parseCidr(pod)
 
-	if has_cidrs == false {
+	if !has_cidrs {
 		return
 	}
 
