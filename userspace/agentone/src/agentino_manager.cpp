@@ -290,6 +290,7 @@ agentino_manager::agentino_manager(security_result_handler& events_handler,
                                    const std::string& customer_id)
     : m_container_manager(container_manager_in),
       m_shutdown(false),
+      m_policies_valid(false),
       m_events_handler(events_handler),
       m_transmit_queue(transmit_queue),
       m_policies_updated(false),
@@ -298,7 +299,7 @@ agentino_manager::agentino_manager(security_result_handler& events_handler,
       m_pool(c_tp_size->get_value()),
       m_thread(&agentino_manager::run, this)
 {
-	listen(c_agentino_port.get_value());
+	 listen(c_agentino_port.get_value());
 }
 
 agentino_manager::~agentino_manager()
@@ -650,7 +651,10 @@ bool agentino_manager::handle_message(draiosproto::message_type type,
 			return false;
 		}
 
+		// Make sure we know that we've received policies
+		m_policies_valid = true;
 		m_policies_updated = true;
+
 		return true;
 	}
 	else if (type == draiosproto::message_type::POLICY_EVENTS)
@@ -838,6 +842,17 @@ bool agentino_manager::handle_agentino_handshake(const draiosproto::agentino_han
 	if (!is_valid)
 	{
 		LOG_ERROR("Invalid handshake protobuf from agentino");
+		return false;
+	}
+
+	// SSPROD-8535: Don't accept incoming agentino connections until
+	// we actually have valid policies loaded. Otherwise we end up sending
+	// an empty policy set to the agentino and it starts the workload
+	// assuming those policies are valid.
+	if (!m_policies_valid)
+	{
+		LOG_WARNING("Rejecting agentino connection because policies not loaded yet. "
+		            "Check the backend connection.");
 		return false;
 	}
 

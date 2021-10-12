@@ -760,6 +760,12 @@ TEST(agentino_manager, basic_connection)
 	container_manager c_m;
 	agentino_manager am(dummy_handler, nullptr, c_m, "machineid", "de:ad:be:ef");
 	fake_agentino fa(true, false, true);
+	draiosproto::policies_v2 bogus_policies;
+
+	// The agentino manager needs policies before it will allow connections
+	am.handle_message(draiosproto::message_type::POLICIES_V2,
+	                  (uint8_t*)&bogus_policies,
+	                  sizeof(bogus_policies));
 
 	// Now fire up the fake agentino
 	fa.start(6767);
@@ -799,6 +805,12 @@ TEST(agentino_manager, multi_connection)
 	container_manager c_m;
 	agentino_manager am(dummy_handler, nullptr, c_m, "machineid", "de:ad:be:ef");
 	std::list<fake_agentino*> fas;
+	draiosproto::policies_v2 bogus_policies;
+
+	// The agentino manager needs policies before it will allow connections
+	am.handle_message(draiosproto::message_type::POLICIES_V2,
+	                  (uint8_t*)&bogus_policies,
+	                  sizeof(bogus_policies));
 
 	// Build and start the fake agentinos
 	for (uint32_t i = 0; i < num_fas; ++i)
@@ -852,6 +864,12 @@ TEST(agentino_manager, agentino_heartbeat)
 	agentino_manager am(dummy_handler, nullptr, c_m, "machineid", "de:ad:be:ef");
 	fake_agentino fa(true, false, true);
 	fa.turn_on_heartbeats();
+	draiosproto::policies_v2 bogus_policies;
+
+	// The agentino manager needs policies before it will allow connections
+	am.handle_message(draiosproto::message_type::POLICIES_V2,
+	                  (uint8_t*)&bogus_policies,
+	                  sizeof(bogus_policies));
 
 	// Now fire up the fake agentino
 	fa.start(port);
@@ -897,6 +915,12 @@ TEST(agentino_manager, agentino_message)
 	container_manager c_m;
 	agentino_manager am(th, nullptr, c_m, "machineid", "de:ad:be:ef");
 	fake_agentino fa(true, false, true);
+	draiosproto::policies_v2 bogus_policies;
+
+	// The agentino manager needs policies before it will allow connections
+	am.handle_message(draiosproto::message_type::POLICIES_V2,
+	                  (uint8_t*)&bogus_policies,
+	                  sizeof(bogus_policies));
 
 	// Now fire up the fake agentino
 	fa.start(port);
@@ -1203,6 +1227,12 @@ TEST_F(am_cm_integration_fixture, end_to_end_connection)
 	test_handler th;
 	container_manager c_m;
 	agentino_manager am(th, nullptr, c_m, "machineid", "de:ad:be:ef");  // This starts the AM
+	draiosproto::policies_v2 bogus_policies;
+
+	// The agentino manager needs policies before it will allow connections
+	am.handle_message(draiosproto::message_type::POLICIES_V2,
+	                  (uint8_t*)&bogus_policies,
+	                  sizeof(bogus_policies));
 
 	// Set the config for the CM
 	config.m_server_addr = "127.0.0.1";
@@ -1248,6 +1278,12 @@ TEST_F(am_cm_integration_fixture, end_to_end_ssl_connection)
 	test_handler th;
 	container_manager c_m;
 	agentino_manager am(th, nullptr, c_m, "machineid", "de:ad:be:ef");  // This starts the AM
+	draiosproto::policies_v2 bogus_policies;
+
+	// The agentino manager needs policies before it will allow connections
+	am.handle_message(draiosproto::message_type::POLICIES_V2,
+	                  (uint8_t*)&bogus_policies,
+	                  sizeof(bogus_policies));
 
 	// Set the config for the CM
 	scoped_config<bool> ssl_verify("ssl_verify_certificate", false);

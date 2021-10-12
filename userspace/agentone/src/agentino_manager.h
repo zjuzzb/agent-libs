@@ -9,6 +9,7 @@
 #include "security_result_handler.h"
 #include "thread_pool.h"
 
+#include <atomic>
 #include <condition_variable>
 #include <map>
 #include <memory>
@@ -362,6 +363,7 @@ public:
 
 private:
 	volatile bool m_shutdown;
+	volatile std::atomic<bool> m_policies_valid;
 	security_result_handler& m_events_handler;
 	protocol_queue* m_transmit_queue;
 	mutable std::mutex m_agentino_list_lock;  // Lock protects the agentinos by connection queue
