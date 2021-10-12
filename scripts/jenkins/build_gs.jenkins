@@ -16,6 +16,10 @@ pipeline {
         string(name: 'LIBSCAP_BRANCH', defaultValue: 'agent-release-${BASE_RELEASE_VERSION}', trim: true)
         string(name: 'LIBS_BRANCH', defaultValue: 'agent-release-${BASE_RELEASE_VERSION}', trim: true)
     }
+    environment {
+        GS_RELEASE_VERSION="${params.GS_RELEASE_VERSION}"
+        BASE_RELEASE_VERSION="${params.BASE_RELEASE_VERSION}"
+    }
     stages {
         stage('Check out dependencies') {
            steps {

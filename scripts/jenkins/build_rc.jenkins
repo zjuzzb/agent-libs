@@ -15,6 +15,10 @@ pipeline {
         string(name: 'LIBSINSP_BRANCH', defaultValue: 'agent-release-${RELEASE_VERSION}', trim: true)
         string(name: 'LIBSCAP_BRANCH', defaultValue: 'agent-release-${RELEASE_VERSION}', trim: true)
     }
+    environment {
+        BUILDER_VERSION="${params.BUILDER_VERSION}"
+        RELEASE_VERSION="${params.RELEASE_VERSION}"
+    }
     stages {
         stage('Check out dependencies') {
            steps {

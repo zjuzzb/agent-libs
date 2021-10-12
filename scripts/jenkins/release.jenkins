@@ -19,6 +19,9 @@ pipeline {
             description: 'URL used by the test')
         string(name: 'AGENT_ACCESS_KEY', defaultValue: '7ef933e9-aeb9-4003-ac7a-fa3a5b20be94', trim: true)
     }
+    environment {
+        RELEASE_VERSION="${params.RELEASE_VERSION}"
+    }
     stages {
 
     // grab the repos we need
@@ -146,12 +149,12 @@ pipeline {
         parallel {
             stage('Build v1') {
                 steps {
-                    build job:'promscrape-v1-build',parameters:[string(name:'AGENT_RELEASE', value:"$RELEASE_VERSION")]
+                    build job:'promscrape-v1-build',parameters:[string(name:'AGENT_RELEASE', value:"${params.RELEASE_VERSION}")]
                 }
             }
             stage('Build v2') {
                 steps {
-                    build job:'promscrape-v2-build',parameters:[string(name:'AGENT_RELEASE', value:"$RELEASE_VERSION")]
+                    build job:'promscrape-v2-build',parameters:[string(name:'AGENT_RELEASE', value:"${params.RELEASE_VERSION}")]
                 }
             }
         }
@@ -162,7 +165,7 @@ pipeline {
     // this release easily from quay
     stage('Build Builder') {
         steps {
-            build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),booleanParam(name:'TAG_LATEST', value:false),string(name:'CONTAINER_NAME', value:"release-$RELEASE_VERSION")]
+            build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),booleanParam(name:'TAG_LATEST', value:false),string(name:'CONTAINER_NAME', value:"release-${params.RELEASE_VERSION}")]
         }
         post {
             success {
@@ -185,7 +188,7 @@ pipeline {
                         string(name:'LIBSCAP_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                         string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                         string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
-                        string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION")
+                        string(name:'BUILDER_VERSION', value:"release-${params.RELEASE_VERSION}")
                     ]
                 }
             }
@@ -197,7 +200,7 @@ pipeline {
                         string(name:'LIBSCAP_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                         string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                         string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
-                        string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION")
+                        string(name:'BUILDER_VERSION', value:"release-${params.RELEASE_VERSION}")
                     ]
                 }
             }
@@ -222,8 +225,8 @@ pipeline {
                 string(name:'LIBSCAP_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                 string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                 string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
-                string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION"),
-                string(name:'RELEASE_VERSION', value:"$RELEASE_VERSION"),
+                string(name:'BUILDER_VERSION', value:"release-${params.RELEASE_VERSION}"),
+                string(name:'RELEASE_VERSION', value:"${params.RELEASE_VERSION}"),
                 booleanParam(name:'UPLOAD', value:true),
                 booleanParam(name:'PUBLIC_RELEASE', value:true)
             ]
@@ -386,7 +389,7 @@ pipeline {
                 string(name:'LIBS_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                 string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                 string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
-                string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION"),
+                string(name:'BUILDER_VERSION', value:"release-${params.RELEASE_VERSION}"),
                 string(name:'TARGET', value:'sonar')
             ]
         }
@@ -482,4 +485,3 @@ pipeline {
         }
     }
 }
-

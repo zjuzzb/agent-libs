@@ -17,6 +17,10 @@ pipeline {
         string(name: 'LIBS_BRANCH', defaultValue: 'dev', trim: true)
         booleanParam(name: 'USE_LEGACY_LIBS', defaultValue: false, description: 'set to upload this to the s3 bucket. ONLY use during actual release')
     }
+    environment {
+        BUILDER_VERSION="${params.BUILDER_VERSION}"
+        RELEASE_VERSION="${params.RELEASE_VERSION}"
+    }
     stages {
         stage('Check out dependencies') {
            steps {

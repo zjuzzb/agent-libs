@@ -14,6 +14,11 @@ pipeline {
         string(name: 'LIBSCAP_BRANCH', defaultValue: 'dev', trim: true)
         string(name: 'LIBS_BRANCH', defaultValue: 'dev', trim: true)
     }
+    environment {
+        BUILDER_VERSION="${params.BUILDER_VERSION}"
+        CONTAINER_NAME="${params.CONTAINER_NAME}"
+        TARGET="${params.TARGET}"
+    }
     stages {
         stage('Check out dependencies') {
             steps {

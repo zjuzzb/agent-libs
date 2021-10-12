@@ -18,6 +18,9 @@ pipeline {
         string(name: 'LIBS_BRANCH', defaultValue: 'dev')
         booleanParam(name: 'USE_LEGACY_LIBS', defaultValue: false, description: 'Checkout and use libsinsp and libscap from their respective legacy repositories, as opposed to agent-libs')
     }
+    environment {
+        BUILDER_VERSION="${params.BUILDER_VERSION}"
+    }
     stages {
         stage('Check out dependencies') {
             steps {
