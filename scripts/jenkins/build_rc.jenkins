@@ -73,9 +73,11 @@ pipeline {
                 expression { params.UPLOAD == true }
             }
             steps {
-                sh label: '', script: '''
-                    sudo agent/scripts/jenkins/build-prod-container rc $PWD/out
-                '''
+                docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
+                    sh label: '', script: '''
+                        sudo agent/scripts/jenkins/build-prod-container rc $PWD/out
+                    '''
+                }
             }
         }
         stage('Upload Prod Containers'){
