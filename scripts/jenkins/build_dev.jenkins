@@ -81,7 +81,7 @@ pipeline {
                 script {
                     docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
                         sh label: '', script: '''
-                            sudo agent/scripts/jenkins/build-prod-container dev $PWD/out
+                            sudo -E agent/scripts/jenkins/build-prod-container dev $PWD/out
                         '''
                     }
                 }
