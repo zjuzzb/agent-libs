@@ -53,9 +53,9 @@ if(NOT DEFINED SYSDIG_SOURCE_DIR)
     set(SYSDIG_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../agent-libs")
 endif()
 
-# there are some random scripts laying around. set their path
+# there are some random scripts lying around. set their path
 if(NOT DEFINED PROBE_LOADER_DIR)
-    set(PROBE_LOADER_DIR "${PROJECT_SOURCE_DIR}/../libscap/scripts")
+    set(PROBE_LOADER_DIR "${PROJECT_SOURCE_DIR}/../probe-builder")
 endif()
 
 if(RELOCATED_CHISELS STREQUAL "ON")

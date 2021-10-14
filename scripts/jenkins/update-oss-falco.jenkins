@@ -8,7 +8,7 @@ pipeline {
     }
     parameters {
         string(name: 'LIBS_BRANCH', defaultValue: "dev")
-        string(name: 'LIBSCAP_BRANCH', defaultValue: "dev")
+        string(name: 'PROBEBUILDER_BRANCH', defaultValue: "dev")
         string(name: 'BUILDER_VERSION', defaultValue: "latest")
         string(name: 'AGENT_BRANCH', defaultValue: "dev")
         string(name: 'PROTOREPO_BRANCH', defaultValue: "master")
@@ -71,7 +71,7 @@ pipeline {
                             string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"),
                             string(name:'FALCO_BRANCH', value:"oss-falco-master-candidate"),
                             string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
-                            string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
+                            string(name:'PROBEBUILDER_BRANCH', value:"${params.PROBEBUILDER_BRANCH}"),
                             string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
                             string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")
                         ]
@@ -83,7 +83,7 @@ pipeline {
                             string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"),
                             string(name:'FALCO_BRANCH', value:"oss-falco-master-candidate"),
                             string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
-                            string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
+                            string(name:'PROBEBUILDER_BRANCH', value:"${params.PROBEBUILDER_BRANCH}"),
                             string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
                             string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")
                         ]

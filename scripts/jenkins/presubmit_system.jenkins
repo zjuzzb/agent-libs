@@ -8,15 +8,11 @@ pipeline {
     }
     parameters {
         string(name: 'AGENT_BRANCH', defaultValue: 'dev')
-        string(name: 'SYSDIG_BRANCH', defaultValue: 'dev')
         string(name: 'FALCO_BRANCH', defaultValue: 'master-sync')
+        string(name: 'PROBEBUILDER_BRANCH', defaultValue: 'dev')
         string(name: 'BUILDER_VERSION', defaultValue: 'latest', description: 'build container to use for building the agent')
         string(name: 'PROTOREPO_BRANCH', defaultValue: 'master')
-        string(name: 'PROMETHEUS_BRANCH', defaultValue: 'master')
-        string(name: 'LIBSINSP_BRANCH', defaultValue: 'dev')
-        string(name: 'LIBSCAP_BRANCH', defaultValue: 'dev')
         string(name: 'LIBS_BRANCH', defaultValue: 'dev')
-        booleanParam(name: 'USE_LEGACY_LIBS', defaultValue: false, description: 'Checkout and use libsinsp and libscap from their respective legacy repositories, as opposed to agent-libs')
     }
     environment {
         BUILDER_VERSION="${params.BUILDER_VERSION}"
@@ -31,13 +27,9 @@ pipeline {
                     checkout([$class: 'GitSCM', branches: [[name: 'master-sync']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
                     sh "git checkout ${params.FALCO_BRANCH}"
                 }
-                dir('libsinsp') {
-                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libsinsp']]])
-                    sh "git checkout ${params.LIBSINSP_BRANCH}"
-                }
-                dir('libscap') {
-                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap']]])
-                    sh "git checkout ${params.LIBSCAP_BRANCH}"
+                dir('probe-builder') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/probe-builder']]])
+                    sh "git checkout ${params.PROBEBUILDER_BRANCH}"
                 }
                 dir('protorepo') {
                     checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
