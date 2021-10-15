@@ -340,7 +340,7 @@ if [[ "$ARCH" == "s390x" || "$ARCH" == "aarch64" ]]; then
 	LUAJIT_DIR=$DEPENDENCIES/lua-5.2.4
 	if [ ! -d "$LUAJIT_DIR" ]; then
 		cd $DEPENDENCIES
-		wget https://www.lua.org/ftp/lua-5.2.4.tar.gz
+		wget $DEPENDENCIES_URL/lua-5.2.4.tar.gz
 		tar -xzf lua-5.2.4.tar.gz
 		cd $LUAJIT_DIR
 		make -j $MAKE_JOBS linux
@@ -712,11 +712,25 @@ if [ -z "$ONLY_DEPS" -a $OS != "Windows_NT" ]; then
 	cd $PROMSCRAPE_DIR
 	if [ ! -f promscrape_v1 ]
 	then
-	    wget -O promscrape_v1 $PROMSCRAPE_URL/v1/promscrape_v1-$PROMSCRAPE_VERSION
+	    if [[ ! -z "$PROMSCRAPE_EXEC_DIR" ]]; then
+		sh -c "cp ${PROMSCRAPE_EXEC_DIR}/promscrape_v1 promscrape_v1"
+	    elif [[ "$ARCH" != "x86_64" ]]; then
+		# non-x86 executables reside in a subdirectory
+		wget -O promscrape_v1 $PROMSCRAPE_URL/$ARCH/v1/promscrape_v1-$PROMSCRAPE_VERSION
+	    else
+		wget -O promscrape_v1 $PROMSCRAPE_URL/v1/promscrape_v1-$PROMSCRAPE_VERSION
+	    fi
 	fi
 	if [ ! -f promscrape_v2 ]
 	then
-	    wget -O promscrape_v2 $PROMSCRAPE_URL/v2/promscrape_v2-$PROMSCRAPE_VERSION
+	    if [[ ! -z "$PROMSCRAPE_EXEC_DIR" ]]; then
+		sh -c "cp ${PROMSCRAPE_EXEC_DIR}/promscrape_v2 promscrape_v2"
+	    elif [[ "$ARCH" != "x86_64" ]]; then
+		# non-x86 executables reside in a subdirectory
+		wget -O promscrape_v2 $PROMSCRAPE_URL/$ARCH/v2/promscrape_v2-$PROMSCRAPE_VERSION
+	    else
+		wget -O promscrape_v2 $PROMSCRAPE_URL/v2/promscrape_v2-$PROMSCRAPE_VERSION
+	    fi
 	fi
 fi
 
