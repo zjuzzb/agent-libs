@@ -37,7 +37,7 @@ RUN microdnf install python-lxml python-requests && \
 
 {% if p.include_agent_package == "local" %}
 ADD draios-0.1.1dev-x86_64-agent.rpm /tmp/packages
-{{ install_nodeps('https://dl.fedoraproject.org/pub/epel/7/x86_64/ dkms') }}
+{{ install_nodeps('https://dl.fedoraproject.org/pub/epel/7/x86_64/ dkms', 'http://mirror.centos.org/centos/7/os/x86_64/ elfutils-libelf-devel') }}
 RUN rpm -ihv /tmp/packages/draios-0.1.1dev-x86_64-agent.rpm && rm -rf /tmp/packages
 
 {% else %}
@@ -45,7 +45,7 @@ RUN rpm --import https://download.sysdig.com/DRAIOS-GPG-KEY.public && \
 	curl -s -o /etc/yum.repos.d/draios.repo http://download.sysdig.com/{{ p.sysdig_repository }}/rpm/draios.repo
 
 {% if p.build_kernel_module %}
-{{ install_nodeps('https://dl.fedoraproject.org/pub/epel/7/x86_64/ dkms', 'https://download.sysdig.com/' ~ p.sysdig_repository ~ '/rpm/x86_64/ draios-agent-kmodule') }}
+{{ install_nodeps('https://dl.fedoraproject.org/pub/epel/7/x86_64/ dkms', 'https://download.sysdig.com/' ~ p.sysdig_repository ~ '/rpm/x86_64/ draios-agent-kmodule', 'http://mirror.centos.org/centos/7/os/x86_64/ elfutils-libelf-devel') }}
 {% endif %}
 
 {% if p.launch_dragent %}
@@ -72,7 +72,8 @@ RUN rpm -ihv http://mirror.centos.org/centos/7/extras/x86_64/Packages/centos-rel
 		devtoolset-9-gcc \
 		devtoolset-10-gcc \
 		llvm-toolset-7.0-clang \
-		llvm-toolset-7.0-llvm && \
+		llvm-toolset-7.0-llvm \
+		zlib-devel && \
 	mv /usr/bin/gcc /usr/bin/gcc-5.0 && \
 	ln -s /opt/rh/devtoolset-7/root/usr/bin/gcc /usr/bin/gcc-7.3 && \
 	ln -s /opt/rh/devtoolset-8/root/usr/bin/gcc /usr/bin/gcc-8 && \
