@@ -659,12 +659,10 @@ TEST_F(connection_manager_fixture, basic_connect_with_handshake)
 
 	ASSERT_EQ(fc.has_data(), 2);
 
-	std::cerr << "POTATO 1\n";
 	// Check each of the received messages
 	fake_collector::buf b = fc.pop_data();
 	ASSERT_EQ(draiosproto::message_type::PROTOCOL_INIT, b.hdr.v4.messagetype);
 
-	std::cerr << "POTATO 2\n";
 	// Validate the protocol_init message
 	draiosproto::protocol_init pi;
 	dragent_protocol::buffer_to_protobuf(b.ptr,
@@ -672,14 +670,12 @@ TEST_F(connection_manager_fixture, basic_connect_with_handshake)
 	                                     &pi,
 	                                     protocol_compression_method::GZIP);
 
-	std::cerr << "POTATO 3\n";
 	ASSERT_EQ(1, pi.supported_protocol_versions().size());
 	dragent_protocol::protocol_version version = pi.supported_protocol_versions()[0];
 	ASSERT_EQ(dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH, version);
 	ASSERT_EQ(dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH,
 	          cm.get_negotiated_protocol_version());
 
-	std::cerr << "POTATO 5\n";
 	// Validate the handshake phase 2 message
 	b = fc.pop_data();
 	uint64_t hdr_gen = ntohll(b.hdr.v5.generation);

@@ -1,37 +1,28 @@
-#include "agentino_connection.h"
+#include "connection.h"
+#include "connection_message.h"
+#include "connection_server.h"
+#include "draios.pb.h"
+#include "protocol.h"
 
+#include <cassert>
+#include <cerrno>
+#include <common_logger.h>
+#include <cstring>
 #include <functional>
 #include <memory>
-#include <cassert>
 #include <mutex>
-#include <cerrno>
-#include <cstring>
 
-#include <common_logger.h>
-#include "protocol.h"
-#include "draios.pb.h"
-#include "agentino.pb.h"
-
-#include "agentino_message.h"
-#include "agentino_manager.h"
-
+// For convenience until this can be moved to a better library
 using namespace agentone;
 
 COMMON_LOGGER();
 
-const connection::connection_cb connection::empty_callback;
-
 connection::connection(cm_socket* sock,
-                       agentone::agentino_manager* manager,
-                       tp_work_item::client_id client_id,
-                       handshake_cb on_handshake,
-                       connection_cb on_connect,
-			           connection_cb on_disconnect)
+                       connection_server_owner& owner,
+                       tp_work_item::client_id client_id)
     : m_socket(sock),
-      m_manager(manager),
-      m_on_connect(on_connect),
-      m_on_disconnect(on_disconnect),
-      m_on_handshake(on_handshake),
+      m_owner(owner),
+      m_ctx(nullptr),
       m_id("<unknown>"),
       m_state(INIT),
       m_client_id(client_id)
@@ -42,6 +33,11 @@ connection::~connection()
 {
 	disconnect();
 	delete m_socket;
+	if (m_ctx)
+	{
+		delete m_ctx;
+		m_ctx = nullptr;
+	}
 }
 
 void connection::clear_connected_ref()
@@ -50,14 +46,13 @@ void connection::clear_connected_ref()
 	m_connected_ref = nullptr;
 }
 
-bool connection::start(void* ctx)
+bool connection::start()
 {
-	m_ctx = ctx;
 	bool res = handle_event(CONNECT);
 
 	if (!res)
 	{
-		LOG_ERROR("Could not establish connection with agentino");
+		LOG_ERROR("Could not establish connection with client");
 	}
 	return res;
 }
@@ -67,15 +62,18 @@ cm_socket* connection::get_socket()
 	return m_socket;
 }
 
-bool connection::get_handshake_data(draiosproto::agentino_handshake* hs_data)
+void connection::set_context(connection_context* context)
+{
+	m_ctx = context;
+}
+
+const connection_context* connection::get_context()
 {
 	if (handle_event(GET_HANDSHAKE_DATA))
 	{
-		// Protobuf assignment operator makes a copy
-		*hs_data = m_hs_data;
-		return true;
+		return m_ctx;
 	}
-	return false;
+	return nullptr;
 }
 
 void connection::disconnect()
@@ -94,13 +92,15 @@ connection::result connection::read_message(raw_message& msg)
 
 	if (res == 0)
 	{
-		LOG_DEBUG("Connection closed on receive for agentino name=%s id=%s", m_name.c_str(), m_id.c_str());
+		LOG_DEBUG("Connection closed on receive for client name=%s id=%s",
+		          m_name.c_str(),
+		          m_id.c_str());
 		return CONNECTION_CLOSED;
 	}
 
 	if (res < 0 || res < sizeof(msg.hdr))
 	{
-		LOG_ERROR("Unexpected result reading bytes from agentino name=%s id=%s: %lld (%s)",
+		LOG_ERROR("Unexpected result reading bytes from client name=%s id=%s: %lld (%s)",
 		          m_name.c_str(),
 		          m_id.c_str(),
 		          (long long)res,
@@ -125,14 +125,16 @@ connection::result connection::read_message(raw_message& msg)
 
 		if (res == 0)
 		{
-			LOG_DEBUG("Connection closed on receive for agentino name=%s id=%s", m_name.c_str(), m_id.c_str());
+			LOG_DEBUG("Connection closed on receive for client name=%s id=%s",
+			          m_name.c_str(),
+			          m_id.c_str());
 			ret = CONNECTION_CLOSED;
 			goto error;
 		}
 
 		if (res < 0)
 		{
-			LOG_ERROR("Error reading bytes from agentino name=%s id=%s: %lld (%s)",
+			LOG_ERROR("Error reading bytes from client name=%s id=%s: %lld (%s)",
 			          m_name.c_str(),
 			          m_id.c_str(),
 			          (long long)res,
@@ -145,7 +147,7 @@ connection::result connection::read_message(raw_message& msg)
 		if (res + bytes_read > UINT32_MAX || res > bytes_to_read)
 		{
 			// Should never happen, but don't want to infinite loop
-			LOG_ERROR("Receive returned invalid size for agentino name=%s id=%s size=%lld",
+			LOG_ERROR("Receive returned invalid size for client name=%s id=%s size=%lld",
 			          m_name.c_str(),
 			          m_id.c_str(),
 			          (long long)res);
@@ -166,84 +168,57 @@ error:
 
 connection::result connection::process_handshake_in()
 {
-	// The handshake starts with a message from the agentino which should
+	// The handshake starts with a message from the client which should
 	// be waiting in the socket for us
-	LOG_INFO("Beginning agentino handshake sequence");
+	LOG_INFO("Beginning client handshake sequence");
 	raw_message msg;
 	result res = read_message(msg);
 	if (res != SUCCESS)
 	{
 		if (res == FATAL_ERROR)
 		{
-			LOG_ERROR("Fatal error reading handshake message from agentino name=%s id=%s",
+			LOG_ERROR("Fatal error reading handshake message from client name=%s id=%s",
 			          m_name.c_str(),
 			          m_id.c_str());
 		}
 		return res;
 	}
 
-	LOG_DEBUG("Deserializing handshake protobuf");
-	try
+	draiosproto::message_type response_type;
+	std::unique_ptr<google::protobuf::MessageLite> response;
+	res = m_owner.handle_handshake(m_connected_ref, msg, response, response_type);
+	if (res != SUCCESS)
 	{
-		dragent_protocol::buffer_to_protobuf(msg.bytes,
-		                                     msg.payload_length(),
-		                                     &m_hs_data);
-	}
-	catch (const dragent_protocol::protocol_error& e)
-	{
-		LOG_ERROR("Protocol error: could not parse handshake message from agentino name=%s id=%s",
+		LOG_ERROR("Fatal error: Handshake callback failed for client name=%s id=%s",
 		          m_name.c_str(),
 		          m_id.c_str());
-		return FATAL_ERROR;
-	}
-
-	// Now m_hs_data contains the handshake protobuf. The on_handshake callback
-	// will send the protobuf to the client and get the response protobuf in
-	// return
-	draiosproto::agentino_handshake_response resp;
-	if (!m_on_handshake)
-	{
-		LOG_ERROR("Code error: Missing callback for handshake response for agentino name=%s id=%s",
-		          m_name.c_str(),
-		          m_id.c_str());
-		return FATAL_ERROR;
-	}
-	bool ret = m_on_handshake(m_manager, m_ctx, m_hs_data, resp);
-	if (!ret)
-	{
-		LOG_ERROR("Fatal error: Handshake callback failed for agentino name=%s id=%s", m_name.c_str(), m_id.c_str());
 		// Handshake rejected. Fail the connection.
 		return FATAL_ERROR;
 	}
 
 	LOG_INFO("Sending handshake response");
-	res = send_message(draiosproto::message_type::AGENTINO_HANDSHAKE_RESPONSE,
-	                   resp);
+	res = send_message(response_type, *response);
+
 	if (res != SUCCESS)
 	{
 		if (res == FATAL_ERROR)
 		{
-			LOG_ERROR("Fatal error sending handshake response to agentino name=%s id=%s",
+			LOG_ERROR("Fatal error sending handshake response to client name=%s id=%s",
 			          m_name.c_str(),
 			          m_id.c_str());
 		}
 		else
 		{
-			LOG_ERROR("Agentino name=%s id=%s disconnected during handshake reponse phase",
+			LOG_ERROR("Client name=%s id=%s disconnected during handshake reponse phase",
 			          m_name.c_str(),
 			          m_id.c_str());
 		}
-		return res;
 	}
-	return SUCCESS;
+
+	return res;
 
 	// Remember that the buffer allocated in read_message will be automatically
 	// freed by the raw_message destructor once this function returns.
-}
-
-uint64_t connection::get_current_ts()
-{
-	return agentone::agentino_manager::get_current_ts_ns();
 }
 
 /*****************************************************************************
@@ -308,10 +283,7 @@ bool connection::handle_disconnect(connection::fsm_event& chain_evt)
 		m_socket->close();
 	}
 	m_state = DISCONNECTED;
-	if (m_on_disconnect)
-	{
-		m_on_disconnect(m_manager, m_connected_ref, m_ctx);
-	}
+	m_owner.delete_connection(m_connected_ref);
 
 	// This call can lead to the destruction of the object.
 	clear_connected_ref();
@@ -330,11 +302,8 @@ bool connection::handle_handshake_complete(connection::fsm_event& chain_evt)
 		success = m_state.compare_exchange_strong(curr_state, FULLY_CONNECTED);
 		if (success)
 		{
-			LOG_INFO("Agentino Successfully connected");
-			if (m_on_connect)
-			{
-				m_on_connect(m_manager, m_connected_ref, m_ctx);
-			}
+			LOG_INFO("Client Successfully connected");
+			m_owner.new_connection(m_connected_ref);
 
 			chain_evt = NONE;
 			return true;
@@ -344,7 +313,7 @@ bool connection::handle_handshake_complete(connection::fsm_event& chain_evt)
 			// Whoops, state changed out from under us
 			// We don't want to call on_connect because the client may have
 			// either already received an on_disconnect or may have explicitly
-			// disconnected the agentino itself. An on_connect at this point
+			// disconnected the client itself. An on_connect at this point
 			// would be misleading.
 			return false;
 		}
@@ -356,7 +325,9 @@ bool connection::handle_handshake_complete(connection::fsm_event& chain_evt)
 		LOG_ERROR("Expected state %d, got state %d", (int)HANDSHAKING, (int)m_state);
 		return false;
 	case DISCONNECTED:
-		LOG_WARNING("Agentino name=%s id=%s disconnected after handshake completed", m_name.c_str(), m_id.c_str());
+		LOG_WARNING("Client name=%s id=%s disconnected after handshake completed",
+		            m_name.c_str(),
+		            m_id.c_str());
 		return false;
 	}
 	LOG_ERROR("Code error: Handshake completed in unexpected state %d", (int)m_state);
@@ -380,7 +351,10 @@ bool connection::handle_get_handshake_data(connection::fsm_event& chain_evt)
 
 bool connection::handle_event(connection::fsm_event evt)
 {
-	LOG_DEBUG("Agentino name=%s id=%s connection FSM event %d", m_name.c_str(), m_id.c_str(), (int)evt);
+	LOG_DEBUG("Client name=%s id=%s connection FSM event %d",
+	          m_name.c_str(),
+	          m_id.c_str(),
+	          (int)evt);
 	fsm_event chain_evt = fsm_event::NONE;
 	bool ret = false;
 	switch (evt)
@@ -398,7 +372,9 @@ bool connection::handle_event(connection::fsm_event evt)
 		ret = handle_get_handshake_data(chain_evt);
 		break;
 	case NONE:
-		LOG_ERROR("Received invalid FSM event for agentino name=%s id=%s (code error)", m_name.c_str(), m_id.c_str());
+		LOG_ERROR("Received invalid FSM event for client name=%s id=%s (code error)",
+		          m_name.c_str(),
+		          m_id.c_str());
 		assert("Invalid FSM event" == 0);
 		return false;
 	}
