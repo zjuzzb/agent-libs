@@ -117,7 +117,7 @@ func newReplicaSetCongroup(replicaSet CoReplicaSet, setLinks bool) *draiosproto.
 	ret.InternalTags = kubecollect_common.GetAnnotations(replicaSet.ObjectMeta, "kubernetes.replicaSet.")
 	AddReplicaSetMetrics(&ret.Metrics, replicaSet)
 	if setLinks {
-		AddDeploymentParents(&ret.Parents, replicaSet)
+		AddDeploymentParent(&ret.Parents, replicaSet)
 		AddPodChildrenFromOwnerRef(&ret.Children, replicaSet.ObjectMeta)
 		AddHorizontalPodAutoscalerParents(&ret.Parents, replicaSet.GetNamespace(), replicaSet.APIVersion, replicaSet.Kind, replicaSet.GetName())
 	}
@@ -137,7 +137,7 @@ func AddReplicaSetMetrics(metrics *[]*draiosproto.AppMetric, replicaSet CoReplic
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.availableReplicas", replicaSet.Status.AvailableReplicas)
 }
 
-func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, ns string, parentDeployment v1meta.ObjectMeta) {
+func AddReplicaSetChild(children *[]*draiosproto.CongroupUid, selector labels.Selector, ns string, parentDeployment v1meta.ObjectMeta) {
 	if !kubecollect_common.ResourceReady("replicasets") {
 		return
 	}
@@ -153,19 +153,6 @@ func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, selector labels
 		}
 		if childUid != "" {
 			break
-		}
-	}
-
-	if childUid == "" && selector != nil {
-		for _, obj := range replicaSetInf.GetStore().List() {
-			replicaSet := obj.(*appsv1.ReplicaSet)
-			if replicaSet.GetNamespace() != ns {
-				continue
-			}
-
-			if selector.Matches(labels.Set(replicaSet.GetLabels())) {
-				childUid = replicaSet.GetUID()
-			}
 		}
 	}
 
