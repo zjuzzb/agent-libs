@@ -6,6 +6,7 @@
  * The definitions will be the shim ones, wrapping the real ones
  * obtained via dlsym.
  */
+#include <openssl/crypto.h>
 #include <openssl/des.h>
 #include <openssl/engine.h>
 #include <openssl/err.h>
@@ -40,6 +41,12 @@ type_config<std::string> c_openssl_lib(
     "/opt/draios/lib/openssl/",
     "Path to the OpenSSL library directory to use",
     "openssl_lib"
+);
+
+type_config<bool> c_fips_mode(
+    false,
+    "FIPS mode on/off",
+    "fips_mode"
 );
 
 
@@ -84,6 +91,25 @@ void* dlopen_helper(const std::string& filename)
     return nullptr;
 }
 
+bool toggle_fips()
+{
+    if (FIPS_mode() == 0)
+    {
+        LOG_FATAL("The current version of OpenSSL is not FIPS-capable");
+        return false;
+    }
+
+    if (FIPS_mode_set(1 /*on*/) == 0)
+    {
+        LOG_FATAL("Error setting FIPS mode: %lx", ERR_get_error());
+        return false;
+    }
+
+    LOG_INFO("FIPS mode is enabled");
+
+    return true;
+}
+
 void ssl_shim_init()
 {
     if (dl_initialized)
@@ -118,6 +144,12 @@ void ssl_shim_init()
 
     dl_initialized = true;
     atexit(ssl_shim_shutdown);
+
+
+    if (c_fips_mode.get_value() && !toggle_fips())
+    {
+        std::abort();
+    }
 }
 
 
@@ -1088,6 +1120,36 @@ const EVP_MD *EVP_sha256()
         load_symbol("EVP_sha256", EVP_sha256_PTR);
     }
     return EVP_sha256_PTR();
+}
+
+int FIPS_mode()
+{
+    static int (*FIPS_mode_PTR)();
+    if (FIPS_mode_PTR == nullptr)
+    {
+        load_symbol("FIPS_mode", FIPS_mode_PTR);
+    }
+    return FIPS_mode_PTR();
+}
+
+void FIPS_selftest_check()
+{
+    static void (*FIPS_selftest_check_PTR)();
+    if (FIPS_selftest_check_PTR == nullptr)
+    {
+        load_symbol("FIPS_selftest_check", FIPS_selftest_check_PTR);
+    }
+    return FIPS_selftest_check_PTR();
+}
+
+int FIPS_mode_set(int ONOFF)
+{
+    static int (*FIPS_mode_set_PTR)(int ONOFF);
+    if (FIPS_mode_set_PTR == nullptr)
+    {
+        load_symbol("FIPS_mode_set", FIPS_mode_set_PTR);
+    }
+    return FIPS_mode_set_PTR(ONOFF);
 }
 
 void GENERAL_NAMES_free(GENERAL_NAMES *a)
