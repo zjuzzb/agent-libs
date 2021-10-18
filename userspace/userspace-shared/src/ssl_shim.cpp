@@ -36,6 +36,13 @@ COMMON_LOGGER();
  * which are exposed with the very same signature to be found at link time.
  */
 
+type_config<std::string> c_openssl_lib(
+    "/opt/draios/lib/openssl/",
+    "Path to the OpenSSL library directory to use",
+    "openssl_lib"
+);
+
+
 namespace
 {
 
@@ -84,11 +91,19 @@ void ssl_shim_init()
         return;
     }
 
-    //TODO have the config with the library path
-    auto path = configuration_manager::instance()
-        .get_config<std::string>("rootdir")->get_value() + "/lib/openssl/";
-
-    LOG_INFO("Loading ssl libraries from " + path);
+    auto path = c_openssl_lib.get_value();
+    if (path.empty())
+    {
+        LOG_INFO("Loading ssl libraries from system paths");
+    }
+    else
+    {
+        if (path.back() != '/')
+        {
+            path += '/';
+        }
+        LOG_INFO("Loading ssl libraries from " + path);
+    }
 
     //NOTE using version suffix because some systems (say UBI8) don't setup any link
     for (short i = 0; i < dl_handle.size(); ++i)
