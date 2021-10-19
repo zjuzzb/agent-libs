@@ -402,7 +402,19 @@ pipeline {
 
     stage('Build GS') {
         steps {
-            build job:'agent-build-gs',parameters:[string(name:'BASE_RELEASE_VERSION',value:"${params.RELEASE_VERSION}"),booleanParam(name:'UPLOAD', value:true)]
+            build job:'agent-build-gs',parameters: [
+                string(name: 'BASE_RELEASE_VERSION', value:"${params.RELEASE_VERSION}"),
+                string(name: 'GS_RELEASE_VERSION', value: "${params.RELEASE_VERSION}gs1"),
+                string(name: 'AGENT_BRANCH', value: "release-${params.RELEASE_VERSION}"),
+                string(name: 'SYSDIG_BRANCH', value: "agent-release-${params.RELEASE_VERSION}"),
+                string(name: 'FALCO_BRANCH', value: "agent-release-${params.RELEASE_VERSION}"),
+                string(name: 'PROTOREPO_BRANCH', value: "agent-release-${params.RELEASE_VERSION}"),
+                string(name: 'BUILDER_VERSION', value: "release-${RELEASE_VERSION}"),
+                string(name: 'LIBSINSP_BRANCH', value: "agent-release-${params.RELEASE_VERSION}"),
+                string(name: 'LIBSCAP_BRANCH', value: "agent-release-${params.RELEASE_VERSION}"),
+                string(name: 'LIBS_BRANCH', value: "agent-release-${params.RELEASE_VERSION}"),
+                booleanParam(name: 'UPLOAD', value: true)
+            ]
         }
     }
 
