@@ -175,7 +175,7 @@ void fake_agentino::thread_loop(uint16_t port, fake_agentino& fa)
 			msecs diff = std::chrono::duration_cast<msecs>(std::chrono::steady_clock::now() - last_hb);
 			if (fa.m_heartbeat && diff > hb_interval)
 			{
-				buf b = fa.build_buf(draiosproto::message_type::AGENT_SERVER_HEARTBEAT,
+				buf b = fa.build_buf(draiosproto::message_type::AGENTINO_HEARTBEAT,
 				                     5,
 				                     nullptr,
 				                     0);
@@ -520,12 +520,13 @@ bool fake_agentino::transmit_buf(fake_agentino::buf& b, int sockfd)
 
 bool fake_agentino::send_handshake_message(int sockfd)
 {
+	static uint64_t ts_ns = 1000;
 	std::string id = std::string("FA id=") + m_id;
 	std::string image = std::string("FA image");
 	std::string name = std::string("FA name=") + m_id;
 
 	draiosproto::agentino_handshake hs;
-	hs.set_timestamp_ns(m_timestamp);
+	hs.set_timestamp_ns(++ts_ns);
 	hs.mutable_metadata()->set_container_id(id);
 	hs.mutable_metadata()->set_container_image(image);
 	hs.mutable_metadata()->set_container_name(name);

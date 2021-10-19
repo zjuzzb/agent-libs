@@ -27,8 +27,8 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/inclu
 add_definitions(-DHAS_ANALYZER)
 
 add_library(
-    agentonel STATIC connection.cpp connection_server.cpp agentino_manager.cpp container_manager.cpp thread_pool.cpp
-                     $<TARGET_OBJECTS:appcommonl>
+    agentonel STATIC agentino_connection.cpp agentino_manager.cpp container_manager.cpp
+                     thread_pool.cpp $<TARGET_OBJECTS:appcommonl>
 )
 target_link_libraries(agentonel draiosproto)
 

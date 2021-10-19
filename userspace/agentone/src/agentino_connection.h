@@ -1,10 +1,11 @@
 #pragma once
 
+#include "agentino.pb.h"
+#include "agentino_message.h"
 #include "cm_socket.h"
 #include "draios.pb.h"
 #include "protocol.h"
 #include "thread_pool.h"
-#include "agent_utils.h"
 
 #include <arpa/inet.h>
 #include <cassert>
@@ -16,33 +17,30 @@
 
 namespace agentone
 {
-class connection_server_owner;
-class raw_message;
-
-// Literally an empty class that people can
-// inherit from to allow proper destruction at the end of a connection's lifetime
-class connection_context
-{
-public:
-	virtual ~connection_context() {}
-};
+class agentino_manager;
+class agentino;
 
 /**
- * Represents the connection between a remote client and this local server
+ * Represents the connection between the agentone and the agentino.
  *
- * The owner must provide callbacks for network events of interest. The order
- * of the invocations is:
+ * The client registers callbacks for network events of interest. The order
+ * of the callbacks is:
  *
- * 1. handle_handshake
- * 2. new_connection
- * 3. delete_connection
- *
- * See the definition of the functions in the connection_server for full details
+ * 1. on_handshake: [required] Provides the handshake data and receives the
+ *                             handshake response data.
+ * 2. on_connect: [optional] Notifies that the connection is fully established
+ *                           (handshake complete).
+ * 3. on_disconnect: [optional] Notifies the client of disconnect (on either end).
  */
 class connection
 {
 public:
 	using ptr = std::shared_ptr<connection>;
+	using connection_cb = std::function<void(agentone::agentino_manager*, std::shared_ptr<connection>, void*)>;
+	using handshake_cb = std::function<bool(agentone::agentino_manager*,
+	                                        void*,
+	                                        const draiosproto::agentino_handshake&,
+	                                        draiosproto::agentino_handshake_response&)>;
 
 	/**
 	 * The result of a network operation; `bool' does not convey enough information.
@@ -54,20 +52,25 @@ public:
 		FATAL_ERROR,
 	};
 
+	static const connection_cb empty_callback;
+
 public:
 	/**
 	 * Creating the connection object will start running the state machine.
 	 */
 	connection(cm_socket* sock,
-			   connection_server_owner& owner,
-	           tp_work_item::client_id client_id);
+	           agentone::agentino_manager* manager,
+	           tp_work_item::client_id client_id,
+	           handshake_cb on_handshake,
+	           connection_cb on_connect = empty_callback,
+	           connection_cb on_disconnect = empty_callback);
 
 	~connection();
 
 	/**
-	 * Get the server owner associated with this connection.
+	 * Get the agentino manager associated with this connection.
 	 */
-	connection_server_owner& get_owner() const { return m_owner; }
+	agentone::agentino_manager* get_manager() const { return m_manager; }
 
 	/**
 	 * As there is no manager of connections, we maintain a ref on ourselves to
@@ -79,10 +82,7 @@ public:
 	 * and cleared in disconnect (which might be called multiple times! beware! so a
 	 * subsequent call might be null!)
 	 */
-	static void set_connected_ref(std::shared_ptr<connection>& conn)
-	{
-		conn->m_connected_ref = conn;
-	}
+	static void set_connected_ref(std::shared_ptr<connection>& conn) { conn->m_connected_ref = conn; }
 	void clear_connected_ref();
 
 	/**
@@ -94,7 +94,7 @@ public:
 	 * Set a name for this connection (to be used in logging, when needed).
 	 */
 	void set_name(const std::string& name) { m_name = name; }
-
+	
 	/**
 	 * Get the previously-set identifier for this connection.
 	 */
@@ -109,16 +109,16 @@ public:
 	 * Get the thread pool client id for this connection.
 	 */
 	tp_work_item::client_id get_tp_client_id() const { return m_client_id; }
-
+	
 	/**
-	 * Bring up the connection on the server side.
+	 * Bring up the connection on the agentone side.
 	 *
 	 * @param[in] ctx  Context object passed back into the various callbacks.
 	 */
-	bool start();
+	bool start(void* ctx);
 
 	/**
-	 * Sends a message to the client.
+	 * Sends a message to the agentino.
 	 *
 	 * This method will block until the message is serialized and transmitted.
 	 */
@@ -145,27 +145,22 @@ public:
 	 * Returns the underlying socket for the connection object.
 	 *
 	 * Why allow everybody such promiscuous access to the internal socket?
-	 * Because by doing so we can call poll() on every socket at once
+	 * Because by doing so we can call poll() on every agentino socket at once
 	 * and write more efficient networking code.
 	 */
 	cm_socket* get_socket();
 
 	/**
-	 * The handshake exchange may provide information that the server owner needs later
-	 * in the connection's lifetime. These generic functions allow the owner to
-	 * stash whatever context it wants to be recovered later. The data stored is
-	 * totally opaque to the connection itself, so in theory the owner can use
-	 * this for literally whatever it wants. Ownership of the object is transferred during
-	 * the set_context call to relieve the server owner of having to free the context. The
-	 * contents will remain valid for the life of the connection.
+	 * Provide the handshake data, if a handshake has been completed.
 	 *
-	 * get_context returns the stored context if handshake has completed, else nullptr
+	 * If this function returns true, the protobuf pointed to by the hs_data
+	 * parameter contains a deep copy of the handshake data stored by this
+	 * connection object.
 	 */
-	const connection_context* get_context();
-	void set_context(connection_context* context);
+	bool get_handshake_data(draiosproto::agentino_handshake* hs_data);
 
 	/**
-	 * Disconnect the connection
+	 * Disconnect the connection from the agentino.
 	 *
 	 * Can be called as many times as you like. Cleans up all structures.
 	 */
@@ -173,17 +168,26 @@ public:
 
 private:  // Methods
 	/**
-	 * Reads the client's handshake message and sends a response.
+	 * Reads the agentino's handshake message and sends a response.
 	 *
-	 * Uses the on_handshake callback provided by the server owner to
+	 * Uses the on_handshake callback provided by the client of this class to
 	 * populate the handshake response.
 	 */
 	result process_handshake_in();
 
+	/**
+	 * Get the current timestamp, in nanoseconds
+	 */
+	uint64_t get_current_ts();
+
 private:
 	cm_socket* m_socket;
-	connection_server_owner& m_owner;
-	connection_context* m_ctx;
+	agentone::agentino_manager* m_manager;
+	connection_cb m_on_connect;
+	connection_cb m_on_disconnect;
+	handshake_cb m_on_handshake;
+	draiosproto::agentino_handshake m_hs_data;
+	void* m_ctx;
 	std::string m_id;
 	std::string m_name;
 
@@ -229,7 +233,7 @@ private:  // State machine stuff
 	tp_work_item::client_id m_client_id;
 
 	/**
-	 * Because the client sends a handshake message immediately upon connect,
+	 * Because the agentino sends a handshake message immediately upon connect,
 	 * handling a connect means handling the handshake.
 	 */
 	bool handle_connect(fsm_event& chain_evt);
@@ -252,13 +256,13 @@ private:  // State machine stuff
 	 * handler. At this point nobody knows about this connection other than
 	 * the thread pool handler, which is off on its own thread doing its own
 	 * thing. As the connection does not have its own thread, it will not
-	 * initiate any I/O on its own. And since the owner is not
+	 * initiate any I/O on its own. And since the agentino_manager is not
 	 * aware of this connection, it will not be able to poke it in any way
 	 * (i.e. by disconnecting it). In addition, the work item handler holds a
 	 * reference to the connection object for the duration of the CONNECT
 	 * processing.
 	 *
-	 * The owner only becomes aware of the connection on the
+	 * The agentino manager only becomes aware of the connection on the
 	 * transition from HANDSHAKING to FULLY_CONNECTED. Until that time, we do
 	 * not have to worry about the connection object being deleted out from
 	 * under itself.
@@ -299,7 +303,7 @@ connection::result connection::send_message(draiosproto::message_type type,
 	auto compressor = protobuf_compressor_factory::get(protocol_compression_method::GZIP);
 	// Serialize protobuf
 	std::shared_ptr<serialized_buffer> outbuf =
-	    dragent_protocol::message_to_buffer(agent_utils::get_current_ts_ns(), type, proto_obj, compressor);
+	    dragent_protocol::message_to_buffer(get_current_ts(), type, proto_obj, compressor);
 	if (!outbuf)
 	{
 		return FATAL_ERROR;
