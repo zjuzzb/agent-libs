@@ -12,6 +12,7 @@ pipeline {
         booleanParam(name: 'UPLOAD', defaultValue: false, description: 'set to upload this to the s3 bucket. ONLY use during actual release')
         string(name: 'BUILDER_VERSION', defaultValue: 'release-${BASE_RELEASE_VERSION}', trim: true, description: 'version of the builder to use')
         string(name: 'LIBS_BRANCH', defaultValue: 'agent-release-${BASE_RELEASE_VERSION}', trim: true)
+        string(name: 'PROBEBUILDER_BRANCH', defaultValue: 'agent-release-${BASE_RELEASE_VERSION}', trim: true)
     }
     environment {
         GS_RELEASE_VERSION="${params.GS_RELEASE_VERSION}"

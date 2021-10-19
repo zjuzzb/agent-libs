@@ -6,6 +6,7 @@ pipeline {
     parameters {
         string(name: 'AGENT_BRANCH', defaultValue: 'release-${RELEASE_VERSION}', trim: true)
         string(name: 'FALCO_BRANCH', defaultValue: 'agent-release-${RELEASE_VERSION}', trim: true)
+        string(name: 'PROBEBUILDER_BRANCH', defaultValue: 'agent-release-${RELEASE_VERSION}', trim: true)
         string(name: 'PROTOREPO_BRANCH', defaultValue: 'agent-release-${RELEASE_VERSION}', trim: true)
         booleanParam(name: 'UPLOAD', defaultValue: false, description: 'set to upload this to the s3 bucket. ONLY use during actual release')
         string(name: 'RELEASE_VERSION', defaultValue: '0.DEV-TEST', trim: true)

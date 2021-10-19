@@ -7,6 +7,7 @@ pipeline {
         string(name: 'AGENT_BRANCH', defaultValue: 'dev', trim: true)
         string(name: 'SYSDIG_BRANCH', defaultValue: 'dev', trim: true)
         string(name: 'FALCO_BRANCH', defaultValue: 'master-sync', trim: true)
+        string(name: 'PROBEBUILDER_BRANCH', defaultValue: 'dev', trim: true)
         string(name: 'PROTOREPO_BRANCH', defaultValue: 'master', trim: true)
         booleanParam(name: 'UPLOAD', defaultValue: false, description: 'set to upload this to the s3 bucket. ONLY use during actual release')
         string(name: 'RELEASE_VERSION', defaultValue: '0.DEV-TEST', trim: true)
