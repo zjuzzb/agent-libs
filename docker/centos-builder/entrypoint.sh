@@ -23,7 +23,7 @@ fi
 if [ -z "$AGENT_BUILD_DATE" ]; then
     AGENT_BUILD_DATE="$(date -u -Iseconds)"
 fi
-if [ -z "$AGENT_BUILD_COMMIT" -a -d $CODE_DIR/agent/.git]; then
+if [ -z "$AGENT_BUILD_COMMIT" -a -d $CODE_DIR/agent/.git ]; then
     pushd $CODE_DIR/agent/
     AGENT_BUILD_COMMIT="$(git rev-parse --short HEAD)"
     popd
