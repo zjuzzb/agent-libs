@@ -1,6 +1,4 @@
 #!/bin/bash
-/* vim:expandtab:sw=4:ts=4:sts=4
-*/
 set -exo pipefail
 
 #setup all the env vars
