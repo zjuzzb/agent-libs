@@ -1,6 +1,7 @@
+#include "agent_utils.h"
 #include "agentino.pb.h"
 #include "agentino_manager.h"
-#include "agentino_message.h"
+#include "connection_message.h"
 #include "protocol.h"
 #include "thread_pool.h"
 
@@ -14,97 +15,13 @@ type_config<uint16_t> c_agentino_port(6667,
                                       "Port to listen for agentino connections on.",
                                       "agentino_port");
 type_config<bool> c_agentino_ssl(true, "Use SSL for agentino connections?", "agentino_ssl");
-type_config<uint16_t>::ptr c_tp_size =
-    type_config_builder<uint16_t>(2,
-                                  "Number of threads in the manager's thread pool.",
-                                  "agentino_tp_threads")
-        .min(1)
-        .hidden()
-        .build();
-type_config<uint64_t> c_agentino_manager_socket_poll_timeout_ms(
-    300,
-    "the mount of time the socket poll waits before returning",
+type_config<uint64_t> c_thread_sleep_interval_ms(
+    1000,
+    "Amount of time thread sleeps if there is currently no work to do",
     "agentino_manager",
-    "socket_poll_timeout_ms");
-
+    "thread_sleep_interval_ms");
 COMMON_LOGGER();
-
-// the cast should happen in connection, and then we can just point to the member
-// methods directly. SMAGENT-2858
-bool handshake_callback_helper(agentone::agentino_manager* am,
-                               void* ctx,
-                               const draiosproto::agentino_handshake& hs,
-                               draiosproto::agentino_handshake_response& hs_resp)
-{
-	return am->handle_agentino_handshake(hs, hs_resp);
-}
-
-void connect_callback_helper(agentone::agentino_manager* am,
-                             std::shared_ptr<connection> conn,
-                             void* ctx)
-{
-	am->new_agentino_connection(conn);
-}
-
-void disconnect_callback_helper(agentone::agentino_manager* am,
-                                std::shared_ptr<connection> conn,
-                                void* ctx)
-{
-	am->delete_agentino_connection(conn);
-}
-
 }  // namespace
-
-/**
- * Thread pool work item for completing agentino connection.
- *
- * Completing the connection includes receiving the handshake and sending the
- * handshake response.
- */
-class listen_work_item : public tp_work_item
-{
-public:
-	listen_work_item(connection::ptr& connp) : m_conn_ctx(connp) {}
-
-	~listen_work_item() {}
-
-	virtual void handle_work() override
-	{
-		connection::set_connected_ref(m_conn_ctx);
-		if (!m_conn_ctx->start(nullptr))
-		{
-			LOG_ERROR("Failed to connect to new agentino");
-		}
-	}
-
-private:
-	connection::ptr m_conn_ctx;
-};
-
-class agentino_message_work_item : public tp_work_item
-{
-public:
-	agentino_message_work_item(agentino_manager& am, raw_message& msg, client_id id)
-	    : tp_work_item(id),
-	      m_agentino_ctx(am),
-	      m_msg(msg)
-	{
-	}
-
-	virtual void handle_work() override
-	{
-		draiosproto::message_type type =
-		    static_cast<draiosproto::message_type>(m_msg.hdr.hdr.messagetype);
-
-		LOG_INFO("Handling agentino message of type %d", (int)type);
-		// Dispatch the message
-		(void)m_agentino_ctx.handle_message(type, m_msg.bytes, m_msg.payload_length());
-	}
-
-private:
-	agentino_manager& m_agentino_ctx;
-	raw_message m_msg;
-};
 
 agentino::ptr agentino::build_agentino(
     agentino_manager* manager,
@@ -296,10 +213,10 @@ agentino_manager::agentino_manager(security_result_handler& events_handler,
       m_policies_updated(false),
       m_machine_id(machine_id),
       m_customer_id(customer_id),
-      m_pool(c_tp_size->get_value()),
-      m_thread(&agentino_manager::run, this)
+      m_thread(&agentino_manager::run, this),
+      m_connection_server(*this, c_agentino_port.get_value(), c_agentino_ssl.get_value())
 {
-	 listen(c_agentino_port.get_value());
+	m_connection_server.start();
 }
 
 agentino_manager::~agentino_manager()
@@ -307,8 +224,8 @@ agentino_manager::~agentino_manager()
 	if (!m_shutdown)
 	{
 		m_shutdown = true;
+		m_connection_server.stop();
 		m_thread.join();
-		stop_listening();
 	}
 }
 
@@ -333,14 +250,14 @@ void agentino_manager::build_metadata(
 	}
 }
 
-void agentino_manager::new_agentino_connection(connection::ptr connection_in)
+void agentino_manager::new_connection(connection::ptr& connection_in)
 {
 	std::lock_guard<std::mutex> lock(m_agentino_list_lock);
 	std::map<agentino_metadata_property, std::string> fixed_metadata;
 
-	draiosproto::agentino_handshake handshake_data;
-	bool ret = connection_in->get_handshake_data(&handshake_data);
-	if (!ret)
+	const agentino_handshake_connection_context* context =
+	    dynamic_cast<const agentino_handshake_connection_context*>(connection_in->get_context());
+	if (context == nullptr)
 	{
 		// This message will always print name=<unknown> id=<unknown>, because it
 		// is the handshake data that populates the metadata for the agentinos.
@@ -353,7 +270,7 @@ void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 	}
 
 	std::map<std::string, std::string> arbitrary_metadata;
-	agentino_manager::build_metadata(handshake_data, fixed_metadata, arbitrary_metadata);
+	agentino_manager::build_metadata(context->request, fixed_metadata, arbitrary_metadata);
 
 	// See if we already have an object for this agentino. This is not supported in
 	// V1. If the object already exists (with a connection), we will create a
@@ -366,9 +283,8 @@ void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 		LOG_INFO("Building new agentino from container name=%s id=%s",
 		         fixed_metadata[CONTAINER_NAME].c_str(),
 		         fixed_metadata[CONTAINER_ID].c_str());
-		extant_agentino = build_agentino(connection_in,
-		                                 std::move(fixed_metadata),
-		                                 std::move(arbitrary_metadata));
+		extant_agentino =
+		    build_agentino(connection_in, std::move(fixed_metadata), std::move(arbitrary_metadata));
 		m_agentinos.insert(extant_agentino);
 		m_agentinos_by_connection.emplace(connection_in, extant_agentino);
 	}
@@ -379,16 +295,9 @@ void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 	m_new_agentinos.push_back(extant_agentino);
 }
 
-void agentino_manager::delete_agentino_connection(connection::ptr connection_in)
+void agentino_manager::delete_connection(connection::ptr& connection_in)
 {
 	std::lock_guard<std::mutex> lock(m_agentino_list_lock);
-	if (!connection_in)
-	{
-		// Though we might get two callbacks, both of them should be providing a valid
-		// pointer
-		LOG_ERROR("Attempting to remove agentino based on null connection info!");
-		return;
-	}
 
 	agentino::ptr extant_agentino = find_extant_agentino_not_threadsafe(connection_in);
 
@@ -433,181 +342,20 @@ agentino::ptr agentino_manager::find_extant_agentino_not_threadsafe(
 	return extant_agentino->second;
 }
 
-void agentino_manager::listen(uint16_t port)
-{
-	auto new_conn_cb = [this](cm_socket* sock, void* ctx) {
-		// Get the agentino manager from the context
-		auto* am = (agentino_manager*)ctx;
-
-		// Translate the socket into a connection object
-		connection::ptr connp = std::make_shared<connection>(sock,
-		                                                     am,
-		                                                     m_pool.build_new_client_id(),
-		                                                     handshake_callback_helper,
-		                                                     connect_callback_helper,
-		                                                     disconnect_callback_helper);
-
-		// Complete the connection on a thread pool thread
-		m_pool.submit_work(new listen_work_item(connp));
-	};
-
-	auto conn_error_cb = [port](cm_socket::error_type et, int error, void* ctx) {
-		// Get the agentino manager from the context
-		auto* am = (agentino_manager*)ctx;
-
-		LOG_ERROR("Listening for agentino connections failed: %d, %d", (int)et, (int)error);
-
-		// We're going to try again now
-		am->listen(port);
-	};
-
-	bool ssl = c_agentino_ssl.get_value();
-	bool ret = cm_socket::listen({port, ssl}, new_conn_cb, conn_error_cb, this);
-	if (!ret)
-	{
-		LOG_ERROR("Could not listen for agentino connections");
-	}
-}
-
-void agentino_manager::stop_listening()
-{
-	cm_socket::stop_listening(true);
-}
-
-// /////////////
-// Functions for polling the sockets of connected agentinos
-
-void agentino_manager::build_agentino_poll_list(std::list<cm_socket::poll_sock>& out) const
+void agentino_manager::get_pollable_connections(std::list<connection::ptr>& out) const
 {
 	out.clear();
 	std::lock_guard<std::mutex> lock(m_agentino_list_lock);
 
 	for (auto& agentino : m_agentinos)
 	{
-		// We have to bump the refcount on the shared pointer to make sure the
-		// connection object doesn't vanish out from under us.
-		auto connection = agentino->get_connection_info();
-		if (connection)
+		auto listenable_connection = agentino->get_connection_info();
+		if (listenable_connection != nullptr)
 		{
-			auto socket = connection->get_socket();
-			// Skip if this is a nullptr
-			if (socket)
-			{
-				connection::ptr* cpp = new connection::ptr(agentino->get_connection_info());
-				out.emplace_back(socket, cpp);
-			}
+			out.emplace_back(listenable_connection);
 		}
 	}
 }
-
-void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
-{
-	std::list<cm_socket::poll_sock> sock_list;
-	std::list<cm_socket::poll_sock> ready_list;
-
-	build_agentino_poll_list(sock_list);
-
-	if (sock_list.empty())
-	{
-		// The run loop is relying on this function to sleep in order to not
-		// busy wait. In the case where there are no agentinos connected, we
-		// will sleep for the entire timeout value.
-		// Note that this will not impact our ability to receive new agentino
-		// connections, as that occurs on the listen thread. So by sleeping
-		// in the zero-connected-agentinos case we are not jeopardizing our
-		// ability to respond to an incoming connection.
-		std::this_thread::sleep_for(timeout);
-		return;
-	}
-
-	bool ret = cm_socket::poll(sock_list, ready_list, timeout);
-
-	if (!ret)
-	{
-		LOG_ERROR("Communications error: Could not poll for agentino messages");
-		goto cleanup;
-	}
-
-	if (ready_list.size() > 0)
-	{
-		LOG_DEBUG("Poll returned a list of length %d", (int)ready_list.size());
-	}
-
-	for (auto& psock : ready_list)
-	{
-		connection::ptr* cptr = (connection::ptr*)psock.ctx;
-
-		raw_message msg;
-
-		// Read the message
-		connection::result res = (*cptr)->read_message(msg);
-		if (res == connection::SUCCESS)
-		{
-			draiosproto::message_type type =
-			    static_cast<draiosproto::message_type>(msg.hdr.hdr.messagetype);
-			if (type == draiosproto::message_type::AGENTINO_HEARTBEAT)
-			{
-				// Heartbeat message, nothing to do here
-				LOG_DEBUG("Received heartbeat from agentino container name=%s id=%s",
-				          (*cptr)->get_name().c_str(),
-				          (*cptr)->get_id().c_str());
-			}
-			else
-			{
-				LOG_INFO(
-				    "Read message of type %d and length %u from agentino container name=%s id=%s",
-				    (int)type,
-				    msg.payload_length(),
-				    (*cptr)->get_name().c_str(),
-				    (*cptr)->get_id().c_str());
-
-				// Submit work queue item to deserialize and dispatch
-				m_pool.submit_work(new agentino_message_work_item(*this,
-				                                                  msg,
-				                                                  (*cptr)->get_tp_client_id()));
-			}
-		}
-		else
-		{
-			LOG_WARNING(
-			    "Error reading message from agentino"
-			    "(probably agentino disconnected) container name=%s id=%s",
-			    (*cptr)->get_name().c_str(),
-			    (*cptr)->get_id().c_str());
-			// Propagate the disconnect to the connection object
-			(*cptr)->disconnect();
-		}
-	}
-
-cleanup:
-
-	// Now clean up the connection info pointers allocated at the start
-	// (It's possible that this will be the final deref on this pointer and
-	// will trigger the deletion of the connection object.)
-	for (auto& psock : sock_list)
-	{
-		//
-		// We are deleting a shared pointer that looks very wrong. It's not, however.
-		//
-		// the sock list context, for portability reasons takes a void* as its context.
-		// As the connection itself is automatically managed, we need a ref on it at all
-		// times. During the time it exists on the sock list, it may be the only ref.
-		//
-		// So the item we must put on the list is a shared pointer. As it's not an intrinsic
-		// list and a void*, it must be allocated/freed manually. Other ways to deal with
-		// this might be
-		// - creating a wrapper for the list that deals with smart and regular pointers properly
-		// - reffing the connection somewhere else
-		// - Making the list intrinsically deal with connections instead of void*s
-		//
-		// The corresponding allocation is in build_agentino_poll_list
-		std::shared_ptr<connection>* cptr = (connection::ptr*)psock.ctx;
-		delete cptr;
-	}
-}
-
-// End poll functions
-// //////////////////////
 
 std::set<agentino::ptr> agentino_manager::get_agentino_list() const
 {
@@ -670,7 +418,7 @@ bool agentino_manager::handle_message(draiosproto::message_type type,
 			return false;
 		}
 
-		uint64_t time_ns = get_current_ts_ns();
+		uint64_t time_ns = agent_utils::get_current_ts_ns();
 		// Need to set machine ID / customer ID to match agentone, as that's
 		// what backend expects
 		events.set_machine_id(m_machine_id);
@@ -692,7 +440,7 @@ bool agentino_manager::handle_message(draiosproto::message_type type,
 			return false;
 		}
 
-		uint64_t time_ns = get_current_ts_ns();
+		uint64_t time_ns = agent_utils::get_current_ts_ns();
 		// Need to set machine ID / customer ID to match agentone, as that's
 		// what backend expects
 		tevents.set_machine_id(m_machine_id);
@@ -753,10 +501,10 @@ bool agentino_manager::forward_dump_response(draiosproto::dump_response& dresp)
 	std::shared_ptr<serialized_buffer> buf;
 	try
 	{
-		 buf = dragent_protocol::message_to_buffer(get_current_ts_ns(),
-		                                           draiosproto::message_type::DUMP_RESPONSE,
-		                                           dresp,
-		                                           compressor);
+		buf = dragent_protocol::message_to_buffer(agent_utils::get_current_ts_ns(),
+		                                          draiosproto::message_type::DUMP_RESPONSE,
+		                                          dresp,
+		                                          compressor);
 	}
 	catch (dragent_protocol::protocol_error& ex)
 	{
@@ -774,7 +522,7 @@ bool agentino_manager::forward_dump_response(draiosproto::dump_response& dresp)
 	return m_transmit_queue->put(buf, protocol_queue::BQ_PRIORITY_LOW);
 }
 
-void agentino_manager::propagate_policies()
+bool agentino_manager::propagate_policies()
 {
 	// We make some copies of stuff to ensure we don't have to hold both the list lock
 	// and the policies lock at the same time (which would cause some annoyances).
@@ -824,14 +572,34 @@ void agentino_manager::propagate_policies()
 			i->send_policies(policies);
 		}
 	}
+
+	return made_policy_copy;
 }
 
-bool agentino_manager::handle_agentino_handshake(const draiosproto::agentino_handshake& hs_proto,
-                                                 draiosproto::agentino_handshake_response& hs_resp)
+connection::result agentino_manager::handle_handshake(
+    connection::ptr& conn,
+    const raw_message& message,
+    std::unique_ptr<google::protobuf::MessageLite>& response,
+    draiosproto::message_type& response_type)
 {
+	auto request_context = new agentino_handshake_connection_context();
+	LOG_DEBUG("Deserializing handshake protobuf");
+
+	try
+	{
+		dragent_protocol::buffer_to_protobuf(message.bytes,
+		                                     message.payload_length(),
+		                                     &request_context->request);
+	}
+	catch (const dragent_protocol::protocol_error& e)
+	{
+		LOG_ERROR("Protocol error: could not parse handshake message from agentino");
+		return connection::FATAL_ERROR;
+	}
+
 	bool is_valid = false;
 	// Validate the input proto
-	uint64_t ts_in = hs_proto.timestamp_ns();
+	uint64_t ts_in = request_context->request.timestamp_ns();
 	if (ts_in > 0)
 	{
 		is_valid = true;
@@ -842,7 +610,7 @@ bool agentino_manager::handle_agentino_handshake(const draiosproto::agentino_han
 	if (!is_valid)
 	{
 		LOG_ERROR("Invalid handshake protobuf from agentino");
-		return false;
+		return connection::FATAL_ERROR;
 	}
 
 	// SSPROD-8535: Don't accept incoming agentino connections until
@@ -853,28 +621,37 @@ bool agentino_manager::handle_agentino_handshake(const draiosproto::agentino_han
 	{
 		LOG_WARNING("Rejecting agentino connection because policies not loaded yet. "
 		            "Check the backend connection.");
-		return false;
+		return connection::FATAL_ERROR;
 	}
 
 	// Populate the output proto
-	hs_resp.set_timestamp_ns(get_current_ts_ns());
+	response.reset(new draiosproto::agentino_handshake_response);
+	draiosproto::agentino_handshake_response* typed_response = dynamic_cast<draiosproto::agentino_handshake_response*>(&*response); // god help us if this cast fails...
+	response_type = draiosproto::message_type::AGENTINO_HANDSHAKE_RESPONSE;
+	typed_response->set_timestamp_ns(agent_utils::get_current_ts_ns());
 	m_policies_lock.lock();
-	hs_resp.mutable_policies()->CopyFrom(m_cached_policies);
+	typed_response->mutable_policies()->CopyFrom(m_cached_policies);
 	m_policies_lock.unlock();
 
-	return true;
+	// If the send failed, we'll let someone else deal with cleaning this up
+	conn->set_context(request_context);
+
+	return connection::SUCCESS;
 }
 
 void agentino_manager::run()
 {
 	while (!m_shutdown)
 	{
-		// Note: poll requires constant calls, and sleeps for 300ms before timing out.
-		// So we'll check the policies propagation at that interval.  Could probably
-		// be done more nicely, but such is life.
-		propagate_policies();
-		poll_and_dispatch(
-		    std::chrono::milliseconds(c_agentino_manager_socket_poll_timeout_ms.get_value()));
+		bool did_work = false;
+
+		did_work |= propagate_policies();
+
+		if (!did_work)
+		{
+			std::this_thread::sleep_for(
+			    std::chrono::milliseconds(c_thread_sleep_interval_ms.get_value()));
+		}
 	}
 }
 

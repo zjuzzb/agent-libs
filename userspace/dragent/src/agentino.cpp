@@ -647,7 +647,7 @@ void agentino_app::send_heartbeat()
 {
 	// A heartbeat is just a header
 	auto hb_buf = std::make_shared<serialized_buffer>();
-	hb_buf->message_type = draiosproto::message_type::AGENTINO_HEARTBEAT;
+	hb_buf->message_type = draiosproto::message_type::AGENT_SERVER_HEARTBEAT;
 	hb_buf->ts_ns = time(nullptr) * ONE_SECOND_IN_NS;
 	m_transmit_queue.put(hb_buf, protocol_queue::BQ_PRIORITY_LOW);
 }
