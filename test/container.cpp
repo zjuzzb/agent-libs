@@ -7,12 +7,6 @@
 #include "scap-int.h"
 #include "sys_call_test.h"
 
-#include <Poco/NumberFormatter.h>
-#include <Poco/NumberParser.h>
-#include <Poco/PipeStream.h>
-#include <Poco/Process.h>
-#include <Poco/StringTokenizer.h>
-
 #include <algorithm>
 #include <atomic>
 #include <cassert>

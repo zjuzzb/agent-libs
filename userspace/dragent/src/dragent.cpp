@@ -1,3 +1,5 @@
+#define __STDC_FORMAT_MACROS
+#include "agent-config.h"
 #include "app_checks_proxy.h"
 #include "async_aggregator.h"
 #include "avoid_block_channel.h"
@@ -74,8 +76,22 @@
 #include "windows_helpers.h"
 #endif
 
+#include <Poco/ConsoleChannel.h>
+#include <Poco/Formatter.h>
+#include <Poco/FormattingChannel.h>
+#include <Poco/Util/HelpFormatter.h>
+#include <Poco/NumberFormatter.h>
+#include <Poco/NumberParser.h>
+#include <Poco/PatternFormatter.h>
+#include <Poco/SHA1Engine.h>
+#include <Poco/Util/Option.h>
+#include <Poco/Util/OptionSet.h>
+
+
 using namespace std;
 using namespace dragent;
+using namespace Poco;
+using Poco::Util::Option;
 
 // local helper functions
 namespace
@@ -176,7 +192,7 @@ type_config<uint64_t>::ptr c_wait_before_ready_sec =
 
 type_config<uint64_t> c_memdump_size(300 * 1024 * 1024, "", "memdump", "size");
 
-string compute_sha1_digest(SHA1Engine& engine, const string& path)
+string compute_sha1_digest(Poco::SHA1Engine& engine, const string& path)
 {
 	engine.reset();
 	ifstream fs(path);
@@ -321,7 +337,7 @@ void dragent_app::uninitialize()
 	ServerApplication::uninitialize();
 }
 
-void dragent_app::defineOptions(OptionSet& options)
+void dragent_app::defineOptions(Poco::Util::OptionSet& options)
 {
 	ServerApplication::defineOptions(options);
 
@@ -418,7 +434,7 @@ void dragent_app::handleOption(const std::string& name, const std::string& value
 	}
 	else if (name == "evtcount")
 	{
-		m_configuration.m_evtcnt = NumberParser::parse64(value);
+		m_configuration.m_evtcnt = Poco::NumberParser::parse64(value);
 	}
 	else if (name == "customerid")
 	{
@@ -430,7 +446,7 @@ void dragent_app::handleOption(const std::string& name, const std::string& value
 	}
 	else if (name == "srvport")
 	{
-		m_configuration.m_server_port = (uint16_t)NumberParser::parse(value);
+		m_configuration.m_server_port = (uint16_t)Poco::NumberParser::parse(value);
 	}
 #ifndef CYGWING_AGENT
 	else if (name == "noipcns")
@@ -456,7 +472,7 @@ void dragent_app::handleOption(const std::string& name, const std::string& value
 
 void dragent_app::displayHelp()
 {
-	HelpFormatter helpFormatter(options());
+	Poco::Util::HelpFormatter helpFormatter(options());
 	helpFormatter.setCommand(commandName());
 	helpFormatter.setUsage("OPTIONS");
 	helpFormatter.setHeader("Draios Agent.");
@@ -2463,10 +2479,10 @@ void dragent_app::initialize_logging()
 	file_channel->setProperty("rotation", std::to_string(m_configuration.m_max_log_size) + "M");
 	file_channel->setProperty("archive", "timestamp");
 
-	AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %H:%M:%S.%i, %P.%I, %p, %t"));
+	AutoPtr<Formatter> formatter(new Poco::PatternFormatter("%Y-%m-%d %H:%M:%S.%i, %P.%I, %p, %t"));
 	AutoPtr<Channel> avoid_block(
 	    new avoid_block_channel(file_channel, m_configuration.machine_id()));
-	AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, avoid_block));
+	AutoPtr<Channel> formatting_channel_file(new Poco::FormattingChannel(formatter, avoid_block));
 
 	// Create file logger at most permissive level (trace). This allows all messages to flow.
 	// Log severity of messages actually emitted through the channel will be managed by
@@ -2485,8 +2501,8 @@ void dragent_app::initialize_logging()
 		                                                  m_configuration.m_user_max_burst_events));
 	}
 
-	AutoPtr<Channel> console_channel(new ConsoleChannel());
-	AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
+	AutoPtr<Channel> console_channel(new Poco::ConsoleChannel());
+	AutoPtr<Channel> formatting_channel_console(new Poco::FormattingChannel(formatter, console_channel));
 	// Create console logger at most permissive level (trace). This allows all messages to flow.
 	// Log severity of messages actually emitted through the channel will be managed by
 	// the consumers of the channel
@@ -2511,7 +2527,7 @@ void dragent_app::initialize_logging()
 
 void dragent_app::monitor_files(uint64_t uptime_s)
 {
-	static SHA1Engine engine;
+	static Poco::SHA1Engine engine;
 	bool detected_change = false;
 
 	// init the file states when called for the first time

@@ -32,10 +32,8 @@ using namespace std;
 #include "running_state_fixture.h"
 #include "async_aggregator.h"
 #include "watchdog_runnable_pool.h"
-#include "scoped_config.h"
 #include "utils.h"
 
-#include <Poco/Net/SSLManager.h>
 #include <Poco/Net/NetException.h>
 using namespace dragent;
 using namespace test_helpers;

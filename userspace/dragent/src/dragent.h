@@ -1,7 +1,5 @@
 #pragma once
 
-#include "main.h"
-
 #ifndef CYGWING_AGENT
 #ifndef _WIN32
 #include <sys/prctl.h>
@@ -37,11 +35,22 @@
 #include "timer_thread.h"
 #include "watchdog.h"
 
+#include <Poco/NamedEvent.h>
+#include <Poco/Util/ServerApplication.h>
 
 class promscrape;
 class promscrape_proxy;
 class promscrape_stats_proxy;
 class user_event_channel;
+
+namespace Poco
+{
+namespace Util
+{
+class OptionSet;
+}
+class Logger;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // The main application class
@@ -53,9 +62,9 @@ public:
 	~dragent_app();
 
 protected:
-	void initialize(Application& self);
+	void initialize(Poco::Util::Application& self);
 	void uninitialize();
-	void defineOptions(OptionSet& options);
+	void defineOptions(Poco::Util::OptionSet& options);
 	void handleOption(const std::string& name, const std::string& value);
 	void displayHelp();
 	int main(const std::vector<std::string>& args);
@@ -68,7 +77,7 @@ private:
 	void initialize_logging();
 	void check_for_clean_shutdown();
 	void mark_clean_shutdown();
-	Logger* make_event_channel();
+	Poco::Logger* make_event_channel();
 	void send_internal_metrics(pid_t pid, const std::string& name);
 	void log_watchdog_report() const;
 	void update_subprocesses();
@@ -156,7 +165,7 @@ private:
 	std::unique_ptr<pipe_manager> m_coldstart_manager_pipes;
 	std::unique_ptr<pipe_manager> m_promex_pipes;
 	std::unique_ptr<pipe_manager> m_promscrape_pipes;
-	Poco::NamedEvent	m_promscrape_coldstart_event;
+	Poco::NamedEvent m_promscrape_coldstart_event;
 
 	std::shared_ptr<promscrape_proxy> m_promscrape_proxy;
 	std::shared_ptr<promscrape_stats_proxy> m_promscrape_stats_proxy;

@@ -15,6 +15,8 @@
 #include "utils.h"
 
 #include <Poco/DateTimeFormatter.h>
+#include <Poco/NumberFormatter.h>
+#include <Poco/ThreadPool.h>
 
 #include <grpc/grpc.h>
 #include <grpc/support/log.h>
@@ -562,7 +564,7 @@ void sinsp_worker::run()
 			if (!m_inspector->is_capture() && (ts > m_next_iflist_refresh_ns) &&
 			    !m_aws_metadata_refresher.is_running())
 			{
-				ThreadPool::defaultPool().start(m_aws_metadata_refresher, "aws_metadata_refresher");
+				Poco::ThreadPool::defaultPool().start(m_aws_metadata_refresher, "aws_metadata_refresher");
 				m_next_iflist_refresh_ns =
 					sinsp_utils::get_current_time_ns() + IFLIST_REFRESH_TIMEOUT_NS;
 			}
@@ -795,7 +797,7 @@ void sinsp_worker::process_job_requests(bool should_dump)
 		job_request->m_start_details = make_unique<capture_job_queue_handler::start_job_details>();
 
 		job_request->m_request_type = capture_job_queue_handler::dump_job_request::JOB_START;
-		job_request->m_token = string("dump").append(NumberFormatter::format(time(NULL)));
+		job_request->m_token = string("dump").append(Poco::NumberFormatter::format(time(NULL)));
 		job_request->m_start_details->m_duration_ns = 20000000000LL;
 		job_request->m_start_details->m_delete_file_when_done = false;
 		job_request->m_start_details->m_send_file = false;

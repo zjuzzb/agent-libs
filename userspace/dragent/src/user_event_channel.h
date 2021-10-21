@@ -2,6 +2,8 @@
 
 #include "configuration.h"
 #include "user_event.h"
+#include "Poco/Channel.h"
+#include "Poco/Message.h"
 
 
 class user_event_channel: public Poco::Channel
@@ -29,7 +31,7 @@ private:
 	user_event_queue::ptr_t m_event_queue;
 };
 
-inline void user_event_channel::log(const Message& msg)
+inline void user_event_channel::log(const Poco::Message& msg)
 {
 	try
 	{

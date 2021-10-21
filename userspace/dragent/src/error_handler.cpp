@@ -6,6 +6,10 @@
 #include "running_state.h"
 #include "utils.h"
 
+#include <Poco/Buffer.h>
+#include <Poco/Path.h>
+#include <Poco/NumberFormatter.h>
+
 COMMON_LOGGER();
 
 volatile bool dragent_error_handler::m_exception = false;
@@ -91,11 +95,11 @@ log_reporter::log_reporter(log_report_handler& handler, dragent_configuration * 
 
 void log_reporter::send_report(protocol_queue& transmit_queue, uint64_t ts_ns)
 {
-	Path p;
+	Poco::Path p;
 	p.parseDirectory(m_configuration->m_log_dir);
 
 	LOG_ERROR("agent didn't terminate cleanly, sending the last "
-				 + NumberFormatter::format(m_configuration->m_dirty_shutdown_report_log_size_b)
+				 + Poco::NumberFormatter::format(m_configuration->m_dirty_shutdown_report_log_size_b)
 				 + "B to collector");
 
 	p.setFileName("draios.log");
@@ -131,7 +135,7 @@ void log_reporter::send_report(protocol_queue& transmit_queue, uint64_t ts_ns)
 		return;
 	}
 
-	Buffer<char> buf(offset);
+	Poco::Buffer<char> buf(offset);
 	if (!fp.read(buf.begin(), offset))
 	{
 		LOG_ERROR("fread error");

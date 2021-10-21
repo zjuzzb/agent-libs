@@ -17,6 +17,8 @@
 // generally uses the `jsoncpp' library
 #include <nlohmann/json.hpp>
 
+#include <Poco/NumberFormatter.h>
+
 using namespace std;
 using nlohmann::json;
 using namespace libsanalyzer;
@@ -1003,7 +1005,7 @@ bool security_mgr::throttle_policy_event(uint64_t ts_ns,
 	{
 		LOG_DEBUG("security_mgr::accept_policy_event allowing policy=" + policy_name
 			     + ", container=" + container_id
-			     + ", tokens=" + NumberFormatter::format(it->second.get_tokens()));
+			     + ", tokens=" + Poco::NumberFormatter::format(it->second.get_tokens()));
 	}
 	else
 	{
@@ -1023,7 +1025,7 @@ bool security_mgr::throttle_policy_event(uint64_t ts_ns,
 
 		LOG_DEBUG("security_mgr::accept_policy_event throttling policy=" + policy_name
 			     + ", container=" + container_id
-			     + ", tcount=" + NumberFormatter::format(it2->second));
+			     + ", tcount=" + Poco::NumberFormatter::format(it2->second));
 	}
 
 	return accepted;
@@ -1534,7 +1536,7 @@ void security_mgr::check_pending_k8s_audit_events()
 			os << "Could not start k8s audit server ("
 			   << res.error_message()
 			   << "), trying again in "
-			   << NumberFormatter::format(security_config::instance().get_k8s_audit_server_refresh_interval() / 1000000000)
+			   << Poco::NumberFormatter::format(security_config::instance().get_k8s_audit_server_refresh_interval() / 1000000000)
 			   << "seconds";
 
 			LOG_ERROR(os.str());
