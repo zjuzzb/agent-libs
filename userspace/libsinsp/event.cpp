@@ -2693,6 +2693,15 @@ bool sinsp_evt::is_network_error() const
 	}
 }
 
+bool sinsp_evt::is_chmod_to_exec() const {
+	return (m_pevt->type == PPME_SYSCALL_CHMOD_E) || (m_pevt->type == PPME_SYSCALL_CHMOD_X);
+}
+bool sinsp_evt::is_creat_with_exec() const {
+	return (m_pevt->type == PPME_SYSCALL_CREAT_E) || (m_pevt->type == PPME_SYSCALL_CREAT_X);
+}
+uint64_t sinsp_evt::get_evt_type() const {
+	return m_pevt->type;
+}
 uint64_t sinsp_evt::get_lastevent_ts() const
 {
 	return m_tinfo->m_lastevent_ts;

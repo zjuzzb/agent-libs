@@ -378,7 +378,9 @@ public:
 	  Precondition: is_syscall_error() must return true.
 	*/
 	bool is_network_error() const;
-
+	bool is_chmod_to_exec() const;
+	bool is_creat_with_exec() const;
+	uint64_t get_evt_type() const;
 	uint64_t get_lastevent_ts() const;
 
 // Doxygen doesn't understand VISIBILITY_PRIVATE
