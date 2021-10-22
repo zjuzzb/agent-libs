@@ -2,6 +2,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/targe
 
 add_library(
     test_helpers STATIC
+    http_server.cpp
     scoped_file_descriptor.cpp
     scoped_file_pointer.cpp
     scoped_fmemopen.cpp

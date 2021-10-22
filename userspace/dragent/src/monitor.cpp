@@ -2,6 +2,8 @@
 #include "monitor.h"
 
 #include "Poco/Exception.h"
+#include "Poco/File.h"
+#include "Poco/Process.h"
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -51,7 +53,7 @@ static void delete_pid_file(const string& pidfile)
 	{
 		try
 		{
-			File f(pidfile);
+			Poco::File f(pidfile);
 			f.remove(true);
 		}
 		catch (Poco::Exception&)

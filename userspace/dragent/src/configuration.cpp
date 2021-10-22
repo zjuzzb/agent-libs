@@ -9,7 +9,11 @@
 #include "windows_helpers.h"
 #include "zlib.h"
 
+#include "Poco/Util/Application.h"
+#include "Poco/Environment.h"
 #include "Poco/File.h"
+#include "Poco/FileStream.h"
+#include "Poco/NumberFormatter.h"
 #include "Poco/Net/HTTPClientSession.h"
 #include "Poco/Net/HTTPRequest.h"
 #include "Poco/Net/HTTPResponse.h"
@@ -625,7 +629,7 @@ void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt,
 	}
 }
 
-string dragent_configuration::get_install_prefix(const Application* app)
+string dragent_configuration::get_install_prefix(const Poco::Util::Application* app)
 {
 #ifdef CYGWING_AGENT
 	return windows_helpers::get_executable_parent_dir();
@@ -653,7 +657,7 @@ string dragent_configuration::get_install_prefix(const Application* app)
 #endif
 }
 
-void dragent_configuration::init(Application* app,
+void dragent_configuration::init(Poco::Util::Application* app,
                                  bool use_installed_dragent_yaml,
                                  const std::string* conf_file_override_path)
 {
@@ -2055,7 +2059,7 @@ string dragent_configuration::get_distribution()
 void dragent_configuration::refresh_machine_id()
 {
 #ifndef CYGWING_AGENT
-	m_machine_id = Environment::nodeId();
+	m_machine_id = Poco::Environment::nodeId();
 #else
 	//
 	// NOTE: Environment::nodeId() is buggy in cygwin poco, and returns

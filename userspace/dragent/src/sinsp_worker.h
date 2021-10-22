@@ -1,6 +1,5 @@
 #pragma once
 
-#include "main.h"
 #include "capture_job_handler.h"
 #include "compliance_mgr.h"
 #include "compliance_statsd_destination.h"

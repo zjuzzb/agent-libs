@@ -1,20 +1,22 @@
 #pragma once
 
-#include <sys/time.h>
-
-#include "agentino_connection.h"
+#include "agentino.pb.h"
+#include "connection.h"
 #include "connection_manager.h"
+#include "connection_server.h"
 #include "container_manager.h"
 #include "running_state_runnable.h"
 #include "security_result_handler.h"
 #include "thread_pool.h"
 
+#include <atomic>
 #include <condition_variable>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <set>
 #include <string>
+#include <sys/time.h>
 #include <thread>
 
 /**
@@ -43,6 +45,15 @@ class dump_response;
 // actual code
 namespace agentone
 {
+/**
+ * data we need to save from the handshake for each connection
+ */
+class agentino_handshake_connection_context : public connection_context
+{
+public:
+	draiosproto::agentino_handshake request;
+};
+
 enum agentino_metadata_property
 {
 	CONTAINER_ID = 0,
@@ -210,17 +221,8 @@ public:
  *   Therefore, say, the container manager should never call into the agentino manager
  *   while loding a lock, or the agentino.
  */
-class agentino_manager : public connection_manager::message_handler
+class agentino_manager : public connection_server_owner
 {
-public:
-	static uint64_t get_current_ts_ns()
-	{
-		struct timeval tv;
-		gettimeofday(&tv, NULL);
-
-		return tv.tv_sec * (uint64_t)1000000000 + tv.tv_usec * 1000;
-	}
-
 public:
 	agentino_manager(security_result_handler& events_handler,
 	                 protocol_queue* transmit_queue,
@@ -232,38 +234,6 @@ public:
 	// Make sure we don't accidentally copy the AM
 	agentino_manager(const agentino_manager&) = delete;
 	agentino_manager& operator=(const agentino_manager&) = delete;
-
-	/**
-	 * Listen for incoming agentino connections on the given port.
-	 */
-	void listen(uint16_t port);
-
-	/**
-	 * Tear down the listen thread.
-	 */
-	void stop_listening();
-
-	/**
-	 * Process the incoming handshake protobuf and provide a response.
-	 *
-	 * If function returns true, incoming handshake is valid and the response
-	 * parameter is populated.
-	 *
-	 * If function returns false, incoming handshake is invalid and the
-	 * response parameter is undefined.
-	 */
-	bool handle_agentino_handshake(const draiosproto::agentino_handshake&,
-	                               draiosproto::agentino_handshake_response&);
-
-	/**
-	 * When the listening socket receives a new connection.
-	 */
-	void new_agentino_connection(connection::ptr connection);
-
-	/**
-	 * A connection has dropped and should be removed from tracking.
-	 */
-	void delete_agentino_connection(connection::ptr connection);
 
 	/**
 	 * returns a copy of the list of agentinos. This represents a point in time
@@ -296,35 +266,26 @@ public:
 	 */
 	draiosproto::policies_v2 get_cached_policies() const;
 
-public:  // message_handler
 	bool handle_message(draiosproto::message_type type,
 	                    const uint8_t* buffer,
 	                    size_t buffer_size) override;
+
+public:  // connection_server_owner
+	connection::result handle_handshake(connection::ptr& conn,
+	                                    const raw_message& message,
+	                                    std::unique_ptr<google::protobuf::MessageLite>& response,
+	                                    draiosproto::message_type& response_type) override;
+	void new_connection(connection::ptr& conn) override;
+	void delete_connection(connection::ptr& conn) override;
+	void get_pollable_connections(std::list<connection::ptr>& out) const override;
 
 private:  // functions
 	// we assume all these are called with the lock held
 	agentino::ptr find_extant_agentino_not_threadsafe(
 	    const std::map<agentino_metadata_property, std::string>& metadata) const;
-	agentino::ptr find_extant_agentino_not_threadsafe(connection::ptr connection_in) const;
+	agentino::ptr find_extant_agentino_not_threadsafe(
+	    std::shared_ptr<connection> connection_in) const;
 	void agentino_connection_lost(agentino::ptr agentino_in);
-
-	/**
-	 * Polls all active agentino connections for incoming data and handles them.
-	 *
-	 * We need to scale pretty dramatically regarding number of agentinos
-	 * supported, and this method is how we do that. All the agentino sockets are
-	 * passed into a list and polled at once.
-	 *
-	 * Building the list each time is probably pretty inefficient. We have all the
-	 * mechanisms in place for the agentino manager to maintain the list rather
-	 * than rebuilding it each time. That's a TODO.
-	 */
-	void build_agentino_poll_list(std::list<cm_socket::poll_sock>&) const;
-
-	/**
-	 * Runs the network loop for the agentino manager / agentinos
-	 */
-	void poll_and_dispatch(std::chrono::milliseconds timeout);
 
 	// the run function for our thread
 	void run();
@@ -333,7 +294,9 @@ private:  // functions
 	// should ONLY ever be invoked from the agentino_manager thread, otherwise there is
 	// possibility of race between two sending policies to the same agent, which
 	// could be out of order (thus pushing an older policies message)
-	void propagate_policies();
+	//
+	// returns whether work has been done
+	bool propagate_policies();
 
 	// wrapper for the agentino builder existing for the sole purpose of giving
 	// us a way to create test agentinos easily
@@ -362,6 +325,7 @@ public:
 
 private:
 	volatile bool m_shutdown;
+	volatile std::atomic<bool> m_policies_valid;
 	security_result_handler& m_events_handler;
 	protocol_queue* m_transmit_queue;
 	mutable std::mutex m_agentino_list_lock;  // Lock protects the agentinos by connection queue
@@ -389,12 +353,9 @@ private:
 	const std::string m_machine_id;
 	const std::string m_customer_id;
 
-	// The pool is used to manage per-agentino socket events. The thread is
-	// for the server socket and other one-off stuff the manager needs to do
-	// COuld probably be combined at some point.
-	thread_pool m_pool;
 	std::thread m_thread;
 
+	connection_server m_connection_server;
 	friend class test_helper;
 };
 

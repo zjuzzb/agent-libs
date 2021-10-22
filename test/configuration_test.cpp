@@ -4,10 +4,20 @@
 
 #include <gtest.h>
 #include <Poco/File.h>
+#include <Poco/AutoPtr.h>
+#include <Poco/ConsoleChannel.h>
+#include <Poco/Formatter.h>
+#include <Poco/FormattingChannel.h>
+#include <Poco/Logger.h>
+#include <Poco/Message.h>
+#include <Poco/Path.h>
+#include <Poco/PatternFormatter.h>
 
 #include <configuration.h>
 
+
 using namespace std;
+using namespace Poco;
 
 class configuration_test : public testing::Test
 {

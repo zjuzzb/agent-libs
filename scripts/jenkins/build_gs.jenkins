@@ -7,14 +7,16 @@ pipeline {
         string(name: 'BASE_RELEASE_VERSION', defaultValue: '0.DEV-TEST', trim: true, description: 'the agent version this release is based on')
         string(name: 'GS_RELEASE_VERSION', defaultValue: '${BASE_RELEASE_VERSION}gs1', trim: true, description: 'GS-specific release version')
         string(name: 'AGENT_BRANCH', defaultValue: 'release-${BASE_RELEASE_VERSION}', trim: true)
-        string(name: 'SYSDIG_BRANCH', defaultValue: 'agent-release-${BASE_RELEASE_VERSION}', trim: true)
         string(name: 'FALCO_BRANCH', defaultValue: 'agent-release-${BASE_RELEASE_VERSION}', trim: true)
         string(name: 'PROTOREPO_BRANCH', defaultValue: 'agent-release-${BASE_RELEASE_VERSION}', trim: true)
         booleanParam(name: 'UPLOAD', defaultValue: false, description: 'set to upload this to the s3 bucket. ONLY use during actual release')
         string(name: 'BUILDER_VERSION', defaultValue: 'release-${BASE_RELEASE_VERSION}', trim: true, description: 'version of the builder to use')
-        string(name: 'LIBSINSP_BRANCH', defaultValue: 'agent-release-${BASE_RELEASE_VERSION}', trim: true)
-        string(name: 'LIBSCAP_BRANCH', defaultValue: 'agent-release-${BASE_RELEASE_VERSION}', trim: true)
         string(name: 'LIBS_BRANCH', defaultValue: 'agent-release-${BASE_RELEASE_VERSION}', trim: true)
+        string(name: 'PROBEBUILDER_BRANCH', defaultValue: 'agent-release-${BASE_RELEASE_VERSION}', trim: true)
+    }
+    environment {
+        GS_RELEASE_VERSION="${params.GS_RELEASE_VERSION}"
+        BASE_RELEASE_VERSION="${params.BASE_RELEASE_VERSION}"
     }
     stages {
         stage('Check out dependencies') {
@@ -31,9 +33,9 @@ pipeline {
                     checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/agent-libs']]])
                     sh "git checkout ${params.LIBS_BRANCH}"
                 }
-                dir('libscap') {
-                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap']]])
-                    sh "git checkout ${params.LIBSCAP_BRANCH}"
+                dir('probe-builder') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/probe-builder']]])
+                    sh "git checkout ${params.PROBEBUILDER_BRANCH}"
                 }
                 dir('protorepo') {
                     checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])

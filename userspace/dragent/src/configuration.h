@@ -1,18 +1,38 @@
 #pragma once
 
-#include "main.h"
+#include "analyzer.h"  // sinsp_chisel_details
+#include "app_checks.h"
 #include "common_logger.h"
-#include "user_event.h"
-#include "limits/metric_limits.h"
+#include "config.h"
 #include "custom_container.h"
+#include "mesos.h"
+#include "mount_points_limits.h"
+#include "proc_filter.h"
+#include "prometheus.h"
+#include "type_config.h"
+#include "user_event.h"
+#include "yaml_configuration.h"
+
+#include "Poco/DigestEngine.h"
+#include "Poco/Message.h"
+#include "Poco/Path.h"
+#include "Poco/Runnable.h"
+#include "Poco/SHA1Engine.h"
+#include "limits/metric_limits.h"
 
 #include <atomic>
+#include <map>
 #include <memory>
 #include <set>
-#include <map>
 #include <string>
 
-#include "yaml_configuration.h"
+namespace Poco
+{
+namespace Util
+{
+class Application;
+}
+}  // namespace Poco
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration defaults
@@ -38,16 +58,13 @@
 static const int PIPE_BUFFER_SIZE = 1048576;
 #define SDJAGENT_JMX_TIMEOUT "2000"
 
-
 class aws_metadata
 {
 public:
-	aws_metadata():
-		m_public_ipv4(0)
-	{}
+	aws_metadata() : m_public_ipv4(0) {}
 
-	uint32_t m_public_ipv4; // http://169.254.169.254/latest/meta-data/public-ipv4
-	std::string m_instance_id; // http://169.254.169.254/latest/meta-data/public-ipv4
+	uint32_t m_public_ipv4;     // http://169.254.169.254/latest/meta-data/public-ipv4
+	std::string m_instance_id;  // http://169.254.169.254/latest/meta-data/public-ipv4
 	std::string m_account_id;
 	std::string m_region;
 };
@@ -57,15 +74,13 @@ class dragent_configuration;
 class dragent_auto_configuration
 {
 public:
-	dragent_auto_configuration(const std::string &config_filename,
-				   const std::string &config_directory,
-				   const std::string &config_header);
+	dragent_auto_configuration(const std::string& config_filename,
+	                           const std::string& config_directory,
+	                           const std::string& config_header);
 
-	virtual ~dragent_auto_configuration()
-	{
-	};
+	virtual ~dragent_auto_configuration(){};
 
-	int save(dragent_configuration &config, const std::string &config_data, std::string &errstr);
+	int save(dragent_configuration& config, const std::string& config_data, std::string& errstr);
 
 	void init_digest();
 
@@ -73,11 +88,11 @@ public:
 
 	const std::string config_path();
 
-	void set_config_directory(const std::string &config_directory);
+	void set_config_directory(const std::string& config_directory);
 
-	virtual bool validate(const std::string &new_config_data, std::string &errstr) = 0;
+	virtual bool validate(const std::string& new_config_data, std::string& errstr) = 0;
 
-	virtual void apply(dragent_configuration &config) = 0;
+	virtual void apply(dragent_configuration& config) = 0;
 
 protected:
 	std::string m_config_filename;
@@ -85,11 +100,12 @@ protected:
 	std::string m_config_header;
 
 private:
-	SHA1Engine m_sha1_engine;
-	DigestEngine::Digest m_digest;
+	Poco::SHA1Engine m_sha1_engine;
+	Poco::DigestEngine::Digest m_digest;
 };
 
-enum class dragent_mode_t {
+enum class dragent_mode_t
+{
 	/**
 	 * Include all data, including system call data, in metrics
 	 * protobuf.
@@ -117,9 +133,9 @@ public:
 	/**
 	 * Initialize the configuration with a yaml file
 	 */
-	void init(Application* app,
-                  bool use_installed_dragent_yaml,
-                  const std::string* conf_file_override_path = nullptr);
+	void init(Poco::Util::Application* app,
+	          bool use_installed_dragent_yaml,
+	          const std::string* conf_file_override_path = nullptr);
 
 	/**
 	 * Initialize the configuration to defaults.
@@ -127,7 +143,7 @@ public:
 	void init();
 
 	void print_configuration() const;
-	static Message::Priority string_to_priority(const std::string& priostr);
+	static Poco::Message::Priority string_to_priority(const std::string& priostr);
 	static bool get_memory_usage_mb(uint64_t* memory);
 	static std::string get_distribution();
 	bool load_error() const { return m_load_error; }
@@ -138,9 +154,9 @@ public:
 	static std::atomic<bool> m_send_log_report;
 
 	std::string m_raw_file_priority;
-	Message::Priority m_min_console_priority;
-	Message::Priority m_min_file_priority;
-	Message::Priority m_min_event_priority;
+	Poco::Message::Priority m_min_console_priority;
+	Poco::Message::Priority m_min_file_priority;
+	Poco::Message::Priority m_min_event_priority;
 	bool m_curl_debug;
 
 	// the operation of the root dir is a bit hokey.
@@ -250,7 +266,7 @@ public:
 	std::unique_ptr<custom_container::resolver> m_custom_container;
 #endif
 
-	typedef std::set<std::string>      k8s_ext_list_t;
+	typedef std::set<std::string> k8s_ext_list_t;
 	typedef std::shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
 
 	int m_k8s_delegated_nodes = 0;
@@ -353,7 +369,7 @@ public:
 	 */
 	bool m_go_k8s_user_events = false;
 
- 	bool m_cointerface_cpu_profile_enabled;
+	bool m_cointerface_cpu_profile_enabled;
 	int32_t m_cointerface_events_per_profile;
 	int32_t m_cointerface_total_profiles;
 	bool m_cointerface_mem_profile_enabled;
@@ -393,8 +409,9 @@ public:
 
 	bool m_audit_tap_enabled = false;
 
-	std::unordered_map<std::string, std::unordered_map<std::string, std::string>>m_secure_audit_k8s_filters;
-	std::vector<std::string>m_secure_audit_k8s_active_filters;
+	std::unordered_map<std::string, std::unordered_map<std::string, std::string>>
+	    m_secure_audit_k8s_filters;
+	std::vector<std::string> m_secure_audit_k8s_active_filters;
 
 	int m_top_files_per_prog = 0;
 	int m_top_files_per_container = 0;
@@ -406,10 +423,7 @@ public:
 
 	std::set<std::string> m_procfs_scan_procs;
 
-	bool java_present() const
-	{
-		return !m_java_binary.empty();
-	}
+	bool java_present() const { return !m_java_binary.empty(); }
 
 	bool python_present() const
 	{
@@ -420,10 +434,7 @@ public:
 #endif
 	}
 
-	std::string machine_id() const
-	{
-		return m_machine_id_prefix + m_machine_id;
-	}
+	std::string machine_id() const { return m_machine_id_prefix + m_machine_id; }
 
 	void refresh_aws_metadata();
 	void refresh_machine_id();
@@ -432,13 +443,15 @@ public:
 	// Returns 0 if already up-to-date, 1 if updated, -1 if
 	// error. On error, &errstr is updated with the source of the
 	// error.
-	int save_auto_config(const std::string &config_filename, const std::string& config_data, std::string &errstr);
+	int save_auto_config(const std::string& config_filename,
+	                     const std::string& config_data,
+	                     std::string& errstr);
 
-	void set_auto_config_directory(const std::string &config_directory);
+	void set_auto_config_directory(const std::string& config_directory);
 
 	static type_config<bool> c_enable_aws_metadata;
 
-    // AWS metadata
+	// AWS metadata
 	std::string get_aws_instance_id();
 	std::string get_aws_account_id();
 	std::string get_aws_region();
@@ -447,17 +460,18 @@ public:
 
 	std::string relpath_to_absolute(const std::string& relpath)
 	{
-		return Path(c_root_dir.get_value()).append(relpath).toString();
+		return Poco::Path(c_root_dir.get_value()).append(relpath).toString();
 	}
 
 private:
 	inline static bool is_executable(const std::string& path);
 	void write_statsite_configuration();
-	void add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component);
+	void add_event_filter(user_event_filter_t::ptr_t& flt,
+	                      const std::string& system,
+	                      const std::string& component);
 	void add_percentiles();
-	std::string get_install_prefix(const Application* app);
+	std::string get_install_prefix(const Poco::Util::Application* app);
 	void sanitize_limits(filter_vec_t& filters);
-
 
 	std::map<std::string, std::unique_ptr<dragent_auto_configuration>> m_supported_auto_configs;
 	bool m_load_error;
@@ -468,14 +482,15 @@ private:
 	std::string m_machine_id_prefix;
 };
 
-class aws_metadata_refresher: public Runnable
+class aws_metadata_refresher : public Poco::Runnable
 {
 public:
-	aws_metadata_refresher(dragent_configuration &configuration):
-		m_refreshed(false),
-		m_running(false),
-		m_configuration(configuration)
-	{}
+	aws_metadata_refresher(dragent_configuration& configuration)
+	    : m_refreshed(false),
+	      m_running(false),
+	      m_configuration(configuration)
+	{
+	}
 
 	void run()
 	{
@@ -490,18 +505,12 @@ public:
 		m_refreshed.store(false, std::memory_order_relaxed);
 	}
 
-	bool done()
-	{
-		return m_refreshed.load(std::memory_order_relaxed);
-	}
+	bool done() { return m_refreshed.load(std::memory_order_relaxed); }
 
-	bool is_running()
-	{
-		return m_running.load(std::memory_order_relaxed);
-	}
+	bool is_running() { return m_running.load(std::memory_order_relaxed); }
 
 private:
 	std::atomic<bool> m_refreshed;
 	std::atomic<bool> m_running;
-	dragent_configuration &m_configuration;
+	dragent_configuration& m_configuration;
 };

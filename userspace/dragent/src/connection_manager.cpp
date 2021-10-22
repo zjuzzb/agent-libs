@@ -25,6 +25,9 @@
 #include "prom_helper.h"
 
 #include <grpc_channel_registry.h>
+#include <Poco/NumberFormatter.h>
+
+using Poco::NumberFormatter;
 
 type_config<uint32_t> c_unacked_message_slots(
         3,

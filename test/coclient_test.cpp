@@ -4,6 +4,7 @@
 #include <Poco/AutoPtr.h>
 #include <Poco/ConsoleChannel.h>
 #include <Poco/Formatter.h>
+#include <Poco/FormattingChannel.h>
 #include <Poco/Logger.h>
 #include <Poco/NullChannel.h>
 #include <Poco/PatternFormatter.h>
@@ -18,6 +19,7 @@
 #include <configuration.h>
 #include <coclient.h>
 #include "docker_utils.h"
+#include "agent-config.h"
 
 using namespace std;
 using namespace Poco;

@@ -1,6 +1,4 @@
 #!/bin/bash
-/* vim:expandtab:sw=4:ts=4:sts=4
-*/
 set -exo pipefail
 
 #setup all the env vars
@@ -23,7 +21,7 @@ fi
 if [ -z "$AGENT_BUILD_DATE" ]; then
     AGENT_BUILD_DATE="$(date -u -Iseconds)"
 fi
-if [ -z "$AGENT_BUILD_COMMIT" -a -d $CODE_DIR/agent/.git]; then
+if [ -z "$AGENT_BUILD_COMMIT" -a -d $CODE_DIR/agent/.git ]; then
     pushd $CODE_DIR/agent/
     AGENT_BUILD_COMMIT="$(git rev-parse --short HEAD)"
     popd
@@ -32,7 +30,7 @@ fi
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=dependency_install_scripts --exclude=build $CODE_DIR/agent/ $WORK_DIR/agent/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' $CODE_DIR/oss-falco/ $WORK_DIR/oss-falco/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/protorepo/ $WORK_DIR/protorepo/
-rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/libscap/ $WORK_DIR/libscap/
+rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/probe-builder/ $WORK_DIR/probe-builder/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/agent-libs/ $WORK_DIR/agent-libs/
 
 configure_build()

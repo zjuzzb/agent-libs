@@ -55,8 +55,8 @@ else
 fi
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' $CODE_DIR/oss-falco/ $WORK_DIR/oss-falco/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/protorepo/ $WORK_DIR/protorepo/
-# still need this for a few things (namely sysdig-probe-loader)
-rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/libscap/ $WORK_DIR/libscap/
+# we need this (instead of the dropped libscap) for sysdig-probe-loader
+rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/probe-builder/ $WORK_DIR/probe-builder/
 if [ "$USE_OLD_DIRS" = true ]; then
 	rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/libsinsp/ $WORK_DIR/libsinsp/
 else

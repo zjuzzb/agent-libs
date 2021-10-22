@@ -1,5 +1,3 @@
-#include <sys/time.h>
-
 #include "agentino_manager.h"
 #include "common_logger.h"
 #include "connection_manager.h"
@@ -10,6 +8,7 @@
 #include "scoped_config.h"
 
 #include <gtest.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 using namespace agentone;
@@ -73,9 +72,38 @@ bool null_handshake_callback(agentino_manager* am,
 	return true;
 }
 
+class connection_server_owner_dummy : public connection_server_owner
+{
+public:
+	connection::result handle_handshake(std::shared_ptr<connection>& conn,
+	                                    const raw_message& message,
+	                                    std::unique_ptr<google::protobuf::MessageLite>& response,
+	                                    draiosproto::message_type& response_type) override
+	{
+		response.reset(new draiosproto::agentino_handshake_response);
+		response_type = draiosproto::message_type::AGENTINO_HANDSHAKE_RESPONSE;
+
+		return connection::result::SUCCESS;
+	}
+	void new_connection(std::shared_ptr<connection>& conn) override { return; }
+	void delete_connection(std::shared_ptr<connection>& conn) override { return; }
+	void get_pollable_connections(std::list<std::shared_ptr<connection>>& out) const override
+	{
+		return;
+	}
+	bool handle_message(draiosproto::message_type type,
+	                    const uint8_t* buffer,
+	                    size_t buffer_size) override
+	{
+		return true;
+	}
+};
+
+connection_server_owner_dummy g_server_owner_dummy;
+
 connection::ptr get_bogus_connection()
 {
-	return std::make_shared<connection>(nullptr, nullptr, 0, null_handshake_callback);
+	return std::make_shared<connection>(nullptr, g_server_owner_dummy, 0);
 }
 
 // a dummy agentino that overrides the send method so we can ensure things
@@ -115,9 +143,10 @@ public:
 	{
 	}
 
-	agentino::ptr build_agentino(connection::ptr connection_in,
-	                             const std::map<agentino_metadata_property, std::string>& fixed_metadata,
-	                             const std::map<std::string, std::string>& arbitrary_metadata) override
+	agentino::ptr build_agentino(
+	    connection::ptr connection_in,
+	    const std::map<agentino_metadata_property, std::string>& fixed_metadata,
+	    const std::map<std::string, std::string>& arbitrary_metadata) override
 	{
 		return std::make_shared<AGENTINO>(this);
 	}
@@ -133,7 +162,9 @@ public:
 	static void set_handshake_data(std::shared_ptr<agentone::connection> c,
 	                               draiosproto::agentino_handshake ah)
 	{
-		c->m_hs_data = ah;
+		auto handshake_context = new agentino_handshake_connection_context;
+		handshake_context->request = ah;
+		c->set_context(handshake_context);
 		// the connection won't give us the data unless we make it connected
 		c->m_state = connection::FULLY_CONNECTED;
 	}
@@ -147,7 +178,8 @@ public:
 
 TEST(agentino, get_add_metadata)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
 	container_manager c_m;
 	agentino_manager m(dummy_handler, nullptr, c_m, "machineid", "de:ad:be:ef");
@@ -164,7 +196,8 @@ TEST(agentino, get_add_metadata)
 
 TEST(agentino, get_add_remove_connection)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
 	container_manager c_m;
 	agentino_manager m(dummy_handler, nullptr, c_m, "machineid", "de:ad:be:ef");
@@ -183,7 +216,8 @@ TEST(agentino, get_add_remove_connection)
 
 TEST(agentino, allocator_with_metadata)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
 	container_manager c_m;
 	agentino_manager m(dummy_handler, nullptr, c_m, "machineid", "de:ad:be:ef");
@@ -199,7 +233,8 @@ TEST(agentino, allocator_with_metadata)
 
 TEST(agentino, build_agentino)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
 	container_manager c_m;
 	agentino_manager m(dummy_handler, nullptr, c_m, "machineid", "de:ad:be:ef");
@@ -211,7 +246,8 @@ TEST(agentino, build_agentino)
 
 TEST(agentino, build_ecs_agentino)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
 	container_manager c_m;
 	agentino_manager m(dummy_handler, nullptr, c_m, "machineid", "de:ad:be:ef");
@@ -237,7 +273,8 @@ TEST(agentino, build_ecs_agentino)
 
 TEST(agentino, build_ecs_agentino_missing_data)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
 	container_manager c_m;
 	agentino_manager m(dummy_handler, nullptr, c_m, "machineid", "de:ad:be:ef");
@@ -257,7 +294,8 @@ TEST(agentino, build_ecs_agentino_missing_data)
 // Need to check that the container is successfully deleted when an ecs agentino goes away
 TEST(agentino, delete_ecs_agentino)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
 	container_manager c_m;
 	agentino_manager m(dummy_handler, nullptr, c_m, "machineid", "de:ad:be:ef");
@@ -275,374 +313,10 @@ TEST(agentino, delete_ecs_agentino)
 	EXPECT_EQ(c_m.get_container_list().size(), 0);
 }
 
-TEST(agentino, handshake_success)
-{
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
-	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
-	// Create (but don't start) fake agentino
-	uint16_t port = 7357;
-	fake_agentino fa(true, false, true);
-	bool got_handshake = false;
-	bool handshake_valid = false;
-	bool connected = false;
-	bool disconnected = false;
-
-	// Simple connect handler
-	connection::connection_cb ccb = [&connected](agentino_manager* am,
-	                                             std::shared_ptr<connection> conn,
-	                                             void* ctx) { connected = true; };
-
-	// Simple disconnect handler
-	connection::connection_cb dcb = [&disconnected](agentino_manager* am,
-	                                                std::shared_ptr<connection> conn,
-	                                                void* ctx) { disconnected = true; };
-
-	// Simple handshake handler
-	connection::handshake_cb hcb = [&](agentino_manager* am,
-	                                   void* ctx,
-	                                   const draiosproto::agentino_handshake& hs,
-	                                   draiosproto::agentino_handshake_response& hr) -> bool {
-		got_handshake = true;
-
-		// Validate handshake (note that gtest limitations do not allow
-		// ASSERT_whatever statements in a function with a return type, so
-		// use EXPECT statements and then ASSERT after the fact.
-		EXPECT_EQ(1001, hs.timestamp_ns());
-		if (hs.timestamp_ns() == 1001)
-		{
-			handshake_valid = true;
-		}
-
-		// TODO insert the rest of handshake validation logic in here
-
-		// Build handshake response
-		hr.set_timestamp_ns(1002);
-
-		return true;
-	};
-
-	// Normally we would connect through an agentino_manager's listen loop,
-	// but this unit test is JUST testing the connection and handshake.
-	auto new_conn_cb = [&ccb, &hcb, &dcb, &got_handshake](cm_socket* sock, void* ctx) {
-		auto* pfa = (fake_agentino*)ctx;
-
-		connection::ptr connp = std::make_shared<connection>(sock, nullptr, 0, hcb, ccb, dcb);
-		connp->start(&connp);
-		for (uint32_t loops = 0;
-		     pfa->get_status() != fake_agentino::server_status::RUNNING && loops < 5000;
-		     ++loops)
-		{
-			usleep(1000);
-		}
-		ASSERT_EQ(fake_agentino::server_status::RUNNING, pfa->get_status());
-		// Once this lambda terminates the FA will report conn drop and
-		// everything will go sideways, so don't depend on FA state after
-		// this point
-	};
-
-	auto conn_error_cb = [](cm_socket::error_type et, int error, void* ctx) {
-		ASSERT_EQ(cm_socket::error_type::ERR_NONE, et);
-	};
-
-	// Use a CM socket to listen for the agentino connection
-	bool r = cm_socket::listen({port, false}, new_conn_cb, conn_error_cb, &fa);
-	ASSERT_TRUE(r);
-
-	// Now actually fire up the fake agentino
-	fa.start(port);
-
-	for (uint32_t loops = 0; !connected && loops < 5000; ++loops)
-	{
-		usleep(1000);
-	}
-	ASSERT_TRUE(got_handshake);
-	ASSERT_TRUE(handshake_valid);
-	ASSERT_TRUE(connected);
-
-	cm_socket::stop_listening(true);
-	fa.stop();
-	for (uint32_t loops = 0; !disconnected && loops < 5000; ++loops)
-	{
-		usleep(1000);
-	}
-	ASSERT_TRUE(disconnected);
-}
-
-TEST(agentino, get_handshake_data)
-{
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
-	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
-	// Create (but don't start) fake agentino
-	uint16_t port = 7359;
-	fake_agentino fa(true, false, true);
-	bool got_handshake = false;
-	bool handshake_valid = false;
-	bool connected = false;
-	bool disconnected = false;
-	struct
-	{
-		std::string id;
-		std::string image;
-		std::string name;
-	} cb_data;
-
-	// Simple connect handler
-	connection::connection_cb ccb = [&connected](agentino_manager* am,
-	                                             std::shared_ptr<connection> conn,
-	                                             void* ctx) { connected = true; };
-
-	// Simple disconnect handler
-	connection::connection_cb dcb = [&disconnected](agentino_manager* am,
-	                                                std::shared_ptr<connection> conn,
-	                                                void* ctx) { disconnected = true; };
-
-	// Simple handshake handler
-	connection::handshake_cb hcb = [&](agentino_manager* am,
-	                                   void* ctx,
-	                                   const draiosproto::agentino_handshake& hs,
-	                                   draiosproto::agentino_handshake_response& hr) -> bool {
-		got_handshake = true;
-
-		// Validate handshake (note that gtest limitations do not allow
-		// ASSERT_whatever statements in a function with a return type, so
-		// use EXPECT statements and then ASSERT after the fact.
-		EXPECT_EQ(1002, hs.timestamp_ns());
-		if (hs.timestamp_ns() == 1002)
-		{
-			handshake_valid = true;
-		}
-
-		cb_data.id = hs.metadata().container_id();
-		cb_data.image = hs.metadata().container_image();
-		cb_data.name = hs.metadata().container_name();
-
-		// Build handshake response
-		hr.set_timestamp_ns(1002);
-
-		return true;
-	};
-
-	// Normally we would connect through an agentino_manager's listen loop,
-	// but this unit test is JUST testing the connection and handshake.
-	auto new_conn_cb = [&](cm_socket* sock, void* ctx) {
-		auto* pfa = (fake_agentino*)ctx;
-
-		connection::ptr connp = std::make_shared<connection>(sock, nullptr, 0, hcb, ccb, dcb);
-		connp->start(&connp);
-		for (uint32_t loops = 0;
-		     pfa->get_status() != fake_agentino::server_status::RUNNING && loops < 5000;
-		     ++loops)
-		{
-			usleep(1000);
-		}
-		ASSERT_EQ(fake_agentino::server_status::RUNNING, pfa->get_status());
-
-		for (uint32_t loops = 0; !connected && loops < 5000; ++loops)
-		{
-			usleep(1000);
-		}
-		ASSERT_TRUE(got_handshake);
-		ASSERT_TRUE(handshake_valid);
-		ASSERT_TRUE(connected);
-
-		// OK, now that we're connected...
-		draiosproto::agentino_handshake hs;
-		bool ret = connp->get_handshake_data(&hs);
-		ASSERT_TRUE(ret);
-		ASSERT_EQ(cb_data.id, hs.metadata().container_id());
-		ASSERT_EQ(cb_data.image, hs.metadata().container_image());
-		ASSERT_EQ(cb_data.name, hs.metadata().container_name());
-
-		// Once this lambda terminates the FA will report conn drop and
-		// everything will go sideways, so don't depend on FA state after
-		// this point
-	};
-
-	auto conn_error_cb = [](cm_socket::error_type et, int error, void* ctx) {
-		ASSERT_EQ(cm_socket::error_type::ERR_NONE, et);
-	};
-
-	// Use a CM socket to listen for the agentino connection
-	bool r = cm_socket::listen({port, false}, new_conn_cb, conn_error_cb, &fa);
-	ASSERT_TRUE(r);
-
-	// Now actually fire up the fake agentino
-	fa.start(port);
-
-	for (uint32_t loops = 0; !connected && loops < 5000; ++loops)
-	{
-		usleep(1000);
-	}
-	ASSERT_TRUE(got_handshake);
-	ASSERT_TRUE(handshake_valid);
-	ASSERT_TRUE(connected);
-
-	cm_socket::stop_listening(true);
-	fa.stop();
-	for (uint32_t loops = 0; !disconnected && loops < 5000; ++loops)
-	{
-		usleep(1000);
-	}
-	ASSERT_TRUE(disconnected);
-}
-
-TEST(agentino, handshake_fail)
-{
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
-	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
-	// Create (but don't start) fake agentino
-	uint16_t port = 7358;
-	fake_agentino fa(true, false, true);
-	bool got_handshake = false;
-	bool disconnected = false;
-
-	// Simple disconnect handler
-	connection::connection_cb dcb = [&disconnected](agentino_manager* am,
-	                                                std::shared_ptr<connection> conn,
-	                                                void* ctx) { disconnected = true; };
-
-	// The most minimal handshake handler
-	connection::handshake_cb hcb = [&got_handshake](
-	                                   agentino_manager* am,
-	                                   void* ctx,
-	                                   const draiosproto::agentino_handshake&,
-	                                   draiosproto::agentino_handshake_response& resp) -> bool {
-		got_handshake = true;
-
-		return false;
-	};
-
-	// Normally we would connect through an agentino_manager's listen loop,
-	// but this unit test is JUST testing the connection.
-	auto new_conn_cb = [&dcb, &hcb, &got_handshake, &fa](cm_socket* sock, void* ctx) {
-		// auto* fa = (fake_agentino*)ctx;
-
-		connection::ptr connp =
-		    std::make_shared<connection>(sock, nullptr, 0, hcb, connection::empty_callback, dcb);
-		connp->start(ctx);
-		for (uint32_t loops = 0; !got_handshake && loops < 5000; ++loops)
-		{
-			usleep(1000);
-		}
-		ASSERT_TRUE(got_handshake);
-
-		for (uint32_t loops = 0; fa.connected() && loops < 5000; ++loops)
-		{
-			usleep(1000);
-		}
-		ASSERT_FALSE(fa.connected());
-	};
-
-	auto conn_error_cb = [](cm_socket::error_type et, int error, void* ctx) {
-		ASSERT_EQ(cm_socket::error_type::ERR_NONE, et);
-	};
-
-	// Use a CM socket to listen for the agentino connection
-	cm_socket::listen({port, false}, new_conn_cb, conn_error_cb, &fa);
-
-	// Now actually fire up the agentino
-	fa.start(port);
-
-	for (uint32_t loops = 0; !got_handshake && loops < 5000; ++loops)
-	{
-		usleep(1000);
-	}
-	ASSERT_TRUE(got_handshake);
-
-	for (uint32_t loops = 0; !disconnected && loops < 3000; ++loops)
-	{
-		usleep(1000);
-	}
-	ASSERT_TRUE(disconnected);
-
-	fa.stop();
-	cm_socket::stop_listening(true);
-}
-
-TEST(agentino, handshake_disconnect)
-{
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
-	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
-	// Create (but don't start) fake agentino
-	fake_agentino fa(true, false, true);
-	bool got_handshake = false;
-	bool disconnect_on_handshake = true;
-	bool connected = false;
-	bool disconnected = false;
-	connection::ptr connp;
-
-	// Simple connect handler
-	connection::connection_cb ccb = [&connected](agentino_manager* am,
-	                                             std::shared_ptr<connection> conn,
-	                                             void* ctx) { connected = true; };
-
-	// Simple disconnect handler
-	connection::connection_cb dcb = [&disconnected](agentino_manager* am,
-	                                                std::shared_ptr<connection> conn,
-	                                                void* ctx) { disconnected = true; };
-
-	// Simple handshake handler
-	connection::handshake_cb hcb = [&](agentino_manager* am,
-	                                   void* ctx,
-	                                   const draiosproto::agentino_handshake& hs,
-	                                   draiosproto::agentino_handshake_response& hr) -> bool {
-		auto* pfa = (fake_agentino*)ctx;
-
-		if (disconnect_on_handshake)
-		{
-			pfa->drop_connection();
-			for (uint32_t loops = 0;
-			     fa.get_status() != fake_agentino::server_status::SHUTDOWN && loops < 2000;
-			     ++loops)
-			{
-				usleep(1000);
-			}
-		}
-		hr.set_timestamp_ns(1002);
-
-		got_handshake = true;
-		return true;
-	};
-
-	// Normally we would connect through an agentino_manager's listen loop,
-	// but this unit test is JUST testing the connection and handshake.
-	auto new_conn_cb = [&ccb, &dcb, &hcb, &connp, &disconnected](cm_socket* sock, void* ctx) {
-		connp = std::make_shared<connection>(sock, nullptr, 0, hcb, ccb, dcb);
-		connp->start(ctx);
-
-		for (uint32_t loops = 0; !disconnected && loops < 3000; ++loops)
-		{
-			usleep(1000);
-		}
-		ASSERT_TRUE(disconnected);
-	};
-
-	auto conn_error_cb = [](cm_socket::error_type et, int error, void* ctx) {
-		ASSERT_EQ(cm_socket::error_type::ERR_NONE, et);
-	};
-
-	// Use a CM socket to listen for the agentino connection
-	cm_socket::listen({7357, false}, new_conn_cb, conn_error_cb, &fa);
-
-	// Now actually fire up the fake agentino
-	fa.start(7357);
-
-	for (uint32_t loops = 0; !disconnected && loops < 5000; ++loops)
-	{
-		usleep(1000);
-	}
-	ASSERT_EQ(1, fa.get_num_disconnects());
-	ASSERT_FALSE(connected);
-	ASSERT_TRUE(got_handshake);
-	ASSERT_TRUE(disconnected);
-
-	fa.stop();
-	cm_socket::stop_listening(true);
-}
-
 TEST(agentino_manager, basic)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
 	container_manager c_m;
 	agentino_manager am(dummy_handler, nullptr, c_m, "machineid", "de:ad:be:ef");
@@ -671,7 +345,8 @@ TEST(agentino_manager, build_metadata)
 
 TEST(agentino_manager, add_delete_connection)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
 	container_manager c_m;
 	agentino_manager am(dummy_handler, nullptr, c_m, "machineid", "de:ad:be:ef");
@@ -682,14 +357,14 @@ TEST(agentino_manager, add_delete_connection)
 	data.mutable_metadata()->set_container_name("name");
 	test_helper::set_handshake_data(c, data);
 
-	am.new_agentino_connection(c);
+	am.new_connection(c);
 	auto a = am.get_agentino(c);
 	ASSERT_NE(a, nullptr);
 	EXPECT_NE(a->get_container_list().find("id"), a->get_container_list().end());
 	EXPECT_EQ(a->get_connection_info(), c);
 	EXPECT_EQ(am.get_agentino_list().size(), 1);
 
-	am.delete_agentino_connection(c);
+	am.delete_connection(c);
 	EXPECT_EQ(am.get_agentino_list().size(), 0);
 	EXPECT_EQ(am.get_agentino(c), nullptr);
 }
@@ -699,7 +374,8 @@ TEST(agentino_manager, add_delete_connection)
 // destroyed
 TEST(agentino_manager, ecs_agentino_overlap)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
 	container_manager c_m;
 	agentino_manager m(dummy_handler, nullptr, c_m, "machineid", "de:ad:be:ef");
@@ -710,7 +386,7 @@ TEST(agentino_manager, ecs_agentino_overlap)
 	data.mutable_metadata()->set_container_id("id");
 	test_helper::set_handshake_data(connection_in, data);
 
-	m.new_agentino_connection(connection_in);
+	m.new_connection(connection_in);
 	ASSERT_NE(c_m.get_container("id"), nullptr);
 	EXPECT_EQ(c_m.get_container("id")->get_ref(), 1);
 	EXPECT_EQ(m.get_agentino_list().size(), 1);
@@ -719,19 +395,20 @@ TEST(agentino_manager, ecs_agentino_overlap)
 
 	// now "delete" the connection, causing it to be removed from the agentino manager,
 	// but we still have a pointer to it (a)
-	m.delete_agentino_connection(connection_in);
+	m.delete_connection(connection_in);
 	EXPECT_EQ(m.get_agentino_list().size(), 0);               // gone from aganetino manager
 	EXPECT_EQ(a->get_metadata_property(CONTAINER_ID), "id");  // still exists!
 	EXPECT_EQ(c_m.get_container("id")->get_ref(), 1);         // container there too!
 
 	// Now create a second identical agentino
-	m.new_agentino_connection(connection_in);
+	m.new_connection(connection_in);
 	EXPECT_EQ(m.get_agentino_list().size(), 1);        // Now we have agentino
 	EXPECT_EQ(c_m.get_container("id")->get_ref(), 2);  // double ref on the container!
 
 	// Now delete the first agentino.
 	// The agentino might still live on the new_agentino_list until the next
 	// time the loop runs. This is not a bug.
+
 	a = nullptr;
 	for (uint32_t loops = 0; c_m.get_container("id")->get_ref() > 1 && loops < 4000; ++loops)
 	{
@@ -742,7 +419,7 @@ TEST(agentino_manager, ecs_agentino_overlap)
 
 	// Now delete everything.
 	// Again, must wait for the list to synchronize.
-	m.delete_agentino_connection(connection_in);
+	m.delete_connection(connection_in);
 	for (uint32_t loops = 0; c_m.get_container("id") != nullptr && loops < 4000; ++loops)
 	{
 		usleep(100);
@@ -753,13 +430,20 @@ TEST(agentino_manager, ecs_agentino_overlap)
 
 TEST(agentino_manager, basic_connection)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
 	scoped_config<uint16_t> agentino_port("agentino_port", 6767);
 	scoped_config<bool> agentino_ssl("agentino_ssl", false);
 	container_manager c_m;
 	agentino_manager am(dummy_handler, nullptr, c_m, "machineid", "de:ad:be:ef");
-	fake_agentino fa(true, false, true);
+	fake_agentino fa(true, false, 1000, true);
+	draiosproto::policies_v2 bogus_policies;
+
+	// The agentino manager needs policies before it will allow connections
+	am.handle_message(draiosproto::message_type::POLICIES_V2,
+	                  (uint8_t*)&bogus_policies,
+	                  sizeof(bogus_policies));
 
 	// Now fire up the fake agentino
 	fa.start(6767);
@@ -790,8 +474,9 @@ TEST(agentino_manager, basic_connection)
 
 TEST(agentino_manager, multi_connection)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
 	const uint32_t num_fas = 3;
 	const uint16_t port = 6767;
 	scoped_config<uint16_t> agentino_port("agentino_port", port);
@@ -799,13 +484,19 @@ TEST(agentino_manager, multi_connection)
 	container_manager c_m;
 	agentino_manager am(dummy_handler, nullptr, c_m, "machineid", "de:ad:be:ef");
 	std::list<fake_agentino*> fas;
+	draiosproto::policies_v2 bogus_policies;
+
+	// The agentino manager needs policies before it will allow connections
+	am.handle_message(draiosproto::message_type::POLICIES_V2,
+	                  (uint8_t*)&bogus_policies,
+	                  sizeof(bogus_policies));
 
 	// Build and start the fake agentinos
 	for (uint32_t i = 0; i < num_fas; ++i)
 	{
 		std::stringstream ss;
 		ss << i << i << i << "-" << num_fas - i;
-		auto* fa = new fake_agentino(true, false, false, ss.str());
+		auto* fa = new fake_agentino(true, false, 1000, false, ss.str());
 		fas.push_back(fa);
 
 		fa->start(port);
@@ -843,15 +534,22 @@ TEST(agentino_manager, multi_connection)
 
 TEST(agentino_manager, agentino_heartbeat)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
 	const uint16_t port = 6768;
 	scoped_config<uint16_t> agentino_port("agentino_port", port);
 	scoped_config<bool> agentino_ssl("agentino_ssl", false);
 	container_manager c_m;
 	agentino_manager am(dummy_handler, nullptr, c_m, "machineid", "de:ad:be:ef");
-	fake_agentino fa(true, false, true);
+	fake_agentino fa(true, false, 1001, true);
 	fa.turn_on_heartbeats();
+	draiosproto::policies_v2 bogus_policies;
+
+	// The agentino manager needs policies before it will allow connections
+	am.handle_message(draiosproto::message_type::POLICIES_V2,
+	                  (uint8_t*)&bogus_policies,
+	                  sizeof(bogus_policies));
 
 	// Now fire up the fake agentino
 	fa.start(port);
@@ -888,15 +586,22 @@ TEST(agentino_manager, agentino_heartbeat)
 
 TEST(agentino_manager, agentino_message)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
 	uint16_t port = 7237;
 	scoped_config<uint16_t> agentino_port("agentino_port", port);
 	scoped_config<bool> agentino_ssl("agentino_ssl", false);
 	test_handler th;
 	container_manager c_m;
 	agentino_manager am(th, nullptr, c_m, "machineid", "de:ad:be:ef");
-	fake_agentino fa(true, false, true);
+	fake_agentino fa(true, false, 1002, true);
+	draiosproto::policies_v2 bogus_policies;
+
+	// The agentino manager needs policies before it will allow connections
+	am.handle_message(draiosproto::message_type::POLICIES_V2,
+	                  (uint8_t*)&bogus_policies,
+	                  sizeof(bogus_policies));
 
 	// Now fire up the fake agentino
 	fa.start(port);
@@ -963,7 +668,7 @@ public:
 	}
 
 	void security_mgr_throttled_events_ready(uint64_t ts_ns,
-	                                         draiosproto::throttled_policy_events *events,
+	                                         draiosproto::throttled_policy_events* events,
 	                                         uint32_t total_throttled_count) override
 	{
 		m_tevents = *events;
@@ -981,8 +686,9 @@ TEST(agentino_manager, handle_events_message)
 {
 	// Save a little bit of time per test by not setting up ssl
 	scoped_config<bool> agentino_ssl("agentino_ssl", false);
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
 	container_manager c_m;
 	tracking_security_result_handler tsrh;
 	agentino_manager am(tsrh, nullptr, c_m, "machineid", "de:ad:be:ef");
@@ -1024,14 +730,9 @@ TEST(agentino_manager, handle_throttled_events_message)
 	std::shared_ptr<protobuf_compressor> compressor =
 	    protobuf_compressor_factory::get(protocol_compression_method::GZIP);
 	std::shared_ptr<serialized_buffer> buffer =
-	    dragent_protocol::message_to_buffer(0,
-	                                        type,
-	                                        tpe,
-	                                        compressor);
+	    dragent_protocol::message_to_buffer(0, type, tpe, compressor);
 
-	am.handle_message(type,
-	                  (const uint8_t*)buffer->buffer.c_str(),
-	                  buffer->buffer.size());
+	am.handle_message(type, (const uint8_t*)buffer->buffer.c_str(), buffer->buffer.size());
 	EXPECT_EQ("machineid", tsrh.m_tevents.machine_id());
 	EXPECT_EQ("b1:7e:fa:ce", tsrh.m_tevents.customer_id());
 	EXPECT_EQ(0, tsrh.m_num_events);
@@ -1042,8 +743,9 @@ TEST(agentino_manager, handle_policies_message)
 {
 	// Save a little bit of time per test by not setting up ssl
 	scoped_config<bool> agentino_ssl("agentino_ssl", false);
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
 	container_manager c_m;
 	tracking_security_result_handler tsrh;
 	agentino_manager am(tsrh, nullptr, c_m, "machineid", "de:ad:be:ef");
@@ -1073,8 +775,9 @@ TEST(agentino_manager, handle_policies_message)
 
 TEST(agentino_manager, existing_policies_to_new_agentinos)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
 	container_manager c_m;
 	security_result_handler_dummy tsrh;
 	agentino_manager_dummy<agentino_dummy> am(tsrh, nullptr, c_m, "toby's_piano", "toby");
@@ -1101,7 +804,7 @@ TEST(agentino_manager, existing_policies_to_new_agentinos)
 	auto connection_in = get_bogus_connection();
 	draiosproto::agentino_handshake data;
 	test_helper::set_handshake_data(connection_in, data);
-	am.new_agentino_connection(connection_in);
+	am.new_connection(connection_in);
 	auto a = std::dynamic_pointer_cast<agentino_dummy>(am.get_agentino(connection_in));
 
 	for (int i = 0; i < 100 && a->m_last_policies_received == -1; i++)
@@ -1115,8 +818,9 @@ TEST(agentino_manager, existing_policies_to_new_agentinos)
 
 TEST(agentino_manager, no_policies_to_new_agentinos)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
 	container_manager c_m;
 	security_result_handler_dummy tsrh;
 	agentino_manager_dummy<agentino_dummy> am(tsrh, nullptr, c_m, "toby's_piano", "toby");
@@ -1124,7 +828,7 @@ TEST(agentino_manager, no_policies_to_new_agentinos)
 	auto connection_in = get_bogus_connection();
 	draiosproto::agentino_handshake data;
 	test_helper::set_handshake_data(connection_in, data);
-	am.new_agentino_connection(connection_in);
+	am.new_connection(connection_in);
 	auto a = std::dynamic_pointer_cast<agentino_dummy>(am.get_agentino(connection_in));
 
 	for (int i = 0; i < 100 && a->m_last_policies_received == -1; i++)
@@ -1138,8 +842,9 @@ TEST(agentino_manager, no_policies_to_new_agentinos)
 
 TEST(agentino_manager, new_policies_to_existing_agentinos)
 {
-	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint64_t> sleepytime("connection_server.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
+	scoped_config<uint64_t> sleepytime3("agentino_manager.thread_sleep_interval_ms", 5);
 	container_manager c_m;
 	security_result_handler_dummy tsrh;
 	agentino_manager_dummy<agentino_dummy> am(tsrh, nullptr, c_m, "toby's_piano", "toby");
@@ -1149,7 +854,7 @@ TEST(agentino_manager, new_policies_to_existing_agentinos)
 	auto connection_in = get_bogus_connection();
 	draiosproto::agentino_handshake data;
 	test_helper::set_handshake_data(connection_in, data);
-	am.new_agentino_connection(connection_in);
+	am.new_connection(connection_in);
 	auto a = std::dynamic_pointer_cast<agentino_dummy>(am.get_agentino(connection_in));
 
 	for (int i = 0; i < 100 && a->m_last_policies_received == -1; i++)
@@ -1203,6 +908,12 @@ TEST_F(am_cm_integration_fixture, end_to_end_connection)
 	test_handler th;
 	container_manager c_m;
 	agentino_manager am(th, nullptr, c_m, "machineid", "de:ad:be:ef");  // This starts the AM
+	draiosproto::policies_v2 bogus_policies;
+
+	// The agentino manager needs policies before it will allow connections
+	am.handle_message(draiosproto::message_type::POLICIES_V2,
+	                  (uint8_t*)&bogus_policies,
+	                  sizeof(bogus_policies));
 
 	// Set the config for the CM
 	config.m_server_addr = "127.0.0.1";
@@ -1227,7 +938,6 @@ TEST_F(am_cm_integration_fixture, end_to_end_connection)
 	ASSERT_EQ(1, am.get_num_connections());
 
 	// Tear down all the things
-	am.stop_listening();
 	running_state::instance().shut_down();
 	t.join();
 }
@@ -1248,6 +958,12 @@ TEST_F(am_cm_integration_fixture, end_to_end_ssl_connection)
 	test_handler th;
 	container_manager c_m;
 	agentino_manager am(th, nullptr, c_m, "machineid", "de:ad:be:ef");  // This starts the AM
+	draiosproto::policies_v2 bogus_policies;
+
+	// The agentino manager needs policies before it will allow connections
+	am.handle_message(draiosproto::message_type::POLICIES_V2,
+	                  (uint8_t*)&bogus_policies,
+	                  sizeof(bogus_policies));
 
 	// Set the config for the CM
 	scoped_config<bool> ssl_verify("ssl_verify_certificate", false);
@@ -1273,7 +989,6 @@ TEST_F(am_cm_integration_fixture, end_to_end_ssl_connection)
 	ASSERT_EQ(1, am.get_num_connections());
 
 	// Tear down all the things
-	am.stop_listening();
 	running_state::instance().shut_down();
 	t.join();
 }

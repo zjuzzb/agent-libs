@@ -7,15 +7,19 @@ pipeline {
         string(name: 'AGENT_BRANCH', defaultValue: 'dev', trim: true)
         string(name: 'SYSDIG_BRANCH', defaultValue: 'dev', trim: true)
         string(name: 'FALCO_BRANCH', defaultValue: 'master-sync', trim: true)
+        string(name: 'PROBEBUILDER_BRANCH', defaultValue: 'dev', trim: true)
         string(name: 'PROTOREPO_BRANCH', defaultValue: 'master', trim: true)
         booleanParam(name: 'UPLOAD', defaultValue: false, description: 'set to upload this to the s3 bucket. ONLY use during actual release')
         string(name: 'RELEASE_VERSION', defaultValue: '0.DEV-TEST', trim: true)
         string(name: 'BUILDER_VERSION', defaultValue: 'latest', trim: true, description: 'version of the builder to use')
         booleanParam(name: 'PUBLIC_RELEASE', defaultValue: false, description: 'set to use production RC bucket instead of internal')
-        string(name: 'LIBSINSP_BRANCH', defaultValue: 'dev', trim: true)
-        string(name: 'LIBSCAP_BRANCH', defaultValue: 'dev', trim: true)
         string(name: 'LIBS_BRANCH', defaultValue: 'dev', trim: true)
         booleanParam(name: 'USE_LEGACY_LIBS', defaultValue: false, description: 'set to upload this to the s3 bucket. ONLY use during actual release')
+    }
+    environment {
+        BUILDER_VERSION="${params.BUILDER_VERSION}"
+        RELEASE_VERSION="${params.RELEASE_VERSION}"
+        USE_LEGACY_LIBS="${params.USE_LEGACY_LIBS}"
     }
     stages {
         stage('Check out dependencies') {
@@ -28,13 +32,9 @@ pipeline {
                     checkout([$class: 'GitSCM', branches: [[name: 'master-sync']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
                     sh "git checkout ${params.FALCO_BRANCH}"
                 }
-                dir('libsinsp') {
-                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libsinsp']]])
-                    sh "git checkout ${params.LIBSINSP_BRANCH}"
-                }
-                dir('libscap') {
-                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap']]])
-                    sh "git checkout ${params.LIBSCAP_BRANCH}"
+                dir('probe-builder') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/probe-builder']]])
+                    sh "git checkout ${params.PROBEBUILDER_BRANCH}"
                 }
                 dir('protorepo') {
                     checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
@@ -77,7 +77,7 @@ pipeline {
                 script {
                     docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
                         sh label: '', script: '''
-                            sudo agent/scripts/jenkins/build-prod-container dev $PWD/out
+                            sudo -E agent/scripts/jenkins/build-prod-container dev $PWD/out
                         '''
                     }
                 }

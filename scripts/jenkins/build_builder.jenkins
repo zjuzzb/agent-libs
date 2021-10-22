@@ -10,7 +10,7 @@ pipeline {
         string(name: 'PROTOREPO_BRANCH', defaultValue: 'master', trim: true)
         string(name: 'PROMETHEUS_BRANCH', defaultValue: 'master', trim: true)
         booleanParam(name: 'TAG_LATEST', defaultValue: false, description: 'set this to tag the build with latest instead of with the branch name')
-        string(name: 'CONTAINER_NAME', defaultValue: '${AGENT_BRANCH}')
+        string(name: 'CONTAINER_NAME', defaultValue: '$AGENT_BRANCH')
     }
     stages {
         stage('Check out dependencies') {
@@ -58,7 +58,10 @@ pipeline {
         stage('Upload') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
-                    sh label: '', script: '''
+                    sh label: '', script: """
+                        CONTAINER_NAME=${params.CONTAINER_NAME}
+                    """ +
+                    '''
                         echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
                         docker push quay.io/sysdig/agent-builder:$AGENT_BRANCH
                         docker tag quay.io/sysdig/agent-builder:$AGENT_BRANCH quay.io/sysdig/agent-builder:$CONTAINER_NAME

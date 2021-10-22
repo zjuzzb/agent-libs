@@ -1,3 +1,5 @@
+#define __STDC_FORMAT_MACROS
+#include "agent-config.h"
 #include "agentino.h"
 #include "agentino.pb.h"
 #include "avoid_block_channel.h"
@@ -17,7 +19,16 @@
 #include "type_config.h"
 #include "utils.h"
 
+#include <Poco/AutoPtr.h>
+#include "Poco/ConsoleChannel.h"
+#include <Poco/Formatter.h>
+#include <Poco/FormattingChannel.h>                  
+#include <Poco/Logger.h>
 #include <Poco/NullChannel.h>
+#include <Poco/PatternFormatter.h>
+#include <Poco/Thread.h>
+#include <Poco/Util/Option.h>
+#include <Poco/Util/OptionSet.h>
 
 #include <grpc/support/log.h>
 #include <sched.h>
@@ -29,6 +40,8 @@
 
 using namespace std;
 using namespace dragent;
+using namespace Poco;
+using Poco::Util::Option;
 
 // local helper functions
 namespace
@@ -175,7 +188,7 @@ void agentino_app::uninitialize()
 	ServerApplication::uninitialize();
 }
 
-void agentino_app::defineOptions(OptionSet& options)
+void agentino_app::defineOptions(Poco::Util::OptionSet& options)
 {
 	ServerApplication::defineOptions(options);
 
@@ -595,7 +608,7 @@ int agentino_app::sdagent_main()
 			}
 		}
 
-		Thread::sleep(1000);
+		Poco::Thread::sleep(1000);
 		++uptime_s;
 	}
 
@@ -634,7 +647,7 @@ void agentino_app::send_heartbeat()
 {
 	// A heartbeat is just a header
 	auto hb_buf = std::make_shared<serialized_buffer>();
-	hb_buf->message_type = draiosproto::message_type::AGENTINO_HEARTBEAT;
+	hb_buf->message_type = draiosproto::message_type::AGENT_SERVER_HEARTBEAT;
 	hb_buf->ts_ns = time(nullptr) * ONE_SECOND_IN_NS;
 	m_transmit_queue.put(hb_buf, protocol_queue::BQ_PRIORITY_LOW);
 }
@@ -695,9 +708,9 @@ void agentino_app::initialize_logging()
 {
 	AutoPtr<Poco::Channel> null_channel(new Poco::NullChannel());
 	Logger& loggerf = Logger::create("DraiosLogF", null_channel, -1);
-	AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %H:%M:%S.%i, %P.%I, %p, %t"));
-	AutoPtr<Channel> console_channel(new ConsoleChannel());
-	AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
+	AutoPtr<Formatter> formatter(new Poco::PatternFormatter("%Y-%m-%d %H:%M:%S.%i, %P.%I, %p, %t"));
+	AutoPtr<Channel> console_channel(new Poco::ConsoleChannel());
+	AutoPtr<Channel> formatting_channel_console(new Poco::FormattingChannel(formatter, console_channel));
 	// Create console logger, choosing logger level as follows:
 	// - If console logging is enabled via --debug_logging command line parameter,
 	//   specify most permissive logger level (PRIO_TRACE).  This allows all

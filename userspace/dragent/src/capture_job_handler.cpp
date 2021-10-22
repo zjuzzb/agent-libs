@@ -6,7 +6,9 @@
 #include "protocol.h"
 #include "sinsp_worker.h"
 
+#include "Poco/Buffer.h"
 #include "Poco/DateTimeFormatter.h"
+#include "Poco/NumberFormatter.h"
 #include "Poco/RWLock.h"
 #include "Poco/ScopedLock.h"
 #include "Poco/Thread.h"
@@ -15,6 +17,7 @@
 #include <sstream>
 
 using namespace std;
+using Poco::NumberFormatter;
 COMMON_LOGGER();
 
 type_config<uint32_t> c_memdump_max_init_attempts(10, "", "memdump", "max_init_attempts");
@@ -571,7 +574,7 @@ bool capture_job::send_dump_chunks(uint64_t ts_ns)
 
 void capture_job::read_chunk()
 {
-	Buffer<char> buffer(16384);
+	Poco::Buffer<char> buffer(16384);
 	uint64_t chunk_size = m_max_chunk_size;
 	bool eof = false;
 
@@ -707,7 +710,7 @@ void capture_job_handler::do_run()
 		flush_jobs(m_last_job_check_ns);
 		cleanup_jobs(m_last_job_check_ns);
 
-		Thread::sleep(sleep_ms);
+		Poco::Thread::sleep(sleep_ms);
 	}
 
 	cleanup();
@@ -836,7 +839,7 @@ void capture_job_handler::cleanup()
 			flush_jobs(m_last_job_check_ns);
 			cleanup_jobs(m_last_job_check_ns);
 
-			Thread::sleep(200);
+			Poco::Thread::sleep(200);
 		}
 	}
 

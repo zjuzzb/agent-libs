@@ -13,11 +13,6 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <event.h>
-#include <Poco/Process.h>
-#include <Poco/PipeStream.h>
-#include <Poco/StringTokenizer.h>
-#include <Poco/NumberFormatter.h>
-#include <Poco/NumberParser.h>
 #include <list>
 #include <cassert>
 #include "scap-int.h"

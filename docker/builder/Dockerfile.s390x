@@ -45,7 +45,7 @@ RUN yum -y install \
 	lcov \
 	libffi-devel \
 	openssl-devel \
-	zlib-devel \
+	zlib-devel
 
 RUN yum -y install \
 	java-1.8.0-openjdk \
@@ -60,6 +60,10 @@ RUN yum -y install \
 # protobuf 3.18 doesn't support python 2. stick to 3.17
 RUN yum install -y python-pip
 RUN pip install 'protobuf<3.18'
+
+# Some versions of go assume all s390x builds are cross-compiled, using s390x-linux-gnu-gcc.
+# So, make sure s390x-linux-gnu-gcc exists as a link to /usr/bin/gcc.
+RUN rm -f /usr/bin/s390x-linux-gnu-gcc && ln -s /usr/bin/gcc /usr/bin/s390x-linux-gnu-gcc
 
 RUN yum clean all
 

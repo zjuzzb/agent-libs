@@ -222,7 +222,7 @@ type_config<bool>::ptr infrastructure_state::c_k8s_enforce_leader_election =
 		"do not start cointerface if the leader election is not used",
 		"k8s_coldstart",
 		"enforce_leader_election"
-		).hidden().build();
+		).build();
 type_config<uint64_t> infrastructure_state::c_congroup_ttl_s(60,
 							     "Congroup TTL [sec]",
 							     "congroup_ttl_s");

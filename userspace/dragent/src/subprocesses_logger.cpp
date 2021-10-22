@@ -4,6 +4,8 @@
 #include "dragent.h"
 #include "protocol.h"
 
+#include <Poco/StringTokenizer.h>
+
 using namespace std;
 
 // On systems with kernel < 2.6.35 we don't have this flag
@@ -752,7 +754,7 @@ void subprocesses_logger::do_run()
 						{
 							// This is a heartbeat message, so parse and store values
 							// for watchdog, format: HB,pid,memory_used,last_loop_ts
-							StringTokenizer tokenizer(data, ",");
+							Poco::StringTokenizer tokenizer(data, ",");
 							if(tokenizer.count() > 3)
 							{
 								fds.second.m_state->reset(stoul(tokenizer[1]),

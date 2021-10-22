@@ -1,7 +1,5 @@
 #pragma once
 
-#include "main.h"
-
 #include <sys/prctl.h>
 
 #include "coclient.h"
@@ -26,7 +24,18 @@
 #include "analyzer_utils.h"
 #include "watchdog.h"
 
+#include <Poco/Util/ServerApplication.h>
+
 class user_event_channel;
+
+namespace Poco
+{
+namespace Util
+{
+class OptionSet;
+}
+class Logger;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // The main application class
@@ -38,9 +47,9 @@ public:
 	~agentone_app();
 
 protected:
-	void initialize(Application& self);
+	void initialize(Poco::Util::Application& self);
 	void uninitialize();
-	void defineOptions(OptionSet& options);
+	void defineOptions(Poco::Util::OptionSet& options);
 	void handleOption(const std::string& name, const std::string& value);
 	void displayHelp();
 	int main(const std::vector<std::string>& args);
@@ -53,7 +62,7 @@ private:
 	void initialize_logging();
 	void check_for_clean_shutdown();
 	void mark_clean_shutdown();
-	Logger* make_event_channel();
+	Poco::Logger* make_event_channel();
 	void send_internal_metrics(pid_t pid, const std::string& name);
 	void log_watchdog_report() const;
 	void update_subprocesses();

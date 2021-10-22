@@ -19,6 +19,9 @@ pipeline {
             description: 'URL used by the test')
         string(name: 'AGENT_ACCESS_KEY', defaultValue: '7ef933e9-aeb9-4003-ac7a-fa3a5b20be94', trim: true)
     }
+    environment {
+        RELEASE_VERSION="${params.RELEASE_VERSION}"
+    }
     stages {
 
     // grab the repos we need
@@ -33,8 +36,8 @@ pipeline {
             dir('agent-libs') {
                 checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/agent-libs']]])
             }
-            dir('libscap') {
-                checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap']]])
+            dir('probe-builder') {
+                checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/probe-builder']]])
             }
             dir('protorepo') {
                 checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
@@ -53,7 +56,7 @@ pipeline {
             dir('agent-libs') {
                 sh "git checkout agent-release-${params.RELEASE_BASE}"
             }
-            dir('libscap') {
+            dir('probe-builder') {
                 sh "git checkout agent-release-${params.RELEASE_BASE}"
             }
             dir('oss-falco') {
@@ -90,11 +93,11 @@ pipeline {
                         git push -u origin2 agent-release-${params.RELEASE_VERSION}
                     """
                 }
-                dir('libscap') {
+                dir('probe-builder') {
                     sh label: '', script: """
                         git checkout -b agent-release-${params.RELEASE_VERSION}
                         export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-                        git remote add origin2 ssh://git@github.com/draios/libscap.git
+                        git remote add origin2 ssh://git@github.com/draios/probe-builder.git
                         git push -u origin2 agent-release-${params.RELEASE_VERSION}
                     """
                 }
@@ -128,7 +131,7 @@ pipeline {
             dir('agent-libs') {
                 sh "git checkout agent-release-${params.RELEASE_VERSION}"
             }
-            dir('libscap') {
+            dir('probe-builder') {
                 sh "git checkout agent-release-${params.RELEASE_VERSION}"
             }
             dir('oss-falco') {
@@ -146,12 +149,12 @@ pipeline {
         parallel {
             stage('Build v1') {
                 steps {
-                    build job:'promscrape-v1-build',parameters:[string(name:'AGENT_RELEASE', value:"$RELEASE_VERSION")]
+                    build job:'promscrape-v1-build',parameters:[string(name:'AGENT_RELEASE', value:"${params.RELEASE_VERSION}")]
                 }
             }
             stage('Build v2') {
                 steps {
-                    build job:'promscrape-v2-build',parameters:[string(name:'AGENT_RELEASE', value:"$RELEASE_VERSION")]
+                    build job:'promscrape-v2-build',parameters:[string(name:'AGENT_RELEASE', value:"${params.RELEASE_VERSION}")]
                 }
             }
         }
@@ -162,7 +165,7 @@ pipeline {
     // this release easily from quay
     stage('Build Builder') {
         steps {
-            build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),booleanParam(name:'TAG_LATEST', value:false),string(name:'CONTAINER_NAME', value:"release-$RELEASE_VERSION")]
+            build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),booleanParam(name:'TAG_LATEST', value:false),string(name:'CONTAINER_NAME', value:"release-${params.RELEASE_VERSION}")]
         }
         post {
             success {
@@ -182,10 +185,10 @@ pipeline {
                     build job:'agent-presubmit-ut',parameters:[
                         string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),
                         string(name:'LIBS_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
-                        string(name:'LIBSCAP_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
+                        string(name:'PROBEBUILDER_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                         string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                         string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
-                        string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION")
+                        string(name:'BUILDER_VERSION', value:"release-${params.RELEASE_VERSION}")
                     ]
                 }
             }
@@ -194,10 +197,10 @@ pipeline {
                     build job:'agent-presubmit-system',parameters:[
                         string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),
                         string(name:'LIBS_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
-                        string(name:'LIBSCAP_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
+                        string(name:'PROBEBUILDER_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                         string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                         string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
-                        string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION")
+                        string(name:'BUILDER_VERSION', value:"release-${params.RELEASE_VERSION}")
                     ]
                 }
             }
@@ -219,11 +222,11 @@ pipeline {
             build job:'agent-build-rc',parameters:[
                 string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),
                 string(name:'LIBS_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
-                string(name:'LIBSCAP_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
+                string(name:'PROBEBUILDER_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                 string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                 string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
-                string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION"),
-                string(name:'RELEASE_VERSION', value:"$RELEASE_VERSION"),
+                string(name:'BUILDER_VERSION', value:"release-${params.RELEASE_VERSION}"),
+                string(name:'RELEASE_VERSION', value:"${params.RELEASE_VERSION}"),
                 booleanParam(name:'UPLOAD', value:true),
                 booleanParam(name:'PUBLIC_RELEASE', value:true)
             ]
@@ -308,10 +311,10 @@ pipeline {
                         git push origin2 agent/${params.RELEASE_VERSION}
                     """
                 }
-                dir('libscap') {
+                dir('probe-builder') {
                     sh label: '', script: """
                         export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-                        git remote add origin2 ssh://git@github.com/draios/libscap.git || echo "remote already exists"
+                        git remote add origin2 ssh://git@github.com/draios/probe-builder.git || echo "remote already exists"
                         git tag -d agent/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
                         git push origin2 :refs/tags/agent/${params.RELEASE_VERSION}
                         git tag agent/${params.RELEASE_VERSION}
@@ -382,11 +385,11 @@ pipeline {
         steps {
             build job:'agent-run-builder',parameters:[
                 string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),
-                string(name:'LIBS_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
+                string(name:'PROBEBUILDER_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                 string(name:'LIBS_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                 string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
                 string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),
-                string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION"),
+                string(name:'BUILDER_VERSION', value:"release-${params.RELEASE_VERSION}"),
                 string(name:'TARGET', value:'sonar')
             ]
         }
@@ -399,7 +402,19 @@ pipeline {
 
     stage('Build GS') {
         steps {
-            build job:'agent-build-gs',parameters:[string(name:'BASE_RELEASE_VERSION',value:"${params.RELEASE_VERSION}"),booleanParam(name:'UPLOAD', value:true)]
+            build job:'agent-build-gs',parameters: [
+                string(name: 'BASE_RELEASE_VERSION', value:"${params.RELEASE_VERSION}"),
+                string(name: 'GS_RELEASE_VERSION', value: "${params.RELEASE_VERSION}gs1"),
+                string(name: 'AGENT_BRANCH', value: "release-${params.RELEASE_VERSION}"),
+                string(name: 'SYSDIG_BRANCH', value: "agent-release-${params.RELEASE_VERSION}"),
+                string(name: 'FALCO_BRANCH', value: "agent-release-${params.RELEASE_VERSION}"),
+                string(name: 'PROTOREPO_BRANCH', value: "agent-release-${params.RELEASE_VERSION}"),
+                string(name: 'BUILDER_VERSION', value: "release-${RELEASE_VERSION}"),
+                string(name: 'LIBSINSP_BRANCH', value: "agent-release-${params.RELEASE_VERSION}"),
+                string(name: 'LIBSCAP_BRANCH', value: "agent-release-${params.RELEASE_VERSION}"),
+                string(name: 'LIBS_BRANCH', value: "agent-release-${params.RELEASE_VERSION}"),
+                booleanParam(name: 'UPLOAD', value: true)
+            ]
         }
     }
 
@@ -482,4 +497,3 @@ pipeline {
         }
     }
 }
-

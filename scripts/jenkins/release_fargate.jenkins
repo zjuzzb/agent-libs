@@ -11,6 +11,9 @@ pipeline {
         string(name: 'RELEASE_BASE', defaultValue: 'dev', trim: true,
             description: 'if this is a dot release, and such should come off a release branch, put that here. example: 9.9.0. Leave as "dev" otherwise. Note this is the release number, NOT the branch name. We do not support releasing off arbitrary branches.')
     }
+    environment {
+        RELEASE_VERSION="${params.RELEASE_VERSION}"
+    }
     stages {
 
     // grab the repos we need
@@ -175,7 +178,7 @@ pipeline {
                     build job:'agent-build-builder',parameters:[
                         string(name:'AGENT_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
                         booleanParam(name:'TAG_LATEST', value:false),
-                        string(name:'CONTAINER_NAME', value:"fargate-release-$RELEASE_VERSION")
+                        string(name:'CONTAINER_NAME', value:"fargate-release-${params.RELEASE_VERSION}")
                     ]
                 }
             }
@@ -184,7 +187,7 @@ pipeline {
                     build job:'agent-build-alpine-builder',parameters:[
                         string(name:'AGENT_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
                         booleanParam(name:'TAG_LATEST', value:false),
-                        string(name:'CONTAINER_NAME', value:"fargate-release-$RELEASE_VERSION")
+                        string(name:'CONTAINER_NAME', value:"fargate-release-${params.RELEASE_VERSION}")
                     ]
                 }
             }
@@ -210,7 +213,7 @@ pipeline {
                         string(name:'LIBSCAP_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
                         string(name:'FALCO_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
                         string(name:'PROTOREPO_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
-                        string(name:'BUILDER_VERSION', value:"fargate-release-$RELEASE_VERSION")
+                        string(name:'BUILDER_VERSION', value:"fargate-release-${params.RELEASE_VERSION}")
                     ]
                 }
             }

@@ -32,11 +32,10 @@ pipeline {
     parameters {
         booleanParam(name: 'BUILD_BUILDER', defaultValue: false, description: "set to true to build the builder for this branch. name will be same as agent branch")
         string(name: 'BUILDER_VERSION', defaultValue: "latest", description: "build container to use for building the agent")
-        string(name: 'LIBSCAP_BRANCH', defaultValue: "dev")
+        string(name: 'PROBEBUILDER_BRANCH', defaultValue: "dev")
         string(name: 'FALCO_BRANCH', defaultValue: "master-sync")
         string(name: 'PROTOREPO_BRANCH', defaultValue: "master")
         string(name: 'LIBSCAP_HAYABUSA_BRANCH', defaultValue: "dev")
-        string(name: 'LIBSINSP_BRANCH', defaultValue: "dev")
         string(name: 'LIBS_BRANCH', defaultValue: "dev")
     }
     stages {
@@ -124,12 +123,9 @@ pipeline {
                                 build job:'agent-build-container',parameters:[
                                     string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"), 
                                     string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
-                                    string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"),
                                     string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
-                                    string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
                                     string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
                                     string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"),
-                                    booleanParam(name:'USE_LEGACY_LIBS', value:"false")
                                 ]
                             }
                         }
@@ -154,13 +150,10 @@ pipeline {
                         build job:'agent-build-agentino',parameters:[
                             string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),
                             string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
-                            string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"),
                             string(name:'LIBSCAP_HAYABUSA_BRANCH', value:"${params.LIBSCAP_HAYABUSA_BRANCH}"),
                             string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
-                            string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
                             string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
                             string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"),
-                            booleanParam(name:'USE_LEGACY_LIBS', value:"false")
                         ]
                     }
                     post {

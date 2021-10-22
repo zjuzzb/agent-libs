@@ -4,7 +4,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
 
 add_library(
-    test-helpers-userspace-shared STATIC http_server.cpp scoped_configuration.cpp scoped_fault.cpp
+    test-helpers-userspace-shared STATIC scoped_configuration.cpp scoped_fault.cpp
 )
 
 add_dependencies(test-helpers-userspace-shared userspace-shared)

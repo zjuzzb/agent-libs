@@ -5,9 +5,13 @@
 #include <Poco/ConsoleChannel.h>
 #include <Poco/ErrorHandler.h>
 #include <Poco/Formatter.h>
+#include <Poco/FormattingChannel.h>
 #include <Poco/Glob.h>
+#include <Poco/Logger.h>
 #include <Poco/NullChannel.h>
+#include <Poco/PatternFormatter.h>
 #include <Poco/Thread.h>
+#include <Poco/ThreadPool.h>
 
 #include <atomic>
 #include <capture_job_handler.h>
@@ -22,6 +26,7 @@
 
 using namespace std;
 using namespace thread_safe_container;
+using namespace Poco;
 
 class memdump_error_handler : public Poco::ErrorHandler
 {
