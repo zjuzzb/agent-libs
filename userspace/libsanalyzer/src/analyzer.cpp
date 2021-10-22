@@ -8503,6 +8503,14 @@ bool analyzer_container_state::should_report_container(const sinsp_configuration
 	return m_filter_state == FILT_INCL;
 }
 
+void sinsp_analyzer::send_compliance_statsd(const google::protobuf::RepeatedPtrField<std::string>& collection)
+{
+	for (const auto& metric : collection)
+	{
+		add_to_agent_statsd_cache(metric);
+	}
+}
+
 // generate template functions
 #include "thread_safe_container/guarded_cache.hpp"
 template class thread_safe_container::guarded_cache<std::string, std::string>;

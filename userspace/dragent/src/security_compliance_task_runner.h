@@ -24,8 +24,7 @@ class security_compliance_task_runner
 public:
 	virtual ~security_compliance_task_runner() = default;
 
-	virtual bool run_compliance_tasks(const draiosproto::comp_run& run,
-	                                  std::string& errstr) = 0;
+	virtual bool run_compliance_tasks(const draiosproto::comp_run& run) = 0;
 };
 
 } // namespace dragent

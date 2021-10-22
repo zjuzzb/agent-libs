@@ -9,25 +9,24 @@
 
 #include <string>
 
-namespace draiosproto {
+namespace draiosproto
+{
 class comp_calendar;
 }
 
 namespace dragent
 {
-
 /**
  * Interface to objects that can set compliance calendars.
  */
-class security_compliance_calender_receiver
+class security_compliance_calendar_receiver
 {
 public:
-	virtual ~security_compliance_calender_receiver() = default;
+	virtual ~security_compliance_calendar_receiver() = default;
 
 	virtual bool set_compliance_calendar(const draiosproto::comp_calendar& calendar,
 	                                     bool send_results,
-	                                     bool send_events,
-	                                     std::string& errstr) = 0;
+	                                     bool send_events) = 0;
 };
 
-} // namespace dragent
+}  // namespace dragent
