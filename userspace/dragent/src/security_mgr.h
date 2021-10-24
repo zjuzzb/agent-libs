@@ -588,7 +588,7 @@ private:
 		// This *must* be called after the async thread has
 		// loaded rules, in the inspector thread.
 		void match_policy_scopes(infrastructure_state_iface *infra_state,
-					 std::list<std::string> &container_ids);
+					 std::list<std::string> &container_ids, bool new_container);
 
 		security_rules_group_set &get_rules_group_for_container(std::string &container_id);
 
