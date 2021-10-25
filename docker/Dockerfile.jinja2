@@ -64,7 +64,6 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false \
         gcc \
         libc6-dev \
         libmpx2 \
-        patchelf \
     {% endif %}
     {% if p.include_agent_package is defined %}
         gnupg2 \

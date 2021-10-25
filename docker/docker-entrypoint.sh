@@ -32,38 +32,6 @@ if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
 	ln -s $SYSDIG_HOST_ROOT/usr/src/$i /usr/src/$i
     done
 
-    echo "* Setting up kernel tools"
-    # searching for the correct libc things
-    SYSDIG_HOST_LD=($(find $SYSDIG_HOST_ROOT/usr/ -name 'ld-*.so'))
-    if [ "${#SYSDIG_HOST_LD[@]}" -gt 1 ]
-    then
-        # multilib
-        for i in "${SYSDIG_HOST_LD[@]}"
-        do
-            echo $i | grep -q `uname -m` && SYSDIG_HOST_LD=$i && break
-        done
-    fi
-    SYSDIG_HOST_LIB_DIR=$(dirname $SYSDIG_HOST_LD)
-
-    for t in fixdep objtool modpost
-    do
-        for host_tool in $(find $SYSDIG_HOST_ROOT/usr -name $t -type f)
-        do
-            tool=${host_tool#$SYSDIG_HOST_ROOT}
-            tool_dir=$(dirname $tool)
-            mkdir -p $tool_dir
-            # this might be required e.g. for debian having /usr/lib/linux-kbuild
-            touch $tool &> /dev/null
-            mkdir -p /tmp/$tool_dir
-            cp -a $host_tool /tmp/$tool_dir
-            patchelf \
-                --set-interpreter $SYSDIG_HOST_LD \
-                --set-rpath $SYSDIG_HOST_LIB_DIR \
-                /tmp/$tool_dir/$t
-            mount -o bind /tmp/$tool_dir/$t $tool
-        done
-    done
-
     KERNEL_DIR=$SYSDIG_HOST_ROOT/lib/modules/$(uname -r)/build
     if [ ! -e "$KERNEL_DIR" ]
     then
