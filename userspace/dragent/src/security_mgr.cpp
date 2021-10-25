@@ -338,8 +338,8 @@ bool security_mgr::loaded_v2_policies::load_falco_rules_files(const draiosproto:
 }
 
 void security_mgr::loaded_v2_policies::match_policy_scopes(infrastructure_state_iface *infra_state,
-							    std::list<std::string> &container_ids,
-							    bool load_global_rules)
+							   std::list<std::string> &container_ids,
+							   bool load_global_rules)
 {
 	if(infra_state)
 	{
