@@ -44,7 +44,7 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
                     sh label: '', script: '''
                         echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
-                        docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
+                        docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos
                         CONTAINER_NAME=presubmit-$BUILD_NUMBER
                         docker rm -f "$CONTAINER_NAME" || true
                         cd agent; git rev-parse HEAD; cd ..;
@@ -52,7 +52,7 @@ pipeline {
                         cd probe-builder; git rev-parse HEAD; cd ..;
                         cd protorepo; git rev-parse HEAD; cd ..;
                         cd agent-libs; git rev-parse HEAD; cd ..;
-                        timeout 3600 docker run -i --rm --name "$CONTAINER_NAME" -e MAKE_JOBS=$(nproc) -v $PWD:/draios:ro -e USE_OLD_DIRS=$USE_LEGACY_LIBS quay.io/sysdig/agent-builder:$BUILDER_VERSION presubmit
+                        timeout 3600 docker run -i --rm --name "$CONTAINER_NAME" -e MAKE_JOBS=$(nproc) -v $PWD:/draios:ro -e USE_OLD_DIRS=$USE_LEGACY_LIBS quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos presubmit
                         docker rm -f "$CONTAINER_NAME" || true
                     '''
                 }
@@ -62,7 +62,7 @@ pipeline {
     post {
         always {
             sh label: '', script: '''
-                docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+                docker rmi -f $(docker images | grep -vE 'quay.io/sysdig/agent-builder.*latest-(alpine|centos)' | awk 'NR>1 {print $3}') || echo "no containers to remove"
                 docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f || echo "something went wrong"
                 sudo rm -rf * .[!.]*
 

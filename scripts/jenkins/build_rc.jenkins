@@ -47,9 +47,9 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME'), usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
                     sh label: '', script: '''
                         echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
-                        docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
+                        docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos
                         sudo rm -rf $PWD/out
-                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_VERSION=$RELEASE_VERSION -v $PWD:/draios:ro -v $PWD/out:/out -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/pipcache:/root/.cache quay.io/sysdig/agent-builder:$BUILDER_VERSION release
+                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_VERSION=$RELEASE_VERSION -v $PWD:/draios:ro -v $PWD/out:/out -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/pipcache:/root/.cache quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos release
                     '''
                 }
             }
@@ -109,7 +109,7 @@ pipeline {
         always {
             sh label: '', script: '''
                 docker rmi agent agent-slim agentone agent-kmodule agent-kmodule-thin || echo "no containers to remove"
-                docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+                docker rmi -f $(docker images | grep -vE 'quay.io/sysdig/agent-builder.*latest-(alpine|centos)' | awk 'NR>1 {print $3}') || echo "no containers to remove"
                 docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
                 sudo rm -rf * .[!.]*
             '''
