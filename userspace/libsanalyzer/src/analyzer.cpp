@@ -2875,6 +2875,23 @@ bool sinsp_analyzer::aggregate_processes_into_programs(sinsp_threadinfo& sinsp_t
 	if (tinfo.is_main_thread())
 	{
 		++process_count;
+		// The following check and log is to help the investigation of
+		// https://sysdig.atlassian.net/browse/ESC-1321 where bad host memory
+		// metrics have been reported.
+		// TODO(irozzo): remove once the problem is identified.
+		if (tinfo.m_vmsize_kb == std::numeric_limits<uint32_t>::max() ||
+		    tinfo.m_vmrss_kb == std::numeric_limits<uint32_t>::max() ||
+		    tinfo.m_vmswap_kb == std::numeric_limits<uint32_t>::max())
+		{
+			LOG_WARNING(
+			    "Suspicious process memory metrics reported for process %s (PID=%ld): m_vmsize_kb "
+			    "= %u, m_vrss_kb = %u, m_vmswap_kb = %u",
+			    tinfo.get_comm().c_str(),
+			    tinfo.m_pid,
+			    tinfo.m_vmsize_kb,
+			    tinfo.m_vmrss_kb,
+			    tinfo.m_vmswap_kb);
+		}
 	}
 
 	// We need to reread cmdline only in live mode, with nodriver mode
@@ -4674,6 +4691,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 			////////////////////////////////////////////////////////////////////////////
 
 			uint32_t num_cpus = get_num_cpus();
+			uint64_t mem_size_bytes = m_inspector->m_machine_info->memory_size_bytes;
 
 			m_metrics->set_machine_id(m_configuration->get_machine_id());
 			m_metrics->set_customer_id(m_configuration->get_customer_id());
@@ -4682,8 +4700,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 
 			m_metrics->mutable_hostinfo()->set_hostname(sinsp_gethostname());
 			m_metrics->mutable_hostinfo()->set_num_cpus(num_cpus);
-			m_metrics->mutable_hostinfo()->set_physical_memory_size_bytes(
-			    m_inspector->m_machine_info->memory_size_bytes);
+			m_metrics->mutable_hostinfo()->set_physical_memory_size_bytes(mem_size_bytes);
 			// container start count
 			if(nullptr != m_container_start_count) {
 				uint32_t num_container_starts = this->m_container_start_count->get_host_container_counts();
@@ -4812,6 +4829,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 			    ->mutable_resource_counters()
 			    ->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
 #endif
+			// This check was added to ease investigation of
+			// https://sysdig.atlassian.net/browse/ESC-1321.
+			// TODO(irozzo): remove once the problem is identified.
+			if (m_host_metrics.m_res_memory_used_kb > mem_size_bytes / 1024)
+			{
+				LOG_WARNING(
+				    "Computed host resident memory size (%ld kb) is greater than physical "
+				    "available memory (%lu kb)",
+				    m_host_metrics.m_res_memory_used_kb,
+				    mem_size_bytes / 1024);
+			}
 			m_metrics->mutable_hostinfo()
 			    ->mutable_resource_counters()
 			    ->set_resident_memory_usage_kb((uint32_t)m_host_metrics.m_res_memory_used_kb);
