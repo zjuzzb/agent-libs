@@ -585,10 +585,21 @@ private:
 		// This happens in the async thread that loads rules
 		bool load(std::string &errstr);
 
-		// This *must* be called after the async thread has
-		// loaded rules, in the inspector thread.
+		/**
+		 * Match policy scopes to container IDs.
+		 *
+		 * This *must* be called after the async
+		 * thread has loaded rules, in the inspector thread.
+		 *
+		 * @param infra_state		Infrastructure state
+		 * @param container_ids		reference to a list of active container IDs
+		 * @param load_global_rules	Caller decides whether to load global policies
+		 *        like k8s audit policies. Typically global rules only need to be
+		 * 		  reloaded when they have changed, but not when a new container is started.
+		 */
 		void match_policy_scopes(infrastructure_state_iface *infra_state,
-					 std::list<std::string> &container_ids, bool new_container);
+					 std::list<std::string> &container_ids,
+					 bool load_global_rules);
 
 		security_rules_group_set &get_rules_group_for_container(std::string &container_id);
 

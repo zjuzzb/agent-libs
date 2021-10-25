@@ -338,7 +338,8 @@ bool security_mgr::loaded_v2_policies::load_falco_rules_files(const draiosproto:
 }
 
 void security_mgr::loaded_v2_policies::match_policy_scopes(infrastructure_state_iface *infra_state,
-							   std::list<std::string> &container_ids, bool new_container)
+							    std::list<std::string> &container_ids,
+							    bool load_global_rules)
 {
 	if(infra_state)
 	{
@@ -362,7 +363,7 @@ void security_mgr::loaded_v2_policies::match_policy_scopes(infrastructure_state_
 				// When processing events later, the event source will dictate which
 				// rules apply for the event.
 				load_syscall_policy_v2(infra_state, spolicy, container_ids);
-				if (!new_container) {
+				if (load_global_rules) {
 					load_k8s_audit_policy_v2(spolicy);
 				}
 				num_enabled++;
@@ -376,7 +377,7 @@ void security_mgr::loaded_v2_policies::match_policy_scopes(infrastructure_state_
 				load_syscall_policy_v2(infra_state, spolicy, container_ids);
 				num_enabled++;
 			}
-			else if ((policy.policy_type() == "k8s_audit") && (!new_container))
+			else if ((policy.policy_type() == "k8s_audit") && load_global_rules)
 			{
 				load_k8s_audit_policy_v2(spolicy);
 				num_enabled++;
@@ -742,7 +743,7 @@ void security_mgr::process_event_v2(gen_event *evt)
 					{
 						ids.push_back(c.first);
 					}
-					m_loaded_policies->match_policy_scopes(m_infra_state, ids, false);
+					m_loaded_policies->match_policy_scopes(m_infra_state, ids, true);
 					m_last_pid = 0;
 					m_last_container_id = "";
 				}
@@ -1429,7 +1430,7 @@ void security_mgr::on_new_container(const sinsp_container_info& container_info, 
 	if (m_loaded_policies)
 	{
 		std::list<std::string> ids{container_info.m_id};
-		m_loaded_policies->match_policy_scopes(m_infra_state, ids, true);
+		m_loaded_policies->match_policy_scopes(m_infra_state, ids, false);
 	}
 }
 
