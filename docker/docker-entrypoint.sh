@@ -32,28 +32,23 @@ if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
 	ln -s $SYSDIG_HOST_ROOT/usr/src/$i /usr/src/$i
     done
 
-    KERNEL_DIR=$SYSDIG_HOST_ROOT/lib/modules/$(uname -r)/build
-    if [ ! -e "$KERNEL_DIR" ]
+    echo "* Setting up kernel tools"
+    # searching for the correct libc things
+    SYSDIG_HOST_LD=($(find $SYSDIG_HOST_ROOT/usr/ -name 'ld-*.so'))
+    if [ "${#SYSDIG_HOST_LD[@]}" -gt 1 ]
     then
-	echo "* Kernel headers not found in $KERNEL_DIR, continuing anyway" >&2
-    else
-        echo "* Setting up kernel tools"
-        # searching for the correct libc things
-        SYSDIG_HOST_LD=($(find $SYSDIG_HOST_ROOT/usr/ -name 'ld-*.so'))
-        if [ "${#SYSDIG_HOST_LD[@]}" -gt 1 ]
-        then
-            # multilib
-            for i in "${SYSDIG_HOST_LD[@]}"
-            do
-                echo $i | grep -q `uname -m` && SYSDIG_HOST_LD=$i && break
-            done
-        fi
-        SYSDIG_HOST_LIB_DIR=$(dirname $SYSDIG_HOST_LD)
-
-        for host_tool in scripts/basic/fixdep tools/objtool/objtool scripts/mod/modpost
+        # multilib
+        for i in "${SYSDIG_HOST_LD[@]}"
         do
-            host_tool=$KERNEL_DIR/$host_tool
-            t=$(basename $host_tool)
+            echo $i | grep -q `uname -m` && SYSDIG_HOST_LD=$i && break
+        done
+    fi
+    SYSDIG_HOST_LIB_DIR=$(dirname $SYSDIG_HOST_LD)
+
+    for t in fixdep objtool modpost
+    do
+        for host_tool in $(find $SYSDIG_HOST_ROOT/usr -name $t -type f)
+        do
             tool=${host_tool#$SYSDIG_HOST_ROOT}
             tool_dir=$(dirname $tool)
             mkdir -p $tool_dir
@@ -67,7 +62,13 @@ if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
                 /tmp/$tool_dir/$t
             mount -o bind /tmp/$tool_dir/$t $tool
         done
+    done
 
+    KERNEL_DIR=$SYSDIG_HOST_ROOT/lib/modules/$(uname -r)/build
+    if [ ! -e "$KERNEL_DIR" ]
+    then
+	echo "* Kernel headers not found in $KERNEL_DIR, continuing anyway" >&2
+    else
 	# Try to find the gcc version used to build this particular kernel
 	# Check CONFIG_GCC_VERSION=90201 in the kernel config first
 	# as 5.8.0 seems to have a different format for the LINUX_COMPILER string
