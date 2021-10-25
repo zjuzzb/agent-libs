@@ -92,12 +92,24 @@ pipeline {
                                 echo "$DOCKER_PASSWORD" | docker login docker.io -u="$DOCKER_USERNAME" --password-stdin
                                 docker tag agent sysdig/agent:$RELEASE_VERSION-rc
                                 docker push sysdig/agent
+
                                 docker tag agent-slim sysdig/agent-slim:$RELEASE_VERSION-rc
                                 docker push sysdig/agent-slim
+
                                 docker tag agent-kmodule sysdig/agent-kmodule:$RELEASE_VERSION-rc
                                 docker push sysdig/agent-kmodule
+
                                 docker tag agent-kmodule-thin sysdig/agent-kmodule-thin:$RELEASE_VERSION-rc
                                 docker push sysdig/agent-kmodule-thin
+
+                                docker tag agent-ubi docker.internal.sysdig.com/agent-ubi:$RELEASE_VERSION-rc
+                                docker push docker.internal.sysdig.com/agent-ubi
+
+                                docker tag agent-kmodule-ubi docker.internal.sysdig.com/agent-kmodule-ubi:$RELEASE_VERSION-rc
+                                docker push docker.internal.sysdig.com/agent-kmodule-ubi
+
+                                docker tag agent-slim-ubi docker.internal.sysdig.com/agent-slim-ubi:$RELEASE_VERSION-rc
+                                docker push docker.internal.sysdig.com/agent-slim-ubi
                             '''
                         }
                     }
