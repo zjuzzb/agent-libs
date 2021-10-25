@@ -13,7 +13,7 @@
 namespace dragent
 {
 
-class security_compliance_calender_receiver;
+class security_compliance_calendar_receiver;
 
 /**
  * Handles messages of type COMP_CALENDAR that the connection_manager receives
@@ -23,14 +23,14 @@ class security_compliance_calendar_message_handler : public connection_manager::
 {
 public:
 	security_compliance_calendar_message_handler(
-			security_compliance_calender_receiver& receiver);
+			security_compliance_calendar_receiver& receiver);
 
 	bool handle_message(const draiosproto::message_type,
 	                    const uint8_t* buffer,
 	                    size_t buffer_size) override;
 
 private:
-	security_compliance_calender_receiver& m_receiver;
+	security_compliance_calendar_receiver& m_receiver;
 };
 
 } // namespace dragent

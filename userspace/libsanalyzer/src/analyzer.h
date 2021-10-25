@@ -36,6 +36,7 @@
 #include "app_check_emitter.h"
 #include "audit_tap_handler.h"
 #include "baseliner.h"
+#include "compliance_statsd_destination.h"
 #include "cpu_profiler.h"
 #include "env_hash.h"
 #include "environment_emitter.h"
@@ -44,7 +45,6 @@
 #include "k8s_limits.h"
 #include "k8s_user_event_message_handler.h"
 #include "label_limits.h"
-#include "limits/metric_limits.h"
 #include "process_emitter.h"
 #include "procfs_scanner.h"
 #include "sdc_internal.pb.h"
@@ -59,6 +59,7 @@
 #include "userdb.h"
 
 #include "include/sinsp_external_processor.h"
+#include "limits/metric_limits.h"
 #include "thread_safe_container/blocking_queue.h"
 #include "thread_safe_container/guarded_cache.h"
 
@@ -262,12 +263,14 @@ private:
 };
 
 // An abstract interface representing an object that can receive json k8s audit events.
-class secure_k8s_audit_event_sink_iface {
+class secure_k8s_audit_event_sink_iface
+{
 public:
 	virtual void receive_k8s_audit_event(
-		const nlohmann::json& j,
-		std::vector<std::string>& k8s_active_filters,
-		std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters) = 0;
+	    const nlohmann::json& j,
+	    std::vector<std::string>& k8s_active_filters,
+	    std::unordered_map<std::string, std::unordered_map<std::string, std::string>>&
+	        k8s_filters) = 0;
 };
 
 //
@@ -280,7 +283,8 @@ class SINSP_PUBLIC sinsp_analyzer : public secure_profiling_internal_metrics,
                                     public secure_netsec_internal_metrics,
                                     public secure_netsec_data_ready_handler,
                                     public libsinsp::event_processor,
-                                    public secure_k8s_audit_event_sink_iface
+                                    public secure_k8s_audit_event_sink_iface,
+                                    public dragent::compliance_statsd_destination
 {
 public:
 	typedef thread_safe_container::blocking_queue<std::shared_ptr<flush_data_message>> flush_queue;
@@ -446,8 +450,8 @@ public:
 	}
 
 	inline const thread_analyzer_info* get_thread_by_pid(uint64_t tid,
-	                                            bool query_os_if_not_found,
-	                                            bool lookup_only)
+	                                                     bool query_os_if_not_found,
+	                                                     bool lookup_only)
 	{
 		sinsp_threadinfo* sinsp_thread =
 		    &*m_inspector->get_thread_ref(tid, query_os_if_not_found, lookup_only);
@@ -457,8 +461,8 @@ public:
 	}
 
 	inline thread_analyzer_info* get_mutable_thread_by_pid(uint64_t tid,
-	                                              bool query_os_if_not_found,
-	                                              bool lookup_only)
+	                                                       bool query_os_if_not_found,
+	                                                       bool lookup_only)
 	{
 		sinsp_threadinfo* sinsp_thread =
 		    &*m_inspector->get_thread_ref(tid, query_os_if_not_found, lookup_only);
@@ -468,9 +472,9 @@ public:
 	}
 
 	inline std::shared_ptr<thread_analyzer_info> get_thread_ref(int64_t tid,
-	                                                   bool query_os_if_not_found,
-	                                                   bool lookup_only,
-	                                                   bool main_thread = false)
+	                                                            bool query_os_if_not_found,
+	                                                            bool lookup_only,
+	                                                            bool main_thread = false)
 	{
 		return sinsp_analyzer::get_thread_ref(*m_inspector,
 		                                      tid,
@@ -480,10 +484,10 @@ public:
 	}
 
 	static inline std::shared_ptr<thread_analyzer_info> get_thread_ref(sinsp& inspector,
-	                                                          int64_t tid,
-	                                                          bool query_os_if_not_found,
-	                                                          bool lookup_only,
-	                                                          bool main_thread = false)
+	                                                                   int64_t tid,
+	                                                                   bool query_os_if_not_found,
+	                                                                   bool lookup_only,
+	                                                                   bool main_thread = false)
 	{
 		auto sinsp_thread =
 		    inspector.get_thread_ref(tid, query_os_if_not_found, lookup_only, main_thread);
@@ -675,24 +679,26 @@ public:
 
 	void add_cg_to_network_topology(std::shared_ptr<draiosproto::container_group> cg);
 
-	void secure_netsec_data_ready(uint64_t ts, const secure::K8SCommunicationSummary* netsec_summary) override;
+	void secure_netsec_data_ready(uint64_t ts,
+	                              const secure::K8SCommunicationSummary* netsec_summary) override;
 
 	void set_secure_netsec_internal_metrics(int n_sent_protobufs, uint64_t flush_time_ms) override;
 
 	void set_secure_netsec_sent_counters(int n_communication_dropped_count,
-					     int n_communication_count,
-					     int n_communication_invalid,
-					     int n_communication_cidr_out,
-					     int n_communication_cidr_in,
-					     int n_communication_ingress_count,
-					     int n_communication_egress_count,
-					     int n_resolved_owner) override;
+	                                     int n_communication_count,
+	                                     int n_communication_invalid,
+	                                     int n_communication_cidr_out,
+	                                     int n_communication_cidr_in,
+	                                     int n_communication_ingress_count,
+	                                     int n_communication_egress_count,
+	                                     int n_resolved_owner) override;
 
 	// Just calls next function
 	void receive_k8s_audit_event(
-	   const nlohmann::json& j,
-	   std::vector<std::string>& k8s_active_filters,
-	   std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters) override;
+	    const nlohmann::json& j,
+	    std::vector<std::string>& k8s_active_filters,
+	    std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters)
+	    override;
 
 	void secure_audit_filter_and_append_k8s_audit(
 	    const nlohmann::json& j,
@@ -701,7 +707,8 @@ public:
 
 	void enable_secure_profiling();
 	bool secure_profiling_enabled() const { return m_falco_baseliner != nullptr; }
-	void set_secure_profiling_internal_metrics(int n_sent_protobufs, uint64_t flush_time_ms) override;
+	void set_secure_profiling_internal_metrics(int n_sent_protobufs,
+	                                           uint64_t flush_time_ms) override;
 
 	/**
 	 * Dump the infrastructure state to a file in the log directory.
@@ -792,10 +799,10 @@ public:
 	const std::string& get_agent_container_id();
 
 	/**
-	 * Add the stats metric to the agent cache that will get sent 
-	 * every flush 
+	 * Add the stats metric to the agent cache that will get sent
+	 * every flush
 	 */
-	void add_to_agent_statsd_cache(const std::string &metric);
+	void add_to_agent_statsd_cache(const std::string& metric);
 
 	/**
 	 * Inject a statsd metric into statsite.  If the given tinfo is non-
@@ -945,7 +952,9 @@ public:
 	 */
 	bool collect_prometheus_metrics_for_pid(uint64_t pid, uint64_t flush_time_sec);
 
-	void set_delegation(bool deleg, const google::protobuf::RepeatedPtrField<std::string> &nodes, bool deleg_fail);
+	void set_delegation(bool deleg,
+	                    const google::protobuf::RepeatedPtrField<std::string>& nodes,
+	                    bool deleg_fail);
 	bool check_k8s_delegation();
 
 	VISIBILITY_PRIVATE
@@ -991,17 +1000,18 @@ public:
 	 * java processes and other lists for which we want to emit
 	 * data.
 	 */
-	bool aggregate_processes_into_programs(sinsp_threadinfo& sinsp_tinfo,
-					       const sinsp_evt* evt,
-					       const uint64_t sample_duration,
-					       const analyzer_emitter::flush_flags flushflags,
-					       analyzer_emitter::progtable_t &progtable,
-					       analyzer_emitter::progtable_by_container_t &progtable_by_container,
-					       vector<thread_analyzer_info*> &java_process_requests,
-					       vector<app_process> &app_checks_processes,
-					       vector<prom_process> &prom_procs,
-					       uint64_t &process_count,
-					       bool &can_disable_nodriver);
+	bool aggregate_processes_into_programs(
+	    sinsp_threadinfo& sinsp_tinfo,
+	    const sinsp_evt* evt,
+	    const uint64_t sample_duration,
+	    const analyzer_emitter::flush_flags flushflags,
+	    analyzer_emitter::progtable_t& progtable,
+	    analyzer_emitter::progtable_by_container_t& progtable_by_container,
+	    vector<thread_analyzer_info*>& java_process_requests,
+	    vector<app_process>& app_checks_processes,
+	    vector<prom_process>& prom_procs,
+	    uint64_t& process_count,
+	    bool& can_disable_nodriver);
 
 	/**
 	 * emit process data. This function emits data scoped to processes. It is
@@ -1129,6 +1139,11 @@ public:
 	 */
 	bool is_java_process(const std::string& comm) const;
 
+public:  // compliance_statsd_destination
+	void send_compliance_statsd(
+	    const google::protobuf::RepeatedPtrField<std::string>& collection) override;
+
+public: // member variables
 	uint32_t m_n_flushes;
 	uint64_t m_prev_flushes_duration_ns;
 	double m_prev_flush_cpu_pct;
@@ -1515,8 +1530,9 @@ public:
 	//
 	// Please do not add any friends.
 	//
-	void mounted_fs_request(const tracer_emitter& proc_trc,
-				const analyzer_emitter::progtable_by_container_t& progtable_by_container) const;
+	void mounted_fs_request(
+	    const tracer_emitter& proc_trc,
+	    const analyzer_emitter::progtable_by_container_t& progtable_by_container) const;
 
 	void inject_cached_agent_statsd_metrics();
 	using statsd_cache = thread_safe_container::guarded_cache<std::string, std::string>;

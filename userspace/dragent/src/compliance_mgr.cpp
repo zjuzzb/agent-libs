@@ -21,7 +21,9 @@ COMMON_LOGGER();
 
 compliance_mgr::compliance_mgr(const string &run_root,
 			       security_result_handler& result_handler)
-	: m_num_grpc_errs(0),
+	: security_compliance_task_runner(),
+	  security_compliance_calendar_receiver(),
+	  m_num_grpc_errs(0),
 	  m_send_compliance_results(false),
 	  m_send_compliance_events(false),
 	  m_should_refresh_compliance_tasks(false),
@@ -85,7 +87,7 @@ void compliance_mgr::check_tasks()
 	}
 }
 
-void compliance_mgr::set_compliance_calendar(const draiosproto::comp_calendar &calendar,
+bool compliance_mgr::set_compliance_calendar(const draiosproto::comp_calendar &calendar,
                                              const bool send_results,
                                              const bool send_events)
 {
@@ -95,6 +97,8 @@ void compliance_mgr::set_compliance_calendar(const draiosproto::comp_calendar &c
 	m_send_compliance_results = send_results;
 	m_send_compliance_events = send_events;
 	request_refresh_compliance_tasks();
+
+	return true;
 }
 
 void compliance_mgr::request_refresh_compliance_tasks()
@@ -230,7 +234,7 @@ void compliance_mgr::start_compliance_tasks(sdc_internal::comp_start &start)
 	m_start_tasks_future = std::async(std::launch::async, work, m_grpc_channel, m_comp_events_queue, start);
 }
 
-void compliance_mgr::run_compliance_tasks(draiosproto::comp_run &run)
+bool compliance_mgr::run_compliance_tasks(const draiosproto::comp_run &run)
 {
 	LOG_DEBUG("Running compliance tasks: %s", run.DebugString().c_str());
 
@@ -254,6 +258,8 @@ void compliance_mgr::run_compliance_tasks(draiosproto::comp_run &run)
 		};
 
 	m_run_tasks_future = std::async(std::launch::async, work, m_grpc_channel, run);
+
+	return true;
 }
 
 void compliance_mgr::stop_compliance_tasks()

@@ -44,36 +44,6 @@ type_config<bool> c_procfs_scan_thread(false,
 
 }  // namespace
 
-class sinsp_worker::compliance_calendar_backup
-{
-public:
-	compliance_calendar_backup(const draiosproto::comp_calendar& calendar,
-	                           const bool send_results,
-	                           const bool send_events)
-	    : m_calendar(calendar),
-	      m_send_results(send_results),
-	      m_send_events(send_events)
-	{
-	}
-
-	const draiosproto::comp_calendar& get_calendar() const { return m_calendar; }
-
-	void set_calendar(const draiosproto::comp_calendar& calendar) { m_calendar = calendar; }
-
-	bool get_send_results() const { return m_send_results; }
-
-	void set_send_results(const bool send_results) { m_send_results = send_results; }
-
-	bool get_send_events() const { return m_send_events; }
-
-	void set_send_events(const bool send_events) { m_send_events = send_events; }
-
-private:
-	draiosproto::comp_calendar m_calendar;
-	bool m_send_results;
-	bool m_send_events;
-};
-
 const string sinsp_worker::m_name = "sinsp_worker";
 
 sinsp_worker::sinsp_worker(dragent_configuration* configuration,
@@ -86,7 +56,6 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
       m_protocol_handler(handler),
       m_analyzer(NULL),
 #ifndef CYGWING_AGENT
-      m_security_initialized(false),
       m_security_mgr(NULL),
       m_compliance_mgr(NULL),
       m_hosts_metadata_uptodate(true),
@@ -115,130 +84,21 @@ sinsp_worker::~sinsp_worker()
 
 	delete m_analyzer;
 #ifndef CYGWING_AGENT
-	delete m_security_mgr;
-	delete m_compliance_mgr;
+	if (m_security_mgr != nullptr)
+	{
+		delete m_security_mgr;
+	}
+	if (m_compliance_mgr != nullptr)
+	{
+		delete m_compliance_mgr;
+	}
 #endif
 }
 
-void sinsp_worker::init_security()
-{
-#ifndef CYGWING_AGENT
-	ASSERT(!m_security_initialized);
-
-	// If auto config is enabled, then we defer security initialization
-	// until after receiving the CONFIG_DATA message from the backend to
-	// avoid performing the initialization twice, once before the
-	// CONFIG_DATA and once after receiving that message (and the
-	// subsequent agent restart).
-	if (m_configuration->m_auto_config)
-	{
-		if (!config_update::received() && !config_update::timed_out())
-		{
-			return;
-		}
-
-		// The CONFIG_DATA message resulted in a config update, so the agent
-		// will restart soon.  Skip initialization.
-		if (config_update::updated())
-		{
-			return;
-		}
-
-		LOG_INFO("Proceeding with security initialization");
-	}
-
-	std::lock_guard<std::mutex> lock(m_security_mgr_creation_mutex);
-
-	if (security_config::instance().get_enabled())
-	{
-		assert(feature_manager::instance().get_enabled(COINTERFACE));
-		m_security_mgr =
-		    new security_mgr(m_configuration->c_root_dir.get_value(), m_protocol_handler);
-		m_security_mgr->init(m_inspector.get(),
-				     m_analyzer->get_agent_container_id(),
-				     m_analyzer->mutable_infra_state(),
-				     m_analyzer,
-				     m_capture_job_handler,
-				     m_configuration,
-				     m_internal_metrics);
-	}
-
-	if (feature_manager::instance().get_enabled(COINTERFACE))
-	{
-		const std::string run_dir = m_configuration->c_root_dir.get_value() + "/run";
-
-		m_compliance_mgr = new compliance_mgr(run_dir, m_protocol_handler);
-		m_compliance_mgr->init(m_analyzer, m_configuration, this /*statsd dest*/);
-
-		if (security_config::instance().get_default_compliance_schedule() != "")
-		{
-			std::string errstr;
-			draiosproto::comp_calendar cal;
-
-			draiosproto::comp_task* const k8s_task = cal.add_tasks();
-			k8s_task->set_id(1);
-			k8s_task->set_name("Check K8s Environment");
-			k8s_task->set_mod_name("kube-bench");
-			k8s_task->set_enabled(true);
-			k8s_task->set_schedule(security_config::instance().get_default_compliance_schedule());
-
-			draiosproto::comp_task* const docker_task = cal.add_tasks();
-			docker_task->set_id(2);
-			docker_task->set_name("Check Docker Environment");
-			docker_task->set_mod_name("docker-bench-security");
-			docker_task->set_enabled(true);
-			docker_task->set_schedule(
-			    security_config::instance().get_default_compliance_schedule());
-
-			draiosproto::comp_task* const linux_task = cal.add_tasks();
-			linux_task->set_id(3);
-			linux_task->set_name("Check Linux Environment");
-			linux_task->set_mod_name("linux-bench");
-			linux_task->set_enabled(true);
-			linux_task->set_schedule(security_config::instance().get_default_compliance_schedule());
-
-			// When using a default calendar, never send results or events
-			const bool send_results = false;
-			const bool send_events = false;
-			if (!set_compliance_calendar_internal(cal, send_results, send_events, errstr))
-			{
-				LOGGED_THROW(sinsp_exception,
-				             "Could not set default compliance calendar: %s",
-				             errstr.c_str());
-			}
-		}
-	}
-
-	//
-	// If the agent received any policies/policies_v2/comp_calendar from
-	// the backend while it was waiting for CONFIG_DATA, then load that
-	// backup version now.
-	//
-
-	if (m_security_mgr && m_security_policies_v2_backup)
-	{
-		LOG_INFO("Loading backup security policies_v2");
-		m_security_mgr->request_load_policies_v2(*m_security_policies_v2_backup);
-		m_security_policies_v2_backup.reset();
-	}
-
-	if (m_compliance_mgr && m_security_compliance_calendar_backup)
-	{
-		LOG_INFO("Loading backup security compliance calendar");
-		m_compliance_mgr->set_compliance_calendar(
-		    m_security_compliance_calendar_backup->get_calendar(),
-		    m_security_compliance_calendar_backup->get_send_results(),
-		    m_security_compliance_calendar_backup->get_send_events());
-
-		m_security_compliance_calendar_backup.reset();
-	}
-
-	m_security_initialized = true;
-#endif  // CYGWING_AGENT
-}
-
 void sinsp_worker::init(sinsp::ptr& inspector,
-                        sinsp_analyzer* analyzer)
+                        sinsp_analyzer* analyzer,
+                        security_mgr* sm,
+                        compliance_mgr* cm)
 {
 	if (m_initialized)
 	{
@@ -249,6 +109,8 @@ void sinsp_worker::init(sinsp::ptr& inspector,
 
 	m_inspector = inspector;
 	m_analyzer = analyzer;
+	m_security_mgr = sm;
+	m_compliance_mgr = cm;
 
 	stress_tool_matcher::set_comm_list(m_configuration->m_stress_tools);
 
@@ -461,13 +323,6 @@ void sinsp_worker::run()
 
 	while (!state.is_terminated())
 	{
-		// This will happen only the first time after receiving the
-		// CONFIG_DATA message from the backend (or a timeout)
-		if (!m_security_initialized)
-		{
-			init_security();
-		}
-
 		if (m_configuration->m_evtcnt != 0 && nevts == m_configuration->m_evtcnt)
 		{
 			LOG_INFO("All events have been processed.");
@@ -560,13 +415,14 @@ void sinsp_worker::run()
 		m_job_requests_interval.run([this, should_dump]() { process_job_requests(should_dump); },
 		                            ts);
 
-		if(dragent_configuration::c_enable_aws_metadata.get_value()) {
+		if (dragent_configuration::c_enable_aws_metadata.get_value())
+		{
 			if (!m_inspector->is_capture() && (ts > m_next_iflist_refresh_ns) &&
 			    !m_aws_metadata_refresher.is_running())
 			{
 				Poco::ThreadPool::defaultPool().start(m_aws_metadata_refresher, "aws_metadata_refresher");
 				m_next_iflist_refresh_ns =
-					sinsp_utils::get_current_time_ns() + IFLIST_REFRESH_TIMEOUT_NS;
+				    sinsp_utils::get_current_time_ns() + IFLIST_REFRESH_TIMEOUT_NS;
 			}
 			if (m_aws_metadata_refresher.done())
 			{
@@ -575,15 +431,15 @@ void sinsp_worker::run()
 				if (m_configuration->m_aws_metadata.m_public_ipv4)
 				{
 					sinsp_ipv4_ifinfo aws_interface(m_configuration->m_aws_metadata.m_public_ipv4,
-									m_configuration->m_aws_metadata.m_public_ipv4,
-									m_configuration->m_aws_metadata.m_public_ipv4,
-									"aws");
+					                                m_configuration->m_aws_metadata.m_public_ipv4,
+					                                m_configuration->m_aws_metadata.m_public_ipv4,
+					                                "aws");
 					m_inspector->import_ipv4_interface(aws_interface);
 				}
 				m_aws_metadata_refresher.reset();
 			}
 		}
-	
+
 		k8s_metadata_sender::instance().send_k8s_metadata_message_on_interval(ts);
 
 #ifndef CYGWING_AGENT
@@ -593,7 +449,7 @@ void sinsp_worker::run()
 		if (m_security_mgr)
 		{
 			std::string errstr;
-			if(update_hosts_metadata)
+			if (update_hosts_metadata)
 			{
 				m_security_mgr->request_reload_policies_v2();
 			}
@@ -657,10 +513,8 @@ void sinsp_worker::queue_job_request(
 }
 
 #ifndef CYGWING_AGENT
-void sinsp_worker::request_load_policies_v2(const draiosproto::policies_v2 &policies_v2)
+void sinsp_worker::request_load_policies_v2(const draiosproto::policies_v2& policies_v2)
 {
-	std::lock_guard<std::mutex> lock(m_security_mgr_creation_mutex);
-
 	if (m_security_mgr)
 	{
 		m_security_mgr->request_load_policies_v2(policies_v2);
@@ -683,71 +537,6 @@ bool sinsp_worker::is_stall_fatal() const
 	// If the input filename is not empty then we are reading an scap file
 	// that has old timestamps so tell the caller to not check for stalls
 	return m_configuration->m_input_filename.empty();
-}
-
-void sinsp_worker::send_compliance_statsd(const google::protobuf::RepeatedPtrField<std::string>& collection)
-{
-	if (nullptr == m_analyzer) 
-	{
-		LOG_ERROR("Analyzer not initialized. Cannot send statsd metrics for compliance.");
-	}
-
-	for (const auto &metric : collection)
-	{
-		m_analyzer->add_to_agent_statsd_cache(metric);
-	}
-}
-
-bool sinsp_worker::set_compliance_calendar(const draiosproto::comp_calendar& calendar,
-                                           const bool send_results,
-                                           const bool send_events,
-                                           std::string& errstr)
-{
-	std::lock_guard<std::mutex> lock(m_security_mgr_creation_mutex);
-
-	return set_compliance_calendar_internal(calendar, send_results, send_events, errstr);
-}
-
-bool sinsp_worker::set_compliance_calendar_internal(const draiosproto::comp_calendar& calendar,
-                                                    const bool send_results,
-                                                    const bool send_events,
-                                                    std::string& errstr)
-{
-	if (m_compliance_mgr)
-	{
-		m_compliance_mgr->set_compliance_calendar(calendar, send_results, send_events);
-		return true;
-	}
-
-	LOG_INFO("Saving compliance calendar");
-	if (m_security_compliance_calendar_backup)
-	{
-		m_security_compliance_calendar_backup->set_calendar(calendar);
-		m_security_compliance_calendar_backup->set_send_results(send_results);
-		m_security_compliance_calendar_backup->set_send_events(send_events);
-	}
-	else
-	{
-		m_security_compliance_calendar_backup =
-		    make_unique<compliance_calendar_backup>(calendar, send_results, send_events);
-	}
-
-	errstr = "No Compliance Manager object created";
-	return false;
-}
-
-bool sinsp_worker::run_compliance_tasks(const draiosproto::comp_run& run, std::string& errstr)
-{
-	if (m_compliance_mgr)
-	{
-		m_compliance_mgr->set_compliance_run(run);
-		return true;
-	}
-	else
-	{
-		errstr = "No Compliance Manager object created";
-		return false;
-	}
 }
 
 void sinsp_worker::receive_hosts_metadata(const draiosproto::orchestrator_events& evts)

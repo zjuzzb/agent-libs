@@ -40,10 +40,10 @@
 #include "pre_aggregated_metrics_rest_request_handler.h"
 #include "process_helpers.h"
 #include "procfs_parser.h"
+#include "prom_grpc.h"
+#include "prom_helper.h"
 #include "promscrape.h"
 #include "promscrape_proxy.h"
-#include "prom_helper.h"
-#include "prom_grpc.h"
 #include "protobuf_compression.h"
 #include "protobuf_metric_serializer.h"
 #include "rest_request_handler_factory.h"
@@ -51,6 +51,7 @@
 #include "running_state.h"
 #include "security_compliance_calendar_message_handler.h"
 #include "security_compliance_run_message_handler.h"
+#include "security_config.h"
 #include "security_orchestrator_events_message_handler.h"
 #include "security_policies_v2_message_handler.h"
 #include "sinsp_factory.h"
@@ -144,21 +145,25 @@ type_config<uint64_t> c_promscrape_timeout_s(60,
                                              "Watchdog timeout for the promscrape thread",
                                              "promscrape_thread_timeout");
 
-type_config<bool> c_promscrape_coldstart_delay(false,
-                                             "Wait to start promscrape v2 until cointerface is ready",
-                                             "promscrape_coldstart_delay");
+type_config<bool> c_promscrape_coldstart_delay(
+    false,
+    "Wait to start promscrape v2 until cointerface is ready",
+    "promscrape_coldstart_delay");
 
-type_config<bool> c_10s_flush_enabled(false,
-                                      "Enable agent-side aggregation",
-                                      "10s_flush_enable");
+type_config<bool> c_10s_flush_enabled(false, "Enable agent-side aggregation", "10s_flush_enable");
 
-type_config<uint64_t> c_heartbeat_interval_s(0,
-                                      "Send heartbeat messages at this interval in seconds, 0 to disable",
-                                      "heartbeat_interval_s");
+type_config<uint64_t> c_heartbeat_interval_s(
+    0,
+    "Send heartbeat messages at this interval in seconds, 0 to disable",
+    "heartbeat_interval_s");
 
-type_config<std::string> c_promscrape_labels("--source.label=pod_id,sysdig_k8s_pod_uid,remove --source.label=container_name,sysdig_k8s_pod_container_name,remove --source.label=sysdig_bypass,sysdig_bypass,remove --source.label=sysdig_omit_source,sysdig_omit_source,remove",
-                                             "source labels for promscrape to attach to results",
-                                             "promscrape_labels");
+type_config<std::string> c_promscrape_labels(
+    "--source.label=pod_id,sysdig_k8s_pod_uid,remove "
+    "--source.label=container_name,sysdig_k8s_pod_container_name,remove "
+    "--source.label=sysdig_bypass,sysdig_bypass,remove "
+    "--source.label=sysdig_omit_source,sysdig_omit_source,remove",
+    "source labels for promscrape to attach to results",
+    "promscrape_labels");
 
 type_config<uint64_t> c_watchdog_max_memory_usage_mb(1024,
                                                      "maximum memory usage for watchdog",
@@ -171,24 +176,25 @@ type_config<uint64_t> c_watchdog_warn_memory_usage_mb(256,
                                                       "warn_memory_usage_mb");
 
 type_config<std::vector<std::string>> c_log_file_component_overrides(
-					{},
-					"Component level overrides to global log level",
-					"log",
-					"file_priority_by_component");
+    {},
+    "Component level overrides to global log level",
+    "log",
+    "file_priority_by_component");
 
 type_config<std::vector<std::string>> c_log_console_component_overrides(
-					{},
-					"Component level overrides to global console log level",
-					"log",
-					"console_priority_by_component");
+    {},
+    "Component level overrides to global console log level",
+    "log",
+    "console_priority_by_component");
 
 type_config<uint64_t>::ptr c_wait_before_ready_sec =
-	type_config_builder<uint64_t>(
-		0,
-		"after cointerface is ready, wait this amount of seconds before k8s readiness probe switches to ready."
-		"If set to zero, cointerface is not taken into account for readiness",
-		"k8s_wait_before_ready"
-		).build();
+    type_config_builder<uint64_t>(
+        0,
+        "after cointerface is ready, wait this amount of seconds before k8s readiness probe "
+        "switches to ready."
+        "If set to zero, cointerface is not taken into account for readiness",
+        "k8s_wait_before_ready")
+        .build();
 
 type_config<uint64_t> c_memdump_size(300 * 1024 * 1024, "", "memdump", "size");
 
@@ -529,7 +535,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	command_line_manager::command_info cmd;
 	cmd.permissions = {CLI_AGENT_STATUS};
 	cmd.short_description = "The version of the Sysdig Agent.";
-	cmd.handler = [](const command_line_manager::argument_list &args) { return AGENT_VERSION;};
+	cmd.handler = [](const command_line_manager::argument_list& args) { return AGENT_VERSION; };
 	command_line_manager::instance().register_command("version", cmd);
 
 //
@@ -564,7 +570,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		std::cerr << "Failed to init sinsp_worker. Exception message: " << ex.what() << '\n';
 		running_state::instance().shut_down();
 	}
-	catch (const std::exception &e)
+	catch (const std::exception& e)
 	{
 		std::cerr << "Failed to init configuration. Exception Message: " << e.what() << '\n';
 		running_state::instance().shut_down();
@@ -598,8 +604,12 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	if (m_configuration.m_mode_explicitly_set)
 	{
-		configuration_manager::instance().get_mutable_config<bool>("feature.driver")->set_set_in_config(true);
-		configuration_manager::instance().get_mutable_config<bool>("feature.full_syscalls")->set_set_in_config(true);
+		configuration_manager::instance()
+		    .get_mutable_config<bool>("feature.driver")
+		    ->set_set_in_config(true);
+		configuration_manager::instance()
+		    .get_mutable_config<bool>("feature.full_syscalls")
+		    ->set_set_in_config(true);
 	}
 
 	// Ensure the feature manager has validatead the config
@@ -661,7 +671,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 	if (!default_cpu_cgroup.create())
 	{
 		LOG_WARNING("Could not create default cgroup, required by %s and/or %s",
-			c_default_cpu_shares.to_string().c_str(), c_default_cpu_quota.to_string().c_str());
+		            c_default_cpu_shares.to_string().c_str(),
+		            c_default_cpu_quota.to_string().c_str());
 	}
 
 	process_helpers::subprocess_cpu_cgroup cointerface_cpu_cgroup(
@@ -671,7 +682,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 	if (!cointerface_cpu_cgroup.create())
 	{
 		LOG_WARNING("Could not create cointerface cgroup, required by %s and/or %s",
-			c_cointerface_cpu_shares.to_string().c_str(), c_cointerface_cpu_quota.to_string().c_str());
+		            c_cointerface_cpu_shares.to_string().c_str(),
+		            c_cointerface_cpu_quota.to_string().c_str());
 	}
 
 	process_helpers::subprocess_cpu_cgroup coldstart_manager_cpu_cgroup(
@@ -681,7 +693,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 	if (!coldstart_manager_cpu_cgroup.create())
 	{
 		LOG_WARNING("Could not create lease_pool_manager cgroup, required by %s and/or %s",
-			c_coldstart_manager_cpu_shares.to_string().c_str(), c_coldstart_manager_cpu_quota.to_string().c_str());
+		            c_coldstart_manager_cpu_shares.to_string().c_str(),
+		            c_coldstart_manager_cpu_quota.to_string().c_str());
 	}
 
 	// immediately move ourselves to the default cpu group
@@ -700,7 +713,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 	// Add our main process
 	monitor_process.emplace_process(
 	    "sdagent",
-	    [=]() {
+	    [=]()
+	    {
 		    default_cpu_cgroup.enter();
 
 		    // only set to get agent show in the watchdog loop
@@ -744,49 +758,52 @@ int dragent_app::main(const std::vector<std::string>& args)
 		state->set_name("sdjagent");
 		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_file(), sdjagent_parser(), state);
 
-		monitor_process.emplace_process("sdjagent", [=]() -> int {
-			default_cpu_cgroup.enter();
-			static const auto MAX_SDJAGENT_ARGS = 50;
-			this->m_jmx_pipes->attach_child();
+		monitor_process.emplace_process(
+		    "sdjagent",
+		    [=]() -> int
+		    {
+			    default_cpu_cgroup.enter();
+			    static const auto MAX_SDJAGENT_ARGS = 50;
+			    this->m_jmx_pipes->attach_child();
 
-			// Our option parser is pretty simple, for example an arg with spaces inside
-			// double quotes will not work, eg:
-			// -Xmx:myamazingconfig="test with spaces" -Xmx256m
-			auto sdjagent_opts_split = sinsp_split(m_configuration.m_sdjagent_opts, ' ');
+			    // Our option parser is pretty simple, for example an arg with spaces inside
+			    // double quotes will not work, eg:
+			    // -Xmx:myamazingconfig="test with spaces" -Xmx256m
+			    auto sdjagent_opts_split = sinsp_split(m_configuration.m_sdjagent_opts, ' ');
 
-			const char* args[MAX_SDJAGENT_ARGS];
-			unsigned j = 0;
-			args[j++] = "java";
-			for (const auto& opt : sdjagent_opts_split)
-			{
-				args[j++] = opt.c_str();
-			}
+			    const char* args[MAX_SDJAGENT_ARGS];
+			    unsigned j = 0;
+			    args[j++] = "java";
+			    for (const auto& opt : sdjagent_opts_split)
+			    {
+				    args[j++] = opt.c_str();
+			    }
 
-			const string java_library_path =
-			    string("-Djava.library.path=") + m_configuration.c_root_dir.get_value() + "/lib";
-			args[j++] = java_library_path.c_str();
-			args[j++] = "-Dsun.rmi.transport.connectionTimeout=" SDJAGENT_JMX_TIMEOUT;
-			args[j++] = "-Dsun.rmi.transport.tcp.handshakeTimeout=" SDJAGENT_JMX_TIMEOUT;
-			args[j++] = "-Dsun.rmi.transport.tcp.responseTimeout=" SDJAGENT_JMX_TIMEOUT;
-			args[j++] = "-Dsun.rmi.transport.tcp.readTimeout=" SDJAGENT_JMX_TIMEOUT;
-			args[j++] = "-jar";
-			File sdjagent_jar(m_configuration.c_root_dir.get_value() + "/share/sdjagent.jar");
+			    const string java_library_path = string("-Djava.library.path=") +
+			                                     m_configuration.c_root_dir.get_value() + "/lib";
+			    args[j++] = java_library_path.c_str();
+			    args[j++] = "-Dsun.rmi.transport.connectionTimeout=" SDJAGENT_JMX_TIMEOUT;
+			    args[j++] = "-Dsun.rmi.transport.tcp.handshakeTimeout=" SDJAGENT_JMX_TIMEOUT;
+			    args[j++] = "-Dsun.rmi.transport.tcp.responseTimeout=" SDJAGENT_JMX_TIMEOUT;
+			    args[j++] = "-Dsun.rmi.transport.tcp.readTimeout=" SDJAGENT_JMX_TIMEOUT;
+			    args[j++] = "-jar";
+			    File sdjagent_jar(m_configuration.c_root_dir.get_value() + "/share/sdjagent.jar");
 
-			std::string jar_file =
-			    sdjagent_jar.exists()
-			        ? (m_configuration.c_root_dir.get_value() + "/share/sdjagent.jar")
-			        : "../sdjagent/java/sdjagent-1.0-jar-with-dependencies.jar";
+			    std::string jar_file =
+			        sdjagent_jar.exists()
+			            ? (m_configuration.c_root_dir.get_value() + "/share/sdjagent.jar")
+			            : "../sdjagent/java/sdjagent-1.0-jar-with-dependencies.jar";
 
-			args[j++] = jar_file.c_str();
-			args[j++] = NULL;
+			    args[j++] = jar_file.c_str();
+			    args[j++] = NULL;
 
-			execv(this->m_configuration.m_java_binary.c_str(), (char* const*)args);
+			    execv(this->m_configuration.m_java_binary.c_str(), (char* const*)args);
 
-			std::cerr << "{ \"pid\": 0, \"level\": \"SEVERE\", \"message\": \"Cannot load "
-			             "sdjagent, errno: "
-			          << errno << "\" }" << std::endl;
-			return (EXIT_FAILURE);
-		});
+			    std::cerr << "{ \"pid\": 0, \"level\": \"SEVERE\", \"message\": \"Cannot load "
+			                 "sdjagent, errno: "
+			              << errno << "\" }" << std::endl;
+			    return (EXIT_FAILURE);
+		    });
 	}
 
 	// Configure statsite subprocess
@@ -805,42 +822,47 @@ int dragent_app::main(const std::vector<std::string>& args)
 		    m_configuration.m_percentiles);
 
 		m_statsite_pipes = make_shared<pipe_manager>();
-		m_subprocesses_logger.add_logfd(m_statsite_pipes->get_err_fd(), [this](const string& data) {
-			if (data.find("Failed to bind") != string::npos)
-			{
-				this->m_sinsp_worker.set_statsd_capture_localhost(true);
-			}
-			// statsite logs does not have info about level, use error if keyword `Failed` is inside
-			// or use
-			// information
-			if (data.find("Failed") != string::npos)
-			{
-				LOG_ERROR(data);
-			}
-			else
-			{
-				LOG_INFO(data);
-			}
-		});
+		m_subprocesses_logger.add_logfd(
+		    m_statsite_pipes->get_err_fd(),
+		    [this](const string& data)
+		    {
+			    if (data.find("Failed to bind") != string::npos)
+			    {
+				    this->m_sinsp_worker.set_statsd_capture_localhost(true);
+			    }
+			    // statsite logs does not have info about level, use error if keyword `Failed` is
+			    // inside or use information
+			    if (data.find("Failed") != string::npos)
+			    {
+				    LOG_ERROR(data);
+			    }
+			    else
+			    {
+				    LOG_INFO(data);
+			    }
+		    });
 
-		monitor_process.emplace_process("statsite", [=]() -> int {
-			default_cpu_cgroup.enter();
-			this->m_statsite_pipes->attach_child_stdio();
+		monitor_process.emplace_process(
+		    "statsite",
+		    [=]() -> int
+		    {
+			    default_cpu_cgroup.enter();
+			    this->m_statsite_pipes->attach_child_stdio();
 #ifndef CYGWING_AGENT
-			execl((m_configuration.c_root_dir.get_value() + "/bin/statsite").c_str(),
-			      "statsite",
-			      "-f",
-			      statsite_ini.c_str(),
-			      (char*)NULL);
+			    execl((m_configuration.c_root_dir.get_value() + "/bin/statsite").c_str(),
+			          "statsite",
+			          "-f",
+			          statsite_ini.c_str(),
+			          (char*)NULL);
 #else
-				execl("../../../../dependencies/statsite-private-0.7.0-sysdig3/statsite",
-				      "statsite",
-				      "-f",
-				      statsite_ini.c_str(),
-				      (char*)NULL);
+			    execl("../../../../dependencies/statsite-private-0.7.0-sysdig3/statsite",
+			          "statsite",
+			          "-f",
+			          statsite_ini.c_str(),
+			          (char*)NULL);
 #endif
-			return (EXIT_FAILURE);
-		});
+			    return (EXIT_FAILURE);
+		    });
 
 		if (c_use_statsite_forwarder.get_value() ||
 		    (m_configuration.m_mode == dragent_mode_t::NODRIVER))
@@ -851,20 +873,25 @@ int dragent_app::main(const std::vector<std::string>& args)
 			m_subprocesses_logger.add_logfd(m_statsite_forwarder_pipe->get_file(),
 			                                sinsp_logger_parser("statsite_forwarder"),
 			                                state);
-			monitor_process.emplace_process("statsite_forwarder", [=]() -> int {
-				default_cpu_cgroup.enter();
-				m_statsite_forwarder_pipe->attach_child();
-				g_logger.add_stderr_log();
-				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds(),
-				                       libsanalyzer::statsite_config::instance().get_udp_port());
-				return fwd.run();
-			});
+			monitor_process.emplace_process(
+			    "statsite_forwarder",
+			    [=]() -> int
+			    {
+				    default_cpu_cgroup.enter();
+				    m_statsite_forwarder_pipe->attach_child();
+				    g_logger.add_stderr_log();
+				    statsite_forwarder fwd(
+				        this->m_statsite_pipes->get_io_fds(),
+				        libsanalyzer::statsite_config::instance().get_udp_port());
+				    return fwd.run();
+			    });
 		}
 	}
 
 #ifndef CYGWING_AGENT
-	if (m_configuration.python_present() && (feature_manager::instance().get_enabled(APP_CHECKS) ||
-	                                         (m_configuration.m_prom_conf.enabled() && !prom_helper::c_use_promscrape.get_value())))
+	if (m_configuration.python_present() &&
+	    (feature_manager::instance().get_enabled(APP_CHECKS) ||
+	     (m_configuration.m_prom_conf.enabled() && !prom_helper::c_use_promscrape.get_value())))
 	{
 		m_sdchecks_pipes = make_unique<errpipe_manager>();
 		auto state = &m_subprocesses_state["sdchecks"];
@@ -888,22 +915,25 @@ int dragent_app::main(const std::vector<std::string>& args)
 		}
 		else
 		{
-			monitor_process.emplace_process("sdchecks", [=]() {
-				default_cpu_cgroup.enter();
-				this->m_sdchecks_pipes->attach_child();
+			monitor_process.emplace_process(
+			    "sdchecks",
+			    [=]()
+			    {
+				    default_cpu_cgroup.enter();
+				    this->m_sdchecks_pipes->attach_child();
 
-				setenv("LD_LIBRARY_PATH",
-				       (m_configuration.c_root_dir.get_value() + "/lib").c_str(),
-				       1);
-				const char* python = this->m_configuration.m_python_binary.c_str();
-				execl(python,
-				      python,
-				      (m_configuration.c_root_dir.get_value() + "/bin/sdchecks").c_str(),
-				      "run",
-				      NULL);
+				    setenv("LD_LIBRARY_PATH",
+				           (m_configuration.c_root_dir.get_value() + "/lib").c_str(),
+				           1);
+				    const char* python = this->m_configuration.m_python_binary.c_str();
+				    execl(python,
+				          python,
+				          (m_configuration.c_root_dir.get_value() + "/bin/sdchecks").c_str(),
+				          "run",
+				          NULL);
 
-				return (EXIT_FAILURE);
-			});
+				    return (EXIT_FAILURE);
+			    });
 		}
 	}
 	if (m_configuration.m_system_supports_containers)
@@ -914,23 +944,26 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(),
 		                                sinsp_encoded_parser("mountedfs_reader"),
 		                                state);
-		monitor_process.emplace_process("mountedfs_reader", [=]() {
-			default_cpu_cgroup.enter();
-			m_mounted_fs_reader_pipe->attach_child();
-			auto sev = static_cast<sinsp_logger::severity>(
-			    std::max(this->m_configuration.m_min_file_priority,
-			             this->m_configuration.m_min_console_priority));
-			g_logger.set_severity(sev);
-			g_logger.add_encoded_severity();
-			g_logger.disable_timestamps();
-			g_logger.add_stderr_log();
+		monitor_process.emplace_process(
+		    "mountedfs_reader",
+		    [=]()
+		    {
+			    default_cpu_cgroup.enter();
+			    m_mounted_fs_reader_pipe->attach_child();
+			    auto sev = static_cast<sinsp_logger::severity>(
+			        std::max(this->m_configuration.m_min_file_priority,
+			                 this->m_configuration.m_min_console_priority));
+			    g_logger.set_severity(sev);
+			    g_logger.add_encoded_severity();
+			    g_logger.disable_timestamps();
+			    g_logger.add_stderr_log();
 
-			mounted_fs_reader proc(this->m_configuration.m_remotefs_enabled,
-			                       this->m_configuration.m_mounts_filter,
-			                       this->m_configuration.m_mounts_limit_size,
-			                       this->m_configuration.m_log_dir);
-			return proc.run();
-		});
+			    mounted_fs_reader proc(this->m_configuration.m_remotefs_enabled,
+			                           this->m_configuration.m_mounts_filter,
+			                           this->m_configuration.m_mounts_limit_size,
+			                           this->m_configuration.m_log_dir);
+			    return proc.run();
+		    });
 	}
 #endif
 	if (feature_manager::instance().get_enabled(COINTERFACE))
@@ -944,34 +977,37 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_out_fd(),
 		                                k8s_parser("cointerface"),
 		                                state);
-		monitor_process.emplace_process("cointerface", [=]() {
-			cointerface_cpu_cgroup.enter();
-			m_cointerface_pipes->attach_child_stdio();
+		monitor_process.emplace_process(
+		    "cointerface",
+		    [=]()
+		    {
+			    cointerface_cpu_cgroup.enter();
+			    m_cointerface_pipes->attach_child_stdio();
 
-			if (m_configuration.m_cointerface_cpu_profile_enabled)
-			{
-				string logfile = m_configuration.m_log_dir + "/cpu.prof";
-				execl((m_configuration.c_root_dir.get_value() + "/bin/cointerface").c_str(),
-				      "cointerface",
-				      "-cpuprofile",
-				      logfile.c_str(),
-				      "-eventspertrace",
-				      to_string(m_configuration.m_cointerface_events_per_profile).c_str(),
-				      "-keeptraces",
-				      to_string(m_configuration.m_cointerface_total_profiles).c_str(),
-				      "-memprofile",
-				      m_configuration.m_cointerface_mem_profile_enabled ? "true" : "false",
-				      (char*)NULL);
-			}
-			else
-			{
-				execl((m_configuration.c_root_dir.get_value() + "/bin/cointerface").c_str(),
-				      "cointerface",
-				      (char*)NULL);
-			}
+			    if (m_configuration.m_cointerface_cpu_profile_enabled)
+			    {
+				    string logfile = m_configuration.m_log_dir + "/cpu.prof";
+				    execl((m_configuration.c_root_dir.get_value() + "/bin/cointerface").c_str(),
+				          "cointerface",
+				          "-cpuprofile",
+				          logfile.c_str(),
+				          "-eventspertrace",
+				          to_string(m_configuration.m_cointerface_events_per_profile).c_str(),
+				          "-keeptraces",
+				          to_string(m_configuration.m_cointerface_total_profiles).c_str(),
+				          "-memprofile",
+				          m_configuration.m_cointerface_mem_profile_enabled ? "true" : "false",
+				          (char*)NULL);
+			    }
+			    else
+			    {
+				    execl((m_configuration.c_root_dir.get_value() + "/bin/cointerface").c_str(),
+				          "cointerface",
+				          (char*)NULL);
+			    }
 
-			return (EXIT_FAILURE);
-		});
+			    return (EXIT_FAILURE);
+		    });
 
 		// should this go in feature_manager?
 		if (infrastructure_state::c_k8s_coldstart_manager_enabled->get_value() == true)
@@ -980,21 +1016,24 @@ int dragent_app::main(const std::vector<std::string>& args)
 			auto* state = &m_subprocesses_state["lease_pool_manager"];
 			state->set_name("lease_pool_manager");
 			m_subprocesses_logger.add_logfd(m_coldstart_manager_pipes->get_err_fd(),
-							k8s_parser("lease_pool_manager"),
-							state);
+			                                k8s_parser("lease_pool_manager"),
+			                                state);
 			m_subprocesses_logger.add_logfd(m_coldstart_manager_pipes->get_out_fd(),
-							k8s_parser("lease_pool_manager"),
-							state);
-			monitor_process.emplace_process("lease_pool_manager", [=]()
-									     {
-										     coldstart_manager_cpu_cgroup.enter();
-										     m_coldstart_manager_pipes->attach_child_stdio();
+			                                k8s_parser("lease_pool_manager"),
+			                                state);
+			monitor_process.emplace_process(
+			    "lease_pool_manager",
+			    [=]()
+			    {
+				    coldstart_manager_cpu_cgroup.enter();
+				    m_coldstart_manager_pipes->attach_child_stdio();
 
-										     execl((m_configuration.c_root_dir.get_value() + "/bin/lease_pool_manager").c_str(),
-											   "lease_pool_manager",
-											  (char*)NULL);
-										     return (EXIT_FAILURE);
-									     });
+				    execl((m_configuration.c_root_dir.get_value() + "/bin/lease_pool_manager")
+				              .c_str(),
+				          "lease_pool_manager",
+				          (char*)NULL);
+				    return (EXIT_FAILURE);
+			    });
 		}
 	}
 #ifndef CYGWING_AGENT
@@ -1009,26 +1048,31 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_subprocesses_logger.add_logfd(m_promex_pipes->get_err_fd(),
 		                                sinsp_logger_parser("promex", true),
 		                                state);
-		monitor_process.emplace_process("promex", [=]() {
-			default_cpu_cgroup.enter();
-			m_promex_pipes->attach_child_stdio();
+		monitor_process.emplace_process(
+		    "promex",
+		    [=]()
+		    {
+			    default_cpu_cgroup.enter();
+			    m_promex_pipes->attach_child_stdio();
 
-			execl((m_configuration.c_root_dir.get_value() + "/bin/promex").c_str(),
-			      "promex",
-			      "-prom-addr",
-			      m_configuration.m_promex_url.c_str(),
-			      "-container-labels",
-			      m_configuration.m_promex_container_labels.c_str(),
-			      (char*)NULL);
+			    execl((m_configuration.c_root_dir.get_value() + "/bin/promex").c_str(),
+			          "promex",
+			          "-prom-addr",
+			          m_configuration.m_promex_url.c_str(),
+			          "-container-labels",
+			          m_configuration.m_promex_container_labels.c_str(),
+			          (char*)NULL);
 
-			return (EXIT_FAILURE);
-		});
+			    return (EXIT_FAILURE);
+		    });
 	}
 
-	// Prom configuration manager (allowing config from backend) is only supported with Promscrape v2
-	prom_config_file_manager *prom_config_mgr = prom_config_file_manager::instance();
+	// Prom configuration manager (allowing config from backend) is only supported with Promscrape
+	// v2
+	prom_config_file_manager* prom_config_mgr = prom_config_file_manager::instance();
 	prom_config_mgr->set_v2(m_configuration.m_prom_conf.enabled() &&
-		prom_helper::c_use_promscrape.get_value() && m_configuration.m_prom_conf.prom_sd());
+	                        prom_helper::c_use_promscrape.get_value() &&
+	                        m_configuration.m_prom_conf.prom_sd());
 	if (prom_config_mgr->enabled())
 	{
 		prom_config_mgr->set_root_dir(m_configuration.c_root_dir.get_value());
@@ -1049,7 +1093,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 		                                state);
 
 		// If Prom config manager is enabled it will have written to promscrape.yaml already.
-		std::string promscrape_yaml_path = m_configuration.c_root_dir.get_value() + "/etc/promscrape.yaml";
+		std::string promscrape_yaml_path =
+		    m_configuration.c_root_dir.get_value() + "/etc/promscrape.yaml";
 		std::string prom_conf_arg = "--config.file=" + promscrape_yaml_path;
 
 		if (!prom_config_mgr->enabled())
@@ -1058,9 +1103,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 			// configuration to promscrape.yaml instead.
 			std::string prom_path;
 			std::vector<std::string> prompaths = {
-				m_configuration.c_root_dir.get_value() + "/etc/prometheus.yaml",
-				m_configuration.c_root_dir.get_value() + "/etc/kubernetes/config/prometheus.yaml",
-				m_configuration.c_root_dir.get_value() + (m_configuration.m_prom_conf.prom_sd() ? "/etc/prometheus-v2.default.yaml" : "/etc/prometheus-v1.default.yaml") };
+			    m_configuration.c_root_dir.get_value() + "/etc/prometheus.yaml",
+			    m_configuration.c_root_dir.get_value() + "/etc/kubernetes/config/prometheus.yaml",
+			    m_configuration.c_root_dir.get_value() + (m_configuration.m_prom_conf.prom_sd()
+			                                                  ? "/etc/prometheus-v2.default.yaml"
+			                                                  : "/etc/prometheus-v1.default.yaml")};
 			for (const auto& p : prompaths)
 			{
 				if (Poco::File(p).exists())
@@ -1071,101 +1118,112 @@ int dragent_app::main(const std::vector<std::string>& args)
 			}
 			if (!prom_path.empty())
 			{
-				prom_config_file_manager::copy_file(prom_path, promscrape_yaml_path); 
+				prom_config_file_manager::copy_file(prom_path, promscrape_yaml_path);
 			}
 		}
 
-		monitor_process.emplace_process("promscrape", [=]() {
-			string log_level = (g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
-			                       ? "--log.level=debug"
-			                       : "--log.level=info";
-			string address = "--grpc.address=" + prom_helper::c_promscrape_sock.get_value();
-			default_cpu_cgroup.enter();
-			m_promscrape_pipes->attach_child_stdio();
-			// Promscrape v2 does service discovery, v1 lets the agent find targets
-			string promscrape = m_configuration.m_prom_conf.prom_sd() ? "promscrape_v2" : "promscrape_v1";
+		monitor_process.emplace_process(
+		    "promscrape",
+		    [=]()
+		    {
+			    string log_level = (g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
+			                           ? "--log.level=debug"
+			                           : "--log.level=info";
+			    string address = "--grpc.address=" + prom_helper::c_promscrape_sock.get_value();
+			    default_cpu_cgroup.enter();
+			    m_promscrape_pipes->attach_child_stdio();
+			    // Promscrape v2 does service discovery, v1 lets the agent find targets
+			    string promscrape =
+			        m_configuration.m_prom_conf.prom_sd() ? "promscrape_v2" : "promscrape_v1";
 
-			const int maxargs = 40;
-			const char **argv = new const char *[maxargs];
-			int i = 0;
-			argv[i++] = promscrape.c_str();
-			argv[i++] = address.c_str();
-			string web_addr;	// Keep scope until execv since we're putting the c_str() in argv
-			// Web interface is currently only supported in promscrape v2
-			if (m_configuration.m_prom_conf.prom_sd() &&
-				prom_helper::c_promscrape_web_enable.get_value())
-			{
-				argv[i++] = "--web.enable";
-				web_addr = "--web.listen-address=" + prom_helper::c_promscrape_web_sock.get_value();
-				argv[i++] = web_addr.c_str();
-			}
-			argv[i++] = "--log.format=json";
-			argv[i++] = log_level.c_str();
-			if (!prom_conf_arg.empty())
-			{
-				argv[i++] = prom_conf_arg.c_str();
-			}
+			    const int maxargs = 40;
+			    const char** argv = new const char*[maxargs];
+			    int i = 0;
+			    argv[i++] = promscrape.c_str();
+			    argv[i++] = address.c_str();
+			    string web_addr;  // Keep scope until execv since we're putting the c_str() in argv
+			    // Web interface is currently only supported in promscrape v2
+			    if (m_configuration.m_prom_conf.prom_sd() &&
+			        prom_helper::c_promscrape_web_enable.get_value())
+			    {
+				    argv[i++] = "--web.enable";
+				    web_addr =
+				        "--web.listen-address=" + prom_helper::c_promscrape_web_sock.get_value();
+				    argv[i++] = web_addr.c_str();
+			    }
+			    argv[i++] = "--log.format=json";
+			    argv[i++] = log_level.c_str();
+			    if (!prom_conf_arg.empty())
+			    {
+				    argv[i++] = prom_conf_arg.c_str();
+			    }
 
-			char *labels = new char[c_promscrape_labels.get_value().length() + 1];
-			// source labels are only supported in promscrape v2
-			if (m_configuration.m_prom_conf.prom_sd())
-			{
-				// Copy promscrape labels into new C char array so we can use strtok()
-				std::strcpy(labels, c_promscrape_labels.get_value().c_str());
-				for (char *arg = std::strtok(labels, " \t"); (i < (maxargs - 1)) && arg;
-					arg = std::strtok(NULL, " \t"))
-				{
-					argv[i++] = arg;
-				}
-			}
-			argv[i++] = (char *)NULL;
+			    char* labels = new char[c_promscrape_labels.get_value().length() + 1];
+			    // source labels are only supported in promscrape v2
+			    if (m_configuration.m_prom_conf.prom_sd())
+			    {
+				    // Copy promscrape labels into new C char array so we can use strtok()
+				    std::strcpy(labels, c_promscrape_labels.get_value().c_str());
+				    for (char* arg = std::strtok(labels, " \t"); (i < (maxargs - 1)) && arg;
+				         arg = std::strtok(NULL, " \t"))
+				    {
+					    argv[i++] = arg;
+				    }
+			    }
+			    argv[i++] = (char*)NULL;
 
-			// Use coldstart delay if set and only for promscrape v2
-			if (c_promscrape_coldstart_delay.get_value() && m_configuration.m_prom_conf.prom_sd())
-			{
-				m_promscrape_coldstart_event.wait();
-			}
+			    // Use coldstart delay if set and only for promscrape v2
+			    if (c_promscrape_coldstart_delay.get_value() &&
+			        m_configuration.m_prom_conf.prom_sd())
+			    {
+				    m_promscrape_coldstart_event.wait();
+			    }
 
-			execv((m_configuration.c_root_dir.get_value() + "/bin/" + promscrape).c_str(), const_cast<char* const *>(argv));
+			    execv((m_configuration.c_root_dir.get_value() + "/bin/" + promscrape).c_str(),
+			          const_cast<char* const*>(argv));
 
-			delete[] labels;
-			delete[] argv;
+			    delete[] labels;
+			    delete[] argv;
 
-			return (EXIT_FAILURE);
-		}, false, true);
+			    return (EXIT_FAILURE);
+		    },
+		    false,
+		    true);
 	}
 #endif
 
-	monitor_process.set_cleanup_function([=]() {
-		this->m_sdchecks_pipes.reset();
-		this->m_jmx_pipes.reset();
-		this->m_mounted_fs_reader_pipe.reset();
-		this->m_statsite_pipes.reset();
-		m_statsite_forwarder_pipe.reset();
-		this->m_cointerface_pipes.reset();
-		this->m_coldstart_manager_pipes.reset();
+	monitor_process.set_cleanup_function(
+	    [=]()
+	    {
+		    this->m_sdchecks_pipes.reset();
+		    this->m_jmx_pipes.reset();
+		    this->m_mounted_fs_reader_pipe.reset();
+		    this->m_statsite_pipes.reset();
+		    m_statsite_forwarder_pipe.reset();
+		    this->m_cointerface_pipes.reset();
+		    this->m_coldstart_manager_pipes.reset();
 #ifndef CYGWING_AGENT
-		for (const auto& queue : {"/sdc_app_checks_in",
-		                          "/sdc_app_checks_out",
-		                          "/sdc_mounted_fs_reader_out",
-		                          "/sdc_mounted_fs_reader_in",
-		                          "/sdc_sdjagent_out",
-		                          "/sdc_sdjagent_in",
-		                          "/sdc_statsite_forwarder_in"})
-		{
-			posix_queue::remove(queue);
-		}
+		    for (const auto& queue : {"/sdc_app_checks_in",
+		                              "/sdc_app_checks_out",
+		                              "/sdc_mounted_fs_reader_out",
+		                              "/sdc_mounted_fs_reader_in",
+		                              "/sdc_sdjagent_out",
+		                              "/sdc_sdjagent_in",
+		                              "/sdc_statsite_forwarder_in"})
+		    {
+			    posix_queue::remove(queue);
+		    }
 
-		coclient::cleanup();
-		// move thread back to its previous cgroup
-		// otherwise, after a restart we'll create new cgroups
-		// starting from the newly-created default_cpu_cgroup
-		original_cpu_cgroup.enter();
-		default_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get_value());
-		cointerface_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get_value());
-		coldstart_manager_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get_value());
+		    coclient::cleanup();
+		    // move thread back to its previous cgroup
+		    // otherwise, after a restart we'll create new cgroups
+		    // starting from the newly-created default_cpu_cgroup
+		    original_cpu_cgroup.enter();
+		    default_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get_value());
+		    cointerface_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get_value());
+		    coldstart_manager_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get_value());
 #endif
-	});
+	    });
 
 	if (m_configuration.m_enable_coredump)
 	{
@@ -1174,7 +1232,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		// doing the fork, exec in monitor_process.run().
 		setenv("GOTRACEBACK", "crash", 1);
 	}
-	
+
 	return monitor_process.run();
 #else   // _WIN32
 	return sdagent_main();
@@ -1256,7 +1314,7 @@ bool dragent_app::remove_file_if_exists(const std::string& dir, const std::strin
 	p.parseDirectory(dir).setFileName(file_name);
 
 	File f(p);
-	if(f.exists())
+	if (f.exists())
 	{
 		ret = true;
 		f.remove();
@@ -1279,7 +1337,8 @@ int dragent_app::sdagent_main()
 	// Load the configuration
 	//
 	m_configuration.refresh_machine_id();
-	if(dragent_configuration::c_enable_aws_metadata.get_value()) {
+	if (dragent_configuration::c_enable_aws_metadata.get_value())
+	{
 		m_configuration.refresh_aws_metadata();
 	}
 	m_configuration.print_configuration();
@@ -1356,8 +1415,7 @@ int dragent_app::sdagent_main()
 	{
 		m_pool.start(m_subprocesses_logger,
 		             m_configuration.m_watchdog_subprocesses_logger_timeout_s);
-		m_pool.start(m_timer_thread,
-			     m_configuration.m_watchdog_timer_thread_timeout_s);
+		m_pool.start(m_timer_thread, m_configuration.m_watchdog_timer_thread_timeout_s);
 	}
 
 	//
@@ -1380,64 +1438,51 @@ int dragent_app::sdagent_main()
 	// connection_manager for delivery to the backend.
 	////////////////
 
-	connection_manager* cm = nullptr;
+	connection_manager* connection_manager_instance = nullptr;
 	sinsp::ptr inspector = nullptr;
 	sinsp_analyzer* analyzer = nullptr;
 	metric_serializer* serializer = nullptr;
 	async_aggregator* aggregator = nullptr;
 	try
 	{
-		cm = new connection_manager(
-		    {
-			    m_configuration.c_root_dir.get_value(),
-			    m_configuration.m_server_addr,
-			    m_configuration.m_server_port,
-			    m_configuration.m_ssl_enabled,
-			    m_configuration.m_ssl_ca_cert_paths,
-			    m_configuration.m_ssl_ca_certificate,
-			    m_configuration.m_promex_enabled,
-			    m_configuration.m_promex_connect_url,
-			    m_configuration.m_customer_id,
-			    m_configuration.machine_id(),
-			    m_configuration.c_root_dir.get_value()
-		    },
+		connection_manager_instance = new connection_manager(
+		    {m_configuration.c_root_dir.get_value(),
+		     m_configuration.m_server_addr,
+		     m_configuration.m_server_port,
+		     m_configuration.m_ssl_enabled,
+		     m_configuration.m_ssl_ca_cert_paths,
+		     m_configuration.m_ssl_ca_certificate,
+		     m_configuration.m_promex_enabled,
+		     m_configuration.m_promex_connect_url,
+		     m_configuration.m_customer_id,
+		     m_configuration.machine_id(),
+		     m_configuration.c_root_dir.get_value()},
 		    &m_transmit_queue,
 		    c_10s_flush_enabled.get_value()
 		        ? std::initializer_list<dragent_protocol::protocol_version>{4, 5}
 		        : std::initializer_list<dragent_protocol::protocol_version>{4},
-		    {
-		        {draiosproto::message_type::DUMP_REQUEST_START,
-		         std::make_shared<dump_request_start_message_handler>(m_sinsp_worker)},
-		        {draiosproto::message_type::DUMP_REQUEST_STOP,
-		         std::make_shared<dump_request_stop_message_handler>(m_sinsp_worker)},
-		        {draiosproto::message_type::CONFIG_DATA,
-		         std::make_shared<config_data_message_handler>(m_configuration)},
-		        {draiosproto::message_type::POLICIES,  // Legacy -- no longer used
-		         std::make_shared<null_message_handler>()},
-		        {draiosproto::message_type::POLICIES_V2,
-		         std::make_shared<security_policies_v2_message_handler>(m_sinsp_worker)},
-		        {draiosproto::message_type::COMP_CALENDAR,
-		         std::make_shared<security_compliance_calendar_message_handler>(m_sinsp_worker)},
-		        {draiosproto::message_type::COMP_RUN,
-		         std::make_shared<security_compliance_run_message_handler>(m_sinsp_worker)},
-		        {draiosproto::message_type::ORCHESTRATOR_EVENTS,
-		         std::make_shared<security_orchestrator_events_message_handler>(m_sinsp_worker)},
-		        {draiosproto::message_type::AGGREGATION_CONTEXT,
-		         dragent::aggregator_limits::global_limits},
-		        {draiosproto::message_type::BASELINES,  // Legacy -- no longer used
-		         std::make_shared<null_message_handler>()}
-		    });
+		    {{draiosproto::message_type::DUMP_REQUEST_START,
+		      std::make_shared<dump_request_start_message_handler>(m_sinsp_worker)},
+		     {draiosproto::message_type::DUMP_REQUEST_STOP,
+		      std::make_shared<dump_request_stop_message_handler>(m_sinsp_worker)},
+		     {draiosproto::message_type::CONFIG_DATA,
+		      std::make_shared<config_data_message_handler>(m_configuration)},
+		     {draiosproto::message_type::POLICIES,  // Legacy -- no longer used
+		      std::make_shared<null_message_handler>()},
+		     {draiosproto::message_type::POLICIES_V2,
+		      std::make_shared<security_policies_v2_message_handler>(m_sinsp_worker)},
+		     {draiosproto::message_type::ORCHESTRATOR_EVENTS,
+		      std::make_shared<security_orchestrator_events_message_handler>(m_sinsp_worker)},
+		     {draiosproto::message_type::AGGREGATION_CONTEXT,
+		      dragent::aggregator_limits::global_limits},
+		     {draiosproto::message_type::BASELINES,  // Legacy -- no longer used
+		      std::make_shared<null_message_handler>()}});
 
-
-
-		metric_limit_source::callback cb =
-		    std::bind(&dragent_app::handle_metric_limit, 
-		              this, 
-		              std::placeholders::_1,
-		              std::placeholders::_2);
-		cm->register_metric_limit_destination(cb);
-
-		m_pool.start(*cm, m_configuration.m_watchdog_connection_manager_timeout_s);
+		metric_limit_source::callback cb = std::bind(&dragent_app::handle_metric_limit,
+		                                             this,
+		                                             std::placeholders::_1,
+		                                             std::placeholders::_2);
+		connection_manager_instance->register_metric_limit_destination(cb);
 
 		// Must create inspector, then create analyzer, then setup inspector
 		inspector = sinsp_factory::build();
@@ -1474,22 +1519,30 @@ int dragent_app::sdagent_main()
 		std::shared_ptr<promscrape> the_promscrape = nullptr;
 		if (m_configuration.m_prom_conf.enabled() && prom_helper::c_use_promscrape.get_value())
 		{
-			auto interval_cb = [cm]() -> int {
-				std::chrono::seconds s = cm->get_negotiated_aggregation_interval();
+			auto interval_cb = [connection_manager_instance]() -> int
+			{
+				std::chrono::seconds s =
+				    connection_manager_instance->get_negotiated_aggregation_interval();
 				return (s != std::chrono::seconds::max()) ? s.count() : 10;
 			};
 
-			std::unique_ptr<prom_unarygrpc_iface> prom_unary_grpc(new prom_unarygrpc(prom_helper::c_promscrape_sock.get_value()));
-			std::unique_ptr<prom_streamgrpc_iface> prom_stream_grpc(new prom_streamgrpc(prom_helper::c_promscrape_sock.get_value()));
-			the_promscrape = std::make_shared<promscrape>(the_metric_limits,
-			                                              m_configuration.m_prom_conf.get_scrape_conf(),
-			                                              c_promscrape_thread.get_value(),
-			                                              interval_cb, 
-			                                              m_configuration.m_prom_conf.prom_sd() ? nullptr : std::move(prom_unary_grpc),
-			                                              std::move(prom_stream_grpc));
+			std::unique_ptr<prom_unarygrpc_iface> prom_unary_grpc(
+			    new prom_unarygrpc(prom_helper::c_promscrape_sock.get_value()));
+			std::unique_ptr<prom_streamgrpc_iface> prom_stream_grpc(
+			    new prom_streamgrpc(prom_helper::c_promscrape_sock.get_value()));
+			the_promscrape = std::make_shared<promscrape>(
+			    the_metric_limits,
+			    m_configuration.m_prom_conf.get_scrape_conf(),
+			    c_promscrape_thread.get_value(),
+			    interval_cb,
+			    m_configuration.m_prom_conf.prom_sd() ? nullptr : std::move(prom_unary_grpc),
+			    std::move(prom_stream_grpc));
 			if (c_promscrape_thread.get_value())
 			{
-				m_promscrape_proxy = std::make_shared<promscrape_proxy>(the_promscrape, &m_protocol_handler, cm);
+				m_promscrape_proxy =
+				    std::make_shared<promscrape_proxy>(the_promscrape,
+				                                       &m_protocol_handler,
+				                                       connection_manager_instance);
 				m_pool.start(*m_promscrape_proxy.get(), c_promscrape_timeout_s.get_value());
 			}
 			m_promscrape_stats_proxy = std::make_shared<promscrape_stats_proxy>(the_promscrape);
@@ -1508,16 +1561,98 @@ int dragent_app::sdagent_main()
 		inspector->register_external_event_processor(*analyzer);
 		init_inspector(inspector);
 		LOG_INFO("Configured inspector");
-	
+
 		k8s_metadata_sender::instance().init(analyzer, &m_protocol_handler);
 
+		security_mgr* security_manager_instance = nullptr;
+		if (libsanalyzer::security_config::instance().get_enabled())
+		{
+			LOG_INFO("Initializing Security Manager");
+			assert(feature_manager::instance().get_enabled(COINTERFACE));
+			security_manager_instance =
+			    new security_mgr(m_configuration.c_root_dir.get_value(), m_protocol_handler);
+			security_manager_instance->init(&*inspector,
+			                                analyzer->get_agent_container_id(),
+			                                analyzer->mutable_infra_state(),
+			                                analyzer,
+			                                &m_capture_job_handler,
+			                                &m_configuration,
+			                                m_internal_metrics);
+		}
+
+		compliance_mgr* compliance_manager_instance = nullptr;
+		if (feature_manager::instance().get_enabled(COINTERFACE))
+		{
+			LOG_INFO("Initializing Compliance Manager");
+			const std::string run_dir = m_configuration.c_root_dir.get_value() + "/run";
+
+			compliance_manager_instance = new compliance_mgr(run_dir, m_protocol_handler);
+			compliance_manager_instance->init(analyzer, &m_configuration, analyzer);
+
+			if (libsanalyzer::security_config::instance().get_default_compliance_schedule() != "")
+			{
+				std::string errstr;
+				draiosproto::comp_calendar cal;
+
+				draiosproto::comp_task* const k8s_task = cal.add_tasks();
+				k8s_task->set_id(1);
+				k8s_task->set_name("Check K8s Environment");
+				k8s_task->set_mod_name("kube-bench");
+				k8s_task->set_enabled(true);
+				k8s_task->set_schedule(
+				    libsanalyzer::security_config::instance().get_default_compliance_schedule());
+
+				draiosproto::comp_task* const docker_task = cal.add_tasks();
+				docker_task->set_id(2);
+				docker_task->set_name("Check Docker Environment");
+				docker_task->set_mod_name("docker-bench-security");
+				docker_task->set_enabled(true);
+				docker_task->set_schedule(
+				    libsanalyzer::security_config::instance().get_default_compliance_schedule());
+
+				draiosproto::comp_task* const linux_task = cal.add_tasks();
+				linux_task->set_id(3);
+				linux_task->set_name("Check Linux Environment");
+				linux_task->set_mod_name("linux-bench");
+				linux_task->set_enabled(true);
+				linux_task->set_schedule(
+				    libsanalyzer::security_config::instance().get_default_compliance_schedule());
+
+				// When using a default calendar, never send results or events
+				const bool send_results = false;
+				const bool send_events = false;
+				compliance_manager_instance->set_compliance_calendar(cal,
+				                                                     send_results,
+				                                                     send_events);
+			}
+
+			// the connection manager hasn't actually been started yet, so these
+			// are guaranteed to forward all messages
+			connection_manager_instance->set_message_handler(
+			    draiosproto::message_type::COMP_CALENDAR,
+			    std::make_shared<security_compliance_calendar_message_handler>(
+			        *compliance_manager_instance));
+			connection_manager_instance->set_message_handler(
+			    draiosproto::message_type::COMP_RUN,
+			    std::make_shared<security_compliance_run_message_handler>(
+			        *compliance_manager_instance));
+		}
+
+		// as we do not have a way to guarantee that we can buffer messages until connection
+		// manager is fully set up, we must delay starting it until the proper things are setup
+		// and registered
+		m_pool.start(*connection_manager_instance,
+		             m_configuration.m_watchdog_connection_manager_timeout_s);
 		// There's an interesting dependency graph situation here. The
 		// sinsp_worker is a member variable of the dragent_app class, and as
 		// such gets created and initialized in the constructor. However, the
 		// inspector and analyzer are created and initialized here, with much
 		// pageantry. The init function exists to fully initialize the worker
 		// after the creation of the other objects.
-		m_sinsp_worker.init(inspector, analyzer);
+		m_sinsp_worker.init(inspector,
+		                    analyzer,
+		                    security_manager_instance,
+		                    compliance_manager_instance);
 
 		// Create and set up the aggregator
 		aggregator = new async_aggregator(m_aggregator_queue,
@@ -1525,7 +1660,7 @@ int dragent_app::sdagent_main()
 		                                  300,
 		                                  c_10s_flush_enabled.get_value() ? 10 : 0,
 		                                  m_configuration.c_root_dir.get_value());
-		aggregator->set_aggregation_interval_source(cm);
+		aggregator->set_aggregation_interval_source(connection_manager_instance);
 
 		m_pool.start(*aggregator, c_serializer_timeout_s.get_value());
 		LOG_INFO("Created and started aggregator");
@@ -1534,7 +1669,7 @@ int dragent_app::sdagent_main()
 		{
 			// Set metric request callback for async aggregator
 			async_aggregator::metrics_request_cb metrics_request_cb =
-				std::bind(&promscrape::metrics_request_callback, the_promscrape.get());
+			    std::bind(&promscrape::metrics_request_callback, the_promscrape.get());
 
 			aggregator->register_metrics_request_callback(metrics_request_cb);
 			LOG_INFO("Registered promscrape metrics callback with aggregator");
@@ -1547,7 +1682,7 @@ int dragent_app::sdagent_main()
 		                                        &m_serializer_queue,
 		                                        &m_transmit_queue,
 		                                        compressor,
-		                                        cm);
+		                                        connection_manager_instance);
 		m_pool.start(*s, c_serializer_timeout_s.get_value());
 		serializer = s;
 		LOG_INFO("Created and started serializer");
@@ -1588,14 +1723,15 @@ int dragent_app::sdagent_main()
 		std::shared_ptr<command_line_runnable> cmdline;
 		if (command_line_runnable::enabled())
 		{
-			cmdline = std::make_shared<command_line_runnable>(std::bind(&running_state::is_terminated, 
-			                                                            &state));
+			cmdline = std::make_shared<command_line_runnable>(
+			    std::bind(&running_state::is_terminated, &state));
 			m_pool.start(cmdline, 300 /*timeout*/);
 		}
-		cm->set_message_handler(draiosproto::message_type::COMMAND_LINE_REQUEST,
-		                        std::make_shared<command_line_request_message_handler>(cmdline, 
-		                                                                               m_protocol_handler, 
-		                                                                               m_configuration));
+		connection_manager_instance->set_message_handler(
+		    draiosproto::message_type::COMMAND_LINE_REQUEST,
+		    std::make_shared<command_line_request_message_handler>(cmdline,
+		                                                           m_protocol_handler,
+		                                                           m_configuration));
 	}
 
 	uint64_t uptime_s = 0;
@@ -1635,15 +1771,17 @@ int dragent_app::sdagent_main()
 			monitor_files(uptime_s);
 		}
 
-		setup_startup_probe(*cm);
+		setup_startup_probe(*connection_manager_instance);
 
 		auto now = std::chrono::steady_clock::now();
-		if(heartbeat_interval.count() > 0 && cm->is_connected() && now >= next_heartbeat){
-			shared_ptr<serialized_buffer> buf = dragent_protocol::message_to_buffer(
-				sinsp_utils::get_current_time_ns(),
-				draiosproto::message_type::PROTOCOL_HEARTBEAT,
-				heartbeat,
-				compressor);
+		if (heartbeat_interval.count() > 0 && connection_manager_instance->is_connected() &&
+		    now >= next_heartbeat)
+		{
+			shared_ptr<serialized_buffer> buf =
+			    dragent_protocol::message_to_buffer(sinsp_utils::get_current_time_ns(),
+			                                        draiosproto::message_type::PROTOCOL_HEARTBEAT,
+			                                        heartbeat,
+			                                        compressor);
 			m_transmit_queue.put(buf, protocol_queue::BQ_PRIORITY_LOW);
 			next_heartbeat = now + heartbeat_interval;
 		}
@@ -1871,7 +2009,8 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	}
 
 	sconfig->set_version(AGENT_VERSION);
-	if(dragent_configuration::c_enable_aws_metadata.get_value()) {
+	if (dragent_configuration::c_enable_aws_metadata.get_value())
+	{
 		sconfig->set_instance_id(m_configuration.m_aws_metadata.m_instance_id);
 		sconfig->set_account_id(m_configuration.m_aws_metadata.m_account_id);
 		sconfig->set_region(m_configuration.m_aws_metadata.m_region);
@@ -1970,10 +2109,12 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		if (diff_ns < 0)
 		{
 			static ratelimit r;
-			r.run([&] {
-				LOG_WARNING("watchdog: sinsp_worker last activity " +
-				            NumberFormatter::format(-diff_ns) + " ns in the future");
-			});
+			r.run(
+			    [&]
+			    {
+				    LOG_WARNING("watchdog: sinsp_worker last activity " +
+				                NumberFormatter::format(-diff_ns) + " ns in the future");
+			    });
 		}
 		else
 		{
@@ -2031,18 +2172,23 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		if (diff_ns < 0)
 		{
 			static ratelimit r;
-			r.run([&] {
-				LOG_WARNING("watchdog: sinsp_data_handler last activity " +
-				            NumberFormatter::format(-diff_ns) + " ns in the future");
-			});
+			r.run(
+			    [&]
+			    {
+				    LOG_WARNING("watchdog: sinsp_data_handler last activity " +
+				                NumberFormatter::format(-diff_ns) + " ns in the future");
+			    });
 		}
-		else if (diff_ns > m_configuration.m_watchdog_sinsp_data_handler_timeout_s * ONE_SECOND_IN_NS)
+		else if (diff_ns >
+		         m_configuration.m_watchdog_sinsp_data_handler_timeout_s * ONE_SECOND_IN_NS)
 		{
 			static ratelimit r;
-			r.run([&] {
-				LOG_WARNING("watchdog: sinsp_data_handler last activity " +
-				            NumberFormatter::format(diff_ns) + " ns ago");
-			});
+			r.run(
+			    [&]
+			    {
+				    LOG_WARNING("watchdog: sinsp_data_handler last activity " +
+				                NumberFormatter::format(diff_ns) + " ns ago");
+			    });
 		}
 	}
 
@@ -2093,12 +2239,13 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		// behind by more than the timeout, it gets declared
 		// stuck.
 
-
 		m_cointerface_ping_interval.run(
-		    [this]() {
-			    coclient::response_cb_t callback = [this](bool successful,
-			                                              google::protobuf::Message* response_msg) {
-					static bool event_set = false;
+		    [this]()
+		    {
+			    coclient::response_cb_t callback =
+			        [this](bool successful, google::protobuf::Message* response_msg)
+			    {
+				    static bool event_set = false;
 				    if (successful)
 				    {
 					    sdc_internal::pong* pong = (sdc_internal::pong*)response_msg;
@@ -2107,19 +2254,20 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 					                                              pong->token());
 
 					    m_cointerface_ready = pong->ready();
-						if (pong->ready() && !event_set)
-						{
-							LOG_INFO("Cointerface is ready, setting promscrape coldstart semaphore");
-							m_promscrape_coldstart_event.set();
-							event_set = true;
-						}
-						if (pong->has_delegation())
-						{
-							m_sinsp_worker.m_analyzer->set_delegation(
-								pong->delegation().status() == sdc_internal::DELEGATED,
-								pong->delegation().delegated_nodes(),
-								pong->delegation().delegation_failure());
-						}
+					    if (pong->ready() && !event_set)
+					    {
+						    LOG_INFO(
+						        "Cointerface is ready, setting promscrape coldstart semaphore");
+						    m_promscrape_coldstart_event.set();
+						    event_set = true;
+					    }
+					    if (pong->has_delegation())
+					    {
+						    m_sinsp_worker.m_analyzer->set_delegation(
+						        pong->delegation().status() == sdc_internal::DELEGATED,
+						        pong->delegation().delegated_nodes(),
+						        pong->delegation().delegation_failure());
+					    }
 				    }
 			    };
 
@@ -2265,7 +2413,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			        m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.at(proc.first))
 			{
 				LOG_CRITICAL("watchdog: " + proc.first + " using " +
-					     to_string(state.memory_used() / 1024) + "MiB of memory, killing");
+				             to_string(state.memory_used() / 1024) + "MiB of memory, killing");
 				subprocess_to_kill = true;
 			}
 			uint64_t last_loop_s = state.last_loop_s();
@@ -2284,7 +2432,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			    diff > m_configuration.m_watchdog_subprocesses_timeout_s.at(proc.first))
 			{
 				LOG_CRITICAL("watchdog: " + proc.first + " last activity " +
-					     NumberFormatter::format(diff) + " s ago");
+				             NumberFormatter::format(diff) + " s ago");
 				// sdchecks implements the SIGHUP handler for handling stalls
 				if (proc.first == "sdchecks")
 				{
@@ -2428,7 +2576,7 @@ void dragent_app::dump_heap_profile(uint64_t uptime_s, bool throttle)
 
 void dragent_app::check_for_clean_shutdown()
 {
-	if(m_had_unclean_shutdown)
+	if (m_had_unclean_shutdown)
 	{
 		LOG_DEBUG("Detected an unclean shutdown. Reporting to the backend");
 		m_log_reporter.send_report(m_transmit_queue, sinsp_utils::get_current_time_ns());
@@ -2487,8 +2635,7 @@ void dragent_app::initialize_logging()
 	// Create file logger at most permissive level (trace). This allows all messages to flow.
 	// Log severity of messages actually emitted through the channel will be managed by
 	// the consumers of the channel
-	Logger& loggerf =
-	    Logger::create("DraiosLogF", formatting_channel_file, Message::PRIO_TRACE);
+	Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, Message::PRIO_TRACE);
 
 	// Note: We are not responsible for managing the memory where
 	//       event_logger points; no free()/delete needed
@@ -2506,15 +2653,15 @@ void dragent_app::initialize_logging()
 	// Create console logger at most permissive level (trace). This allows all messages to flow.
 	// Log severity of messages actually emitted through the channel will be managed by
 	// the consumers of the channel
-	Logger& loggerc =
-	    Logger::create("DraiosLogC", formatting_channel_console, Message::PRIO_TRACE);
+	Logger& loggerc = Logger::create("DraiosLogC", formatting_channel_console, Message::PRIO_TRACE);
 
-	g_log = unique_ptr<common_logger>(new common_logger(&loggerf,
-							    &loggerc,
-							    m_configuration.m_min_file_priority,
-							    m_configuration.m_min_console_priority,
-							    c_log_file_component_overrides.get_value(),
-							    c_log_console_component_overrides.get_value()));
+	g_log =
+	    unique_ptr<common_logger>(new common_logger(&loggerf,
+	                                                &loggerc,
+	                                                m_configuration.m_min_file_priority,
+	                                                m_configuration.m_min_console_priority,
+	                                                c_log_file_component_overrides.get_value(),
+	                                                c_log_console_component_overrides.get_value()));
 
 	g_log->set_observer(m_internal_metrics);
 
@@ -2563,7 +2710,7 @@ void dragent_app::monitor_files(uint64_t uptime_s)
 			// Kinda hacky: If enabled, let prom_config manager deal with prometheus
 			// file changes, so we don't unnecessarily restart the agent.
 			if (prom_config_file_manager::instance()->enabled() &&
-				(state.m_path.find("prom") != string::npos))
+			    (state.m_path.find("prom") != string::npos))
 			{
 				continue;
 			}
@@ -2602,12 +2749,14 @@ void dragent_app::monitor_files(uint64_t uptime_s)
 bool dragent_app::cointerface_ready() const
 {
 	bool ret = false;
-	if(m_cointerface_ready)
+	if (m_cointerface_ready)
 	{
-		static const std::chrono::time_point<std::chrono::steady_clock> start_wait = std::chrono::steady_clock::now();
+		static const std::chrono::time_point<std::chrono::steady_clock> start_wait =
+		    std::chrono::steady_clock::now();
 		auto now = std::chrono::steady_clock::now();
 
-		if(std::chrono::duration_cast<std::chrono::seconds>(now - start_wait).count() > c_wait_before_ready_sec->get_value())
+		if (std::chrono::duration_cast<std::chrono::seconds>(now - start_wait).count() >
+		    c_wait_before_ready_sec->get_value())
 		{
 			ret = true;
 		}
@@ -2615,11 +2764,12 @@ bool dragent_app::cointerface_ready() const
 	return ret;
 }
 
-void dragent_app::setup_startup_probe(const connection_manager& cm)
+void dragent_app::setup_startup_probe(const connection_manager& connection_manager_instance)
 {
-	if(!m_startup_probe_set)
+	if (!m_startup_probe_set)
 	{
-		if(cm.is_connected() && (c_wait_before_ready_sec->get_value() == 0 || cointerface_ready()))
+		if (connection_manager_instance.is_connected() &&
+		    (c_wait_before_ready_sec->get_value() == 0 || cointerface_ready()))
 		{
 			m_startup_probe_set = create_file(m_configuration.m_log_dir, K8S_PROBE_FILE);
 		}
@@ -2632,17 +2782,17 @@ void dragent_app::handle_metric_limit(bool has_limit, draiosproto::custom_metric
 	LOG_DEBUG("Metric limit callback");
 
 	using nr = metric_forwarding_configuration::negotiation_result;
-	metric_forwarding_configuration &mfc = metric_forwarding_configuration::instance();
-	if (has_limit) 
+	metric_forwarding_configuration& mfc = metric_forwarding_configuration::instance();
+	if (has_limit)
 	{
-		if (draiosproto::custom_metric_limit_value::CUSTOM_METRIC_DEFAULT == value) 
+		if (draiosproto::custom_metric_limit_value::CUSTOM_METRIC_DEFAULT == value)
 		{
 			mfc.set_negotiated_value(nr::USE_LEGACY_LIMITS);
 		}
 		else
 		{
-			mfc.set_negotiated_value(nr::USE_NEGOTIATED_VALUE, 
-						 handshake_helpers::metric_limit_to_uint32(value));
+			mfc.set_negotiated_value(nr::USE_NEGOTIATED_VALUE,
+			                         handshake_helpers::metric_limit_to_uint32(value));
 		}
 	}
 	else
