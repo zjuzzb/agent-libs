@@ -595,7 +595,7 @@ private:
 		 * @param container_ids		reference to a list of active container IDs
 		 * @param load_global_rules	Caller decides whether to load global policies
 		 *        like k8s audit policies. Typically global rules only need to be
-		 * 		  reloaded when they have changed, but not when a new container is started.
+		 *        reloaded when they have changed, but not when a new container is started.
 		 */
 		void match_policy_scopes(infrastructure_state_iface *infra_state,
 					 std::list<std::string> &container_ids,
