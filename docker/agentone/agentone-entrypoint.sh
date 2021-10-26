@@ -59,6 +59,16 @@ if [ ! -z "$CHECK_CERTIFICATE" ]; then
 	fi
 fi
 
+if [ ! -z "$SYSDIG_ORCHESTRATOR_PORT" ]; then
+	echo "* Setting port for incoming workload connections"
+
+	if ! grep ^agentino_port $CONFIG_FILE > /dev/null 2>&1; then
+		echo "agentino_port: $SYSDIG_ORCHESTRATOR_PORT" >> $CONFIG_FILE
+	else
+		sed -i "s/^agentino_port.*/agentino_port: $SYSDIG_ORCHESTRATOR_PORT/g" $CONFIG_FILE
+	fi
+fi
+
 if [ ! -z "$ADDITIONAL_CONF" ]; then
 	if [ $PRECONFIGURED == 0 ]; then
 		echo "* Setting additional customer configuration:"
