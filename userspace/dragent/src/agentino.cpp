@@ -134,50 +134,50 @@ void agentino_app::initialize(Application& self)
 		if (*i == "--name")
 		{
 			std::string value = *(++i);
-			std::cerr << "Hostname = " << value << "\n";
+			LOG_INFO("Hostname = %s", value.c_str());
 			m_hostname = value;
 		}
 		else if (*i == "--container-name")
 		{
 			std::string value = *(++i);
-			std::cerr << "Container name = " << value << "\n";
+			LOG_INFO("Container name = %s", value.c_str());
 			m_container_name = value;
 			m_metadata.insert(std::pair<std::string, std::string>("aws-container-name", value));
 		}
 		else if (*i == "--image")
 		{
 			std::string value = *(++i);
-			std::cerr << "Container Image = " << value << "\n";
+			LOG_INFO("Container Image = %s", value.c_str());
 			m_container_image = value;
 			m_metadata.insert(std::pair<std::string, std::string>("aws-container-image", value));
 		}
 		else if (*i == "--container-id")
 		{
 			std::string value = *(++i);
-			std::cerr << "Container Id = " << value << "\n";
+			LOG_INFO("Container Id = %s", value.c_str());
 			m_container_id = value;
 		}
 		else if (*i == "--direct")
 		{
-			std::cerr << "Communicating directly with backend\n";
+			LOG_INFO("Communicating directly with backend");
 			m_direct = true;
 		}
 		else if (*i == "--conf-file")
 		{
 			std::string value = *(++i);
-			std::cerr << "Config file = " << value << "\n";
+			LOG_INFO("Config file = %s", value.c_str());
 			m_conf_file_override_path = value;
 		}
 		else if (*i == "--debug-logging")
 		{
-			std::cerr << "Enabling debug logging\n";
+			LOG_INFO("Enabling debug logging");
 			m_enable_logging = true;
 		}
 		else
 		{
 			std::string key = (i++)->substr(2);
 			std::string value = *i;
-			std::cerr << "Metadata key " << key << " = " << value << "\n";
+			LOG_INFO("Metadata key %s = %s", key.c_str(), value.c_str());
 			m_metadata.insert(std::pair<std::string, std::string>(key, value));
 		}
 	}
