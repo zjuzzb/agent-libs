@@ -710,15 +710,18 @@ void security_mgr::process_event_v2(gen_event *evt)
 {
 	{
 		std::lock_guard<std::mutex> lock(m_policy_list_mutex);
-		for (auto& future : m_loaded_v2_policies_futures)
+		auto future_itr = m_loaded_v2_policies_futures.begin();
+		uint32_t loops = m_loaded_v2_policies_futures.size();
+		while (future_itr != m_loaded_v2_policies_futures.end() && loops-- > 0)
 		{
-			if (future.valid() &&
-				future.wait_for(seconds(0)) == std::future_status::ready)
+			if (future_itr->valid() &&
+				future_itr->wait_for(seconds(0)) == std::future_status::ready)
 			{
-				load_policies_result ret = future.get();
+				load_policies_result ret = future_itr->get();
 
 				if (ret.successful)
 				{
+					LOG_DEBUG("Scoping policies");
 					// Note: if there are multiple successful futures then we will
 					// do all this work multiple times. That is not expected to be
 					// a usual condition, however.
@@ -745,9 +748,14 @@ void security_mgr::process_event_v2(gen_event *evt)
 					m_last_pid = 0;
 					m_last_container_id = "";
 				}
+				// Now remove the future from the list
+				future_itr = m_loaded_v2_policies_futures.erase(future_itr);
+			}
+			else
+			{
+				++future_itr;
 			}
 		}
-		m_loaded_v2_policies_futures.clear();
 	}
 
 	if (!m_loaded_policies)
