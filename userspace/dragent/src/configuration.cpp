@@ -986,7 +986,8 @@ void dragent_configuration::init()
 	                                             {"sdjagent", 256U},
 	                                             {"mountedfs_reader", 32U},
 	                                             {"statsite_forwarder", 32U},
-	                                             {"cointerface", 1024U}});
+	                                             {"cointerface", 1024U},
+	                                             {"promscrape", 640U}});
 	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<ProcessValue64Map>(
 	    "watchdog",
 	    "subprocesses_timeout_s",
@@ -995,7 +996,8 @@ void dragent_configuration::init()
 	     {"mountedfs_reader", 60U},
 	     {"statsite_forwarder", 60U},
 	     {"cointerface", 60U},
-	     {"promex", 60U}});
+	     {"promex", 60U},
+	     {"promscrape", 60U}});
 	m_subprocesses_priority = m_config->get_scalar<ProcessValueMap>("subprocesses_priority",
 	                                                                {{"sdchecks", 0},
 	                                                                 {"sdjagent", 0},
