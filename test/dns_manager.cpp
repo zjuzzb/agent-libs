@@ -20,9 +20,9 @@ protected:
 		ASSERT_TRUE(stat("/etc/hosts", &s) == 0);
 		hosts_size = s.st_size;
 
-		sinsp_dns_manager::get().set_base_refresh_timeout(2 * ONE_SECOND_IN_NS);
-		sinsp_dns_manager::get().set_max_refresh_timeout(6 * ONE_SECOND_IN_NS);
-		sinsp_dns_manager::get().set_erase_timeout(8 * ONE_SECOND_IN_NS);
+		sinsp_dns_manager::get().set_base_refresh_timeout(ONE_SECOND_IN_NS / 2);
+		sinsp_dns_manager::get().set_max_refresh_timeout(2 * ONE_SECOND_IN_NS);
+		sinsp_dns_manager::get().set_erase_timeout(5 * ONE_SECOND_IN_NS);
 	}
 
 	virtual void TearDown()
