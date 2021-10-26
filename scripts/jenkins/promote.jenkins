@@ -125,7 +125,7 @@ pipeline {
     post {
         always {
             sh label: '', script: '''
-                docker rmi -f $(docker images | grep -vE 'quay.io/sysdig/agent-builder.*latest-(alpine|centos)' | awk 'NR>1 {print $3}') || echo "no containers to remove"
+                docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
                 sudo rm -rf * .[!.]*
             '''
             cleanWs()
