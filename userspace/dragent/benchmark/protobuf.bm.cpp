@@ -7,7 +7,6 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/io/gzip_stream.h>
 
-#include "main.h"
 #include "protocol.h"
 #include "protobuf_compression.h"
 #include "draios.pb.h"

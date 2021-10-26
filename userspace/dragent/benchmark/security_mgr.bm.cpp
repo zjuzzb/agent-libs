@@ -8,9 +8,14 @@
 
 #include <benchmark/benchmark.h>
 #include <gperftools/profiler.h>
+#include <Poco/AutoPtr.h>
 #include <Poco/ConsoleChannel.h>
 #include <Poco/Formatter.h>
+#include <Poco/FormattingChannel.h>
+#include <Poco/Logger.h>
 #include <Poco/NullChannel.h>
+#include <Poco/PatternFormatter.h>
+
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 #include <container_config.h>
@@ -25,6 +30,7 @@ COMMON_LOGGER();
 
 using namespace std;
 using namespace libsanalyzer;
+using namespace Poco;
 
 class security_mgr_benchmarks : public ::benchmark::Fixture
 {

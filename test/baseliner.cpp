@@ -1,6 +1,12 @@
+#include <Poco/AutoPtr.h>
 #include <Poco/ConsoleChannel.h>
 #include <Poco/Formatter.h>
+#include <Poco/FormattingChannel.h>
+#include <Poco/Logger.h>
 #include <Poco/NullChannel.h>
+#include <Poco/PatternFormatter.h>
+#include <Poco/Thread.h>
+#include <Poco/ThreadPool.h>
 
 #include <baseliner.h>
 #include <configuration.h>
@@ -17,6 +23,7 @@
 #include <unistd.h>
 
 using namespace std;
+using namespace Poco;
 
 class test_error_handler : public Poco::ErrorHandler
 {

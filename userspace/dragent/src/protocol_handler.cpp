@@ -12,6 +12,10 @@
 #include "profiling.pb.h"
 #include "metric_serializer.h"
 
+#include <Poco/NumberFormatter.h>
+
+using Poco::NumberFormatter;
+
 COMMON_LOGGER();
 
 type_config<bool> protocol_handler::c_compression_enabled(

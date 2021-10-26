@@ -6,7 +6,7 @@ pipeline {
     parameters {
         string(name: 'AGENT_BRANCH', defaultValue: 'dev', trim: true)
         booleanParam(name: 'TAG_LATEST', defaultValue: false, description: 'set this to tag the build with latest instead of with the branch name')
-        string(name: 'CONTAINER_NAME', defaultValue: '${AGENT_BRANCH}')
+        string(name: 'CONTAINER_NAME', defaultValue: '$AGENT_BRANCH')
     }
     stages {
         stage('Check out dependencies') {
@@ -51,7 +51,10 @@ pipeline {
         stage('Upload') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
-                    sh label: '', script: '''
+                    sh label: '', script: """
+                        CONTAINER_NAME=${params.CONTAINER_NAME}
+                    """ +
+                    '''
                         echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
                         docker push quay.io/sysdig/agent-builder:$AGENT_BRANCH-alpine
                         docker tag quay.io/sysdig/agent-builder:$AGENT_BRANCH-alpine quay.io/sysdig/agent-builder:$CONTAINER_NAME-alpine
@@ -87,7 +90,7 @@ pipeline {
             sh label: '', script: '''
                 docker rmi -f quay.io/sysdig/agent-builder:$AGENT_BRANCH-alpine
                 docker rmi -f quay.io/sysdig/agent-builder:prev_latest-alpine
-                docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+                docker rmi -f $(docker images | grep -vE 'quay.io/sysdig/agent-builder.*latest-(alpine|centos)' | awk 'NR>1 {print $3}') || echo "no containers to remove"
                 docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
                 sudo rm -rf * .[!.]*
             '''

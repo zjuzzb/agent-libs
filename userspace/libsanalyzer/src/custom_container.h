@@ -15,7 +15,6 @@
 #include <memory>
 
 #include <Poco/Exception.h>
-#include <Poco/Foundation.h>
 #include <Poco/RegularExpression.h>
 
 // suppress deprecated warnings for auto_ptr in boost
@@ -259,8 +258,6 @@ protected:
 
 	YAML::Node m_dump;
 };
-
-
 
 }
 #endif // _WIN32

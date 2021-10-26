@@ -5,11 +5,13 @@
 #include <Poco/AutoPtr.h>
 #include <Poco/ConsoleChannel.h>
 #include <Poco/Formatter.h>
+#include <Poco/FormattingChannel.h>
 #include <Poco/Logger.h>
 #include <Poco/PatternFormatter.h>
 #include <Poco/NullChannel.h>
 #include <Poco/Process.h>
 #include <Poco/Pipe.h>
+#include <Poco/PipeStream.h> 
 #include <Poco/RegularExpression.h>
 
 #include <gtest.h>

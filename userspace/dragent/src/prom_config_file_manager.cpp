@@ -4,8 +4,10 @@
 #include "prom_config_file_manager.h"
 #include "configuration.h"
 #include "common_logger.h"
+
 #include <Poco/NumberFormatter.h>
 #include <Poco/SortedDirectoryIterator.h>
+#include <Poco/DigestEngine.h>
 #include <yaml-cpp/yaml.h>
 
 COMMON_LOGGER();
@@ -481,8 +483,8 @@ int prom_config_file_manager::save_config(const draiosproto::config_file &config
 		(config_file.type() != draiosproto::PROM_CLUSTER_CONFIG) && 
 		(config_file.type() != draiosproto::PROM_CLUSTER_RULES))
 	{
-		errstr = "Invalid Prometheus file type " + NumberFormatter::format(config_file.type()) +
-			" for " + NumberFormatter::format0(config_file.priority(), 2) + "-" + config_file.name();
+		errstr = "Invalid Prometheus file type " + Poco::NumberFormatter::format(config_file.type()) +
+			" for " + Poco::NumberFormatter::format0(config_file.priority(), 2) + "-" + config_file.name();
 		return -1;
 	}
 
@@ -507,7 +509,7 @@ int prom_config_file_manager::save_config(const draiosproto::config_file &config
 			LOG_WARNING("Unhandled scraper type: %d", (int)config_file.type());
 			return -1;
 		}
-		dir = buildpath(m_root_dir, dir) + "/" + NumberFormatter::format0(config_file.priority(), 2);
+		dir = buildpath(m_root_dir, dir) + "/" + Poco::NumberFormatter::format0(config_file.priority(), 2);
 
 		if (!write_file(dir, config_file.name(), config_file.content(), errstr))
 		{
@@ -575,7 +577,7 @@ string prom_config_file_manager::get_digest(const string &content)
 	m_sha1_engine.update(content.c_str(), content.length());
 	auto digest = m_sha1_engine.digest();
 
-	return DigestEngine::digestToHex(digest);
+	return Poco::DigestEngine::digestToHex(digest);
 }
 
 template<typename datatype>

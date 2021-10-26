@@ -4,15 +4,24 @@
 #include "configuration.h"
 #include "connection_manager.h"
 #include "error_handler.h"
-#include "main.h"
 #include "protocol_handler.h"
 #include "subprocesses_logger.h"
 #include "watchdog.h"
 #include "watchdog_runnable_pool.h"
 
+#include <Poco/Util/ServerApplication.h>
+
 namespace draiosproto
 {
 class agentino_metadata;
+}
+
+namespace Poco
+{
+namespace Util
+{
+class OptionSet;
+}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -28,9 +37,9 @@ public:
 	static agentino_app* instance();
 
 protected:
-	void initialize(Application& self) override;
+	void initialize(Poco::Util::Application& self) override;
 	void uninitialize() override;
-	void defineOptions(OptionSet& options) override;
+	void defineOptions(Poco::Util::OptionSet& options) override;
 	void handleOption(const std::string& name, const std::string& value) override;
 	int main(const std::vector<std::string>& args);
 

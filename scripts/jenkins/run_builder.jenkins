@@ -5,14 +5,17 @@ pipeline {
     agent { label 'agent-docker-builder' }
     parameters {
         string(name: 'AGENT_BRANCH', defaultValue: 'dev', trim: true)
-        string(name: 'SYSDIG_BRANCH', defaultValue: 'dev', trim: true)
         string(name: 'FALCO_BRANCH', defaultValue: 'master-sync', trim: true)
         string(name: 'BUILDER_VERSION', defaultValue: 'latest', trim: true)
         string(name: 'PROTOREPO_BRANCH', defaultValue: 'master', trim: true)
         string(name: 'TARGET', defaultValue: 'install-test', trim: false)
-        string(name: 'LIBSINSP_BRANCH', defaultValue: 'dev', trim: true)
-        string(name: 'LIBSCAP_BRANCH', defaultValue: 'dev', trim: true)
         string(name: 'LIBS_BRANCH', defaultValue: 'dev', trim: true)
+        string(name: 'PROBEBUILDER_BRANCH', defaultValue: 'dev', trim: true)
+    }
+    environment {
+        BUILDER_VERSION="${params.BUILDER_VERSION}"
+        CONTAINER_NAME="${params.CONTAINER_NAME}"
+        TARGET="${params.TARGET}"
     }
     stages {
         stage('Check out dependencies') {
@@ -28,9 +31,9 @@ pipeline {
                     checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/agent-libs']]])
                     sh "git checkout ${params.LIBS_BRANCH}"
                 }
-                dir('libscap') {
-                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap']]])
-                    sh "git checkout ${params.LIBSCAP_BRANCH}"
+                dir('probe-builder') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/probe-builder']]])
+                    sh "git checkout ${params.PROBEBUILDER_BRANCH}"
                 }
                 dir('protorepo') {
                     checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
@@ -43,10 +46,10 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
                     sh label: '', script: '''
                         echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
-                        docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
+                        docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos
                         CONTAINER_NAME=$(echo "$TARGET" | tr -dc 'a-z0-9')-$BUILD_NUMBER
                         docker rm -f "$CONTAINER_NAME" || true
-                        timeout 18000 docker run -i --rm --name "$CONTAINER_NAME" -e MAKE_JOBS=$(nproc) -v $PWD:/draios:ro quay.io/sysdig/agent-builder:$BUILDER_VERSION $TARGET
+                        timeout 18000 docker run -i --rm --name "$CONTAINER_NAME" -e MAKE_JOBS=$(nproc) -v $PWD:/draios:ro quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos $TARGET
                         docker rm -f "$CONTAINER_NAME" || true
                     '''
                 }
@@ -56,7 +59,7 @@ pipeline {
     post {
         always {
             sh label: '', script: '''
-                docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+                docker rmi -f $(docker images | grep -vE 'quay.io/sysdig/agent-builder.*latest-(alpine|centos)' | awk 'NR>1 {print $3}') || echo "no containers to remove"
                 docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
                 sudo rm -rf * .[!.]*
             '''

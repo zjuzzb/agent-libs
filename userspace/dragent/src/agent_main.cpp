@@ -1,4 +1,3 @@
-#include "main.h"
 #include "dragent.h"
 
 int main(int argc, char** argv)

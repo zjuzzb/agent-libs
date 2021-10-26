@@ -101,7 +101,7 @@ func newDeploymentCongroup(deployment CoDeployment, setLinks bool) *draiosproto.
 	AddDeploymentMetrics(&ret.Metrics, deployment)
 	if setLinks {
 		selector, _ := deploySelectorCache.Get(deployment)
-		AddReplicaSetChildren(&ret.Children, selector, deployment.GetNamespace(), deployment.ObjectMeta)
+		AddReplicaSetChild(&ret.Children, selector, deployment.GetNamespace(), deployment.ObjectMeta)
 		AddHorizontalPodAutoscalerParents(&ret.Parents, deployment.GetNamespace(), deployment.APIVersion, deployment.Kind, deployment.GetName())
 	}
 	ret.LabelSelector = kubecollect_common.GetLabelSelector(*deployment.Spec.Selector)
@@ -135,7 +135,7 @@ func AddDeploymentMetrics(metrics *[]*draiosproto.AppMetric, deployment CoDeploy
 	//}
 }
 
-func AddDeploymentParents(parents *[]*draiosproto.CongroupUid, rs CoReplicaSet) {
+func AddDeploymentParent(parents *[]*draiosproto.CongroupUid, rs CoReplicaSet) {
 	if !kubecollect_common.ResourceReady("deployments") {
 		return
 	}
@@ -150,43 +150,10 @@ func AddDeploymentParents(parents *[]*draiosproto.CongroupUid, rs CoReplicaSet) 
 		}
 	}
 
-	if string(uid) == "" {
-		// did not find an owner reference. Use usual selector, label mechanism
-		rsLabels := labels.Set(rs.GetLabels())
-		for _, obj := range deploymentInf.GetStore().List() {
-			deploy := CoDeployment{obj.(*appsv1.Deployment)}
-			if rs.GetNamespace() != deploy.GetNamespace() {
-				continue
-			}
-
-			selector, ok := deploySelectorCache.Get(deploy)
-
-			if ok && selector.Matches(rsLabels) {
-				uid = deploy.GetUID()
-				break
-			}
-		}
-	}
-
 	if string(uid) != "" {
 		*parents = append(*parents, &draiosproto.CongroupUid{
 			Kind: proto.String("k8s_deployment"),
 			Id:   proto.String(string(uid))})
-	}
-}
-
-func AddDeploymentChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if !kubecollect_common.ResourceReady("deployments") {
-		return
-	}
-
-	for _, obj := range deploymentInf.GetStore().List() {
-		deployment := obj.(*appsv1.Deployment)
-		if deployment.GetNamespace() == namespaceName {
-			*children = append(*children, &draiosproto.CongroupUid{
-				Kind: proto.String("k8s_deployment"),
-				Id:   proto.String(string(deployment.GetUID()))})
-		}
 	}
 }
 

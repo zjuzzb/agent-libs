@@ -6,6 +6,9 @@ pipeline {
     parameters {
         string(name: 'CONTAINER_NAME', defaultValue: '', trim: true, description: 'the container. can come from quay or docker.')
     }
+    environment {
+        CONTAINER_NAME="${params.CONTAINER_NAME}"
+    }
     stages {
 
     stage('Pull Container') {
@@ -43,4 +46,3 @@ pipeline {
         }
     }
 }
-

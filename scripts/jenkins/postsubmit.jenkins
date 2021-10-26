@@ -16,11 +16,9 @@ pipeline {
         string(name: 'SYSDIG_BRANCH', defaultValue: 'dev', trim: true)
         string(name: 'PROTOREPO_BRANCH', defaultValue: 'master', trim: true)
         string(name: 'BUILDER_VERSION', defaultValue: 'latest', trim: true)
-        string(name: 'LIBSINSP_BRANCH', defaultValue: 'dev', trim: true)
         string(name: 'LIBSCAP_HAYABUSA_BRANCH', defaultValue: 'dev', trim: true)
-        string(name: 'LIBSCAP_BRANCH', defaultValue: 'dev', trim: true)
         string(name: 'LIBS_BRANCH', defaultValue: 'dev', trim: true)
-        booleanParam(name: 'USE_LEGACY_LIBS', defaultValue: false, description: 'Checkout and use libsinsp and libscap from their respective legacy repositories, as opposed to agent-libs')
+        string(name: 'PROBEBUILDER_BRANCH', defaultValue: 'dev', trim: true)
     }
     stages {
         stage ('Tests') {
@@ -31,7 +29,7 @@ pipeline {
                             string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"),
                             string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
                             string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
-                            string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
+                            string(name:'PROBEBUILDER_BRANCH', value:"${params.PROBEBUILDER_BRANCH}"),
                             string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
                             string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")
                         ]
@@ -43,7 +41,7 @@ pipeline {
                             string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"),
                             string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
                             string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
-                            string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
+                            string(name:'PROBEBUILDER_BRANCH', value:"${params.PROBEBUILDER_BRANCH}"),
                             string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
                             string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")
                         ]
@@ -73,7 +71,7 @@ pipeline {
                         build job:'agent-build-dev',parameters:[
                             string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"),
                             string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
-                            string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
+                            string(name:'PROBEBUILDER_BRANCH', value:"${params.PROBEBUILDER_BRANCH}"),
                             string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
                             string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
                             string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"),

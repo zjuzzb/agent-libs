@@ -1,3 +1,5 @@
+#define __STDC_FORMAT_MACROS
+#include "agent-config.h"
 #include "agentino_manager.h"
 #include "agentone.h"
 #include "async_aggregator.h"
@@ -52,6 +54,20 @@
 #include <sys/utsname.h>
 #include <time.h>
 
+#include <Poco/AutoPtr.h>
+#include <Poco/ConsoleChannel.h>
+#include <Poco/Formatter.h>
+#include <Poco/FormattingChannel.h>
+#include <Poco/NumberFormatter.h>
+#include <Poco/Logger.h>
+#include <Poco/PatternFormatter.h>
+#include <Poco/SHA1Engine.h>
+#include <Poco/Util/Option.h>
+#include <Poco/Util/OptionSet.h>
+
+using namespace Poco;
+using Poco::Util::Option;
+
 // local helper functions
 namespace
 {
@@ -100,7 +116,7 @@ type_config<std::vector<std::string>> c_log_console_component_overrides(
     "log",
     "console_priority_by_component");
 
-string compute_sha1_digest(SHA1Engine& engine, const string& path)
+string compute_sha1_digest(Poco::SHA1Engine& engine, const string& path)
 {
 	engine.reset();
 	ifstream fs(path);
@@ -249,7 +265,7 @@ void agentone_app::uninitialize()
 	ServerApplication::uninitialize();
 }
 
-void agentone_app::defineOptions(OptionSet& options)
+void agentone_app::defineOptions(Poco::Util::OptionSet& options)
 {
 	ServerApplication::defineOptions(options);
 
@@ -1257,10 +1273,10 @@ void agentone_app::initialize_logging()
 	file_channel->setProperty("rotation", std::to_string(m_configuration.m_max_log_size) + "M");
 	file_channel->setProperty("archive", "timestamp");
 
-	AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %H:%M:%S.%i, %P.%I, %p, %t"));
+	AutoPtr<Formatter> formatter(new Poco::PatternFormatter("%Y-%m-%d %H:%M:%S.%i, %P.%I, %p, %t"));
 	AutoPtr<Channel> avoid_block(
 	    new avoid_block_channel(file_channel, m_configuration.machine_id()));
-	AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, avoid_block));
+	AutoPtr<Channel> formatting_channel_file(new Poco::FormattingChannel(formatter, avoid_block));
 
 	// Create file logger at most permissive level (trace). This allows all messages to flow.
 	// Log severity of messages actually emitted through the channel will be managed by
@@ -1278,8 +1294,8 @@ void agentone_app::initialize_logging()
 		                                                  m_configuration.m_user_max_burst_events));
 	}
 
-	AutoPtr<Channel> console_channel(new ConsoleChannel());
-	AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
+	AutoPtr<Channel> console_channel(new Poco::ConsoleChannel());
+	AutoPtr<Channel> formatting_channel_console(new Poco::FormattingChannel(formatter, console_channel));
 	// Create console logger at most permissive level (trace). This allows all messages to flow.
 	// Log severity of messages actually emitted through the channel will be managed by
 	// the consumers of the channel
@@ -1299,7 +1315,7 @@ void agentone_app::initialize_logging()
 
 void agentone_app::monitor_files(uint64_t uptime_s)
 {
-	static SHA1Engine engine;
+	static Poco::SHA1Engine engine;
 	bool detected_change = false;
 
 	// init the file states when called for the first time

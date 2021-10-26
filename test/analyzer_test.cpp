@@ -21,11 +21,8 @@
 #include "sinsp_int.h"
 #include "sys_call_test.h"
 
-#include <Poco/NumberFormatter.h>
+#include <Poco/Event.h>
 #include <Poco/NumberParser.h>
-#include <Poco/PipeStream.h>
-#include <Poco/Process.h>
-#include <Poco/StringTokenizer.h>
 
 #include <algorithm>
 #include <cassert>
@@ -46,9 +43,7 @@
 
 using namespace std;
 
-using Poco::NumberFormatter;
 using Poco::NumberParser;
-using Poco::StringTokenizer;
 
 TEST_F(sys_call_test, analyzer_errors)
 {

@@ -46,3 +46,15 @@ install(
 	COMPONENT dockerfiles
 )
 
+install(
+    PROGRAMS ${PROBE_LOADER_DIR}/sysdig-probe-loader
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/docker/ubi
+    RENAME sysdigcloud-probe-loader
+    COMPONENT dockerfiles
+)
+
+install(
+    PROGRAMS get-version-and-exec.sh
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/docker/ubi
+    COMPONENT dockerfiles
+)

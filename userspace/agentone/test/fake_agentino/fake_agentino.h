@@ -1,16 +1,17 @@
 #pragma once
 
-#include <cstdint>
-#include <queue>
-#include <string>
-#include <stdexcept>
-#include <chrono>
-#include <unordered_map>
+#include "protobuf_compression.h"
 #include "protocol.h"
 #include "spinlock.h"
-#include <unistd.h>
+
 #include <arpa/inet.h>
-#include "protobuf_compression.h"
+#include <chrono>
+#include <cstdint>
+#include <queue>
+#include <stdexcept>
+#include <string>
+#include <unistd.h>
+#include <unordered_map>
 
 /**
  * Unit test mock which emulates an agentino.
@@ -43,18 +44,14 @@ public:
 		} hdr;
 		uint32_t payload_len;
 
-		buf(uint8_t* _ptr, dragent_protocol_header_v5 _hdr, uint32_t _len):
-		    ptr(_ptr),
-		    payload_len(_len)
+		buf(uint8_t* _ptr, dragent_protocol_header_v5 _hdr, uint32_t _len)
+		    : ptr(_ptr),
+		      payload_len(_len)
 		{
 			hdr.v5 = _hdr;
 		}
 
-		buf(uint8_t* _ptr, dragent_protocol_header_v5 _hdr):
-		    ptr(_ptr)
-		{
-			hdr.v5 = _hdr;
-		}
+		buf(uint8_t* _ptr, dragent_protocol_header_v5 _hdr) : ptr(_ptr) { hdr.v5 = _hdr; }
 
 		buf() {}
 	};
@@ -66,31 +63,34 @@ public:
 	 */
 	fake_agentino(bool auto_respond,
 	              bool auto_reconnect,
-	              bool silent=true,
-	              const std::string& id=""):
-	    m_received_data(),
-	    m_status(server_status::NOT_STARTED),
-	    m_error_code(0),
-	    m_error_msg(""),
-	    m_id(id),
-	    m_run_loop(false),
-	    m_port(0),
-	    m_drop_connection(false),
-	    m_auto_respond(auto_respond),
-	    m_auto_reconnect(auto_reconnect),
-	    m_last_gen_num(0),
-	    m_last_seq_num(0),
-	    m_last_index(0),
-	    m_working_version(0),
-	    m_delay_acks(false),
-	    m_num_disconnects(0),
-	    m_num_connects(0),
-	    m_num_sent_msgs(0),
-	    m_num_sent_heartbeats(0),
-	    m_silent(silent),
-	    m_pause(false),
-	    m_heartbeat(false)
-	{}
+	              uint64_t timestamp,
+	              bool silent = true,
+	              const std::string& id = "")
+	    : m_received_data(),
+	      m_status(server_status::NOT_STARTED),
+	      m_error_code(0),
+	      m_error_msg(""),
+	      m_id(id),
+	      m_run_loop(false),
+	      m_port(0),
+	      m_drop_connection(false),
+	      m_auto_respond(auto_respond),
+	      m_auto_reconnect(auto_reconnect),
+	      m_last_gen_num(0),
+	      m_last_seq_num(0),
+	      m_last_index(0),
+	      m_working_version(0),
+	      m_delay_acks(false),
+	      m_num_disconnects(0),
+	      m_num_connects(0),
+	      m_num_sent_msgs(0),
+	      m_num_sent_heartbeats(0),
+	      m_silent(silent),
+	      m_pause(false),
+	      m_heartbeat(false),
+	      m_timestamp(timestamp)
+	{
+	}
 
 	~fake_agentino();
 
@@ -140,20 +140,14 @@ public:
 	 *
 	 * @return  Amount of data in the list
 	 */
-	uint32_t data_len() const
-	{
-		return m_received_data.size();
-	}
+	uint32_t data_len() const { return m_received_data.size(); }
 
 	/**
 	 * Gets the port the agentone is using to connect.
 	 *
 	 * @return The connected port
 	 */
-	uint16_t get_port() const
-	{
-		return m_port;
-	}
+	uint16_t get_port() const { return m_port; }
 
 	/**
 	 * Gets the status of the client.
@@ -167,24 +161,17 @@ public:
 	 * @retval  SHUTDOWN     Client started and then cleanly shut down
 	 * @retval  DISCONNECTED Client terminated the connection remotely
 	 */
-	server_status get_status() const
-	{
-		return m_status;
-	}
+	server_status get_status() const { return m_status; }
 
 	bool connected() const
 	{
-		return m_status > server_status::CONNECTING &&
-		       m_status < server_status:: ERRORED;
+		return m_status > server_status::CONNECTING && m_status < server_status::ERRORED;
 	}
 
 	/**
 	 * The fake agentino should drop the connection to the agentone.
 	 */
-	void drop_connection()
-	{
-		m_drop_connection = true;
-	}
+	void drop_connection() { m_drop_connection = true; }
 
 	/**
 	 * Serialize a protobuf into a byte buf.
@@ -223,39 +210,24 @@ public:
 	 * This number is both agent-initiated disconnects and disconnects caused
 	 * by fake collector clients calling drop_connection().
 	 */
-	uint32_t get_num_disconnects() const
-	{
-		return m_num_disconnects;
-	}
+	uint32_t get_num_disconnects() const { return m_num_disconnects; }
 
 	/**
 	 * Get the number of connects seen by the collector.
 	 */
-	uint32_t get_num_connects() const
-	{
-		return m_num_connects;
-	}
+	uint32_t get_num_connects() const { return m_num_connects; }
 
 	/**
 	 * Get the number of messages sent from this fake agentino.
 	 */
-	uint32_t get_num_sent_messages() const
-	{
-		return m_num_sent_msgs;
-	}
+	uint32_t get_num_sent_messages() const { return m_num_sent_msgs; }
 
 	/**
 	 * Get the number of heartbeats sent from this fake agentino.
 	 */
-	uint32_t get_num_sent_heartbeats() const
-	{
-		return m_num_sent_heartbeats;
-	}
+	uint32_t get_num_sent_heartbeats() const { return m_num_sent_heartbeats; }
 
-	void turn_on_heartbeats()
-	{
-		m_heartbeat = true;
-	}
+	void turn_on_heartbeats() { m_heartbeat = true; }
 
 	/**
 	 *	Deserialize a buffer into a protobuf
@@ -266,20 +238,21 @@ public:
 private:
 	const uint32_t MAX_STORED_DATAGRAMS = 32;
 	std::queue<buf> m_received_data;
-	std::queue<buf> m_send_queue; // Messages to send to the agent
+	std::queue<buf> m_send_queue;  // Messages to send to the agent
 	server_status m_status;
-	int m_error_code;        // Currently internal-only for debugging
-	std::string m_error_msg; // Currently internal-only for debugging
+	int m_error_code;         // Currently internal-only for debugging
+	std::string m_error_msg;  // Currently internal-only for debugging
 	std::string m_id;
 
-	bool m_run_loop; // Control variable
+	bool m_run_loop;  // Control variable
 
-	uint16_t m_port;   // The port the server is listening on
+	uint16_t m_port;  // The port the server is listening on
 
 	volatile bool m_drop_connection;
 	bool m_auto_respond;
 	bool m_auto_reconnect;
-	std::unordered_map<int, std::chrono::system_clock::time_point> wait_list; // Internal tracking of connect delays
+	std::unordered_map<int, std::chrono::system_clock::time_point>
+	    wait_list;  // Internal tracking of connect delays
 	spinlock m_send_queue_lock;
 	uint64_t m_last_gen_num;
 	uint64_t m_last_seq_num;
@@ -294,6 +267,7 @@ private:
 	bool m_silent;
 	bool m_pause;
 	bool m_heartbeat;
+	uint64_t m_timestamp;
 
 public:
 	draiosproto::policies_v2 m_most_recent_received_policies;
@@ -336,10 +310,7 @@ fake_agentino::buf fake_agentino::build_buf(uint8_t message_type,
 
 	// Serialize the message
 	std::shared_ptr<serialized_buffer> msg_buf;
-	msg_buf = dragent_protocol::message_to_buffer(0,
-	                                              message_type,
-	                                              msg,
-	                                              compressor);
+	msg_buf = dragent_protocol::message_to_buffer(0, message_type, msg, compressor);
 	if (!msg_buf)
 	{
 		return {};
@@ -349,23 +320,18 @@ fake_agentino::buf fake_agentino::build_buf(uint8_t message_type,
 	uint8_t* bytes = new uint8_t[msg_buf->buffer.length()];
 	memcpy(bytes, msg_buf->buffer.c_str(), msg_buf->buffer.length());
 
-	return build_buf(message_type,
-	                 version,
-	                 bytes,
-	                 msg_buf->buffer.length(),
-	                 generation,
-	                 sequence);
+	return build_buf(message_type, version, bytes, msg_buf->buffer.length(), generation, sequence);
 }
 
-template <typename T>
+template<typename T>
 bool fake_agentino::parse_protobuf(uint8_t* buffer, uint32_t buf_len, T& msg)
 {
-	   google::protobuf::io::ArrayInputStream stream(buffer, buf_len);
-	   google::protobuf::io::GzipInputStream gzstream(&stream);
+	google::protobuf::io::ArrayInputStream stream(buffer, buf_len);
+	google::protobuf::io::GzipInputStream gzstream(&stream);
 
-	   if(!msg.ParseFromZeroCopyStream(&gzstream))
-	   {
-		       return false;
-	   }
-	   return true;
+	if (!msg.ParseFromZeroCopyStream(&gzstream))
+	{
+		return false;
+	}
+	return true;
 }

@@ -3,6 +3,8 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/targe
 include_directories(${LIBSCAP_INCLUDE_DIR})
 include_directories(${LIBSINSP_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/userspace)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/draiosproto)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libpromscrape/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/test_helpers)

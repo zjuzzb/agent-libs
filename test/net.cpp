@@ -6,20 +6,16 @@
 #include "feature_manager.h"
 
 #include "Poco/Exception.h"
-#include "Poco/Net/FTPStreamFactory.h"
-#include "Poco/Net/HTTPSStreamFactory.h"
-#include "Poco/Net/HTTPStreamFactory.h"
 #include "Poco/NullStream.h"
-#include "Poco/Path.h"
 #include "Poco/StreamCopier.h"
 #include "Poco/URI.h"
 #include "Poco/URIStreamOpener.h"
 
 #include <Poco/NumberFormatter.h>
 #include <Poco/NumberParser.h>
-#include <Poco/PipeStream.h>
-#include <Poco/Process.h>
-#include <Poco/StringTokenizer.h>
+
+#include <Poco/Net/ServerSocket.h>
+#include <Poco/Net/HTTPStreamFactory.h>
 
 #include <algorithm>
 #include <arpa/inet.h>
@@ -36,7 +32,6 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 
-// For HTTP server
 #include "analyzer_thread.h"
 #include "configuration_manager.h"
 #include "connectinfo.h"
@@ -45,19 +40,7 @@
 #include "sinsp_int.h"
 
 #include "test-helpers/scoped_config.h"
-#include "test-helpers/http_server.h"
-
-#include <Poco/Net/HTTPRequestHandler.h>
-#include <Poco/Net/HTTPRequestHandlerFactory.h>
-#include <Poco/Net/HTTPResponse.h>
-#include <Poco/Net/HTTPSClientSession.h>
-#include <Poco/Net/HTTPServer.h>
-#include <Poco/Net/HTTPServerRequest.h>
-#include <Poco/Net/HTTPServerRequestImpl.h>
-#include <Poco/Net/HTTPServerResponse.h>
-#include <Poco/Net/SecureServerSocket.h>
-#include <Poco/Net/SecureStreamSocket.h>
-#include <Poco/Net/ServerSocket.h>
+#include "http_server.h"
 
 #include <arpa/inet.h>
 #include <array>
@@ -76,26 +59,15 @@ using namespace test_helpers;
 
 using Poco::NumberFormatter;
 using Poco::NumberParser;
-using Poco::SharedPtr;
 
 using Poco::Exception;
 using Poco::NullOutputStream;
-using Poco::Path;
 using Poco::StreamCopier;
 using Poco::URI;
 using Poco::URIStreamOpener;
-using Poco::Net::FTPStreamFactory;
-using Poco::Net::HTTPSStreamFactory;
-using Poco::Net::HTTPStreamFactory;
 
-using Poco::Net::HTTPResponse;
-using Poco::Net::HTTPServer;
-using Poco::Net::HTTPServerParams;
-using Poco::Net::HTTPServerRequest;
-using Poco::Net::HTTPServerResponse;
-using Poco::Net::SecureServerSocket;
-using Poco::Net::SecureStreamSocket;
 using Poco::Net::ServerSocket;
+using Poco::Net::HTTPStreamFactory;
 
 #define SITE "www.google.com"
 #define SITE1 "www.yahoo.com"
@@ -321,14 +293,6 @@ public:
 		sock_fd = -1;
 	}
 };
-
-///
-/// So that callers don't have to remember all the magic words to get the socket.
-///
-unique_ptr<SecureServerSocket> get_ssl_socket(uint16_t port)
-{
-	return unique_ptr<SecureServerSocket>(new SecureServerSocket(port, 64 /* backlog */));
-}
 
 ///
 /// Send an ssl request to the given localhost port.

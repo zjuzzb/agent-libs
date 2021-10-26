@@ -1,4 +1,3 @@
-#include "main.h"
 #include "agentone.h"
 
 int main(int argc, char** argv)

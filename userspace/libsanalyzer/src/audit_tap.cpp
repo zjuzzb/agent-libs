@@ -334,7 +334,7 @@ void audit_tap::emit_process(thread_analyzer_info* tinfo,
 	populate_process(proc, userdb, tinfo);
 	sinsp_threadinfo* current{tinfo};
 	tap::NewProcess* p = proc;
-	for (int i = 0; i <= dump_hierarchy; i++)
+	for (int i = 0; i < dump_hierarchy; i++)
 	{
 		auto main = current->get_main_thread();
 		if (!main)
@@ -346,8 +346,8 @@ void audit_tap::emit_process(thread_analyzer_info* tinfo,
 		{
 			break;
 		}
-		populate_process(p, userdb, parent);
 		p = p->mutable_parent();
+		populate_process(p, userdb, parent);
 		current = parent;
 	}
 

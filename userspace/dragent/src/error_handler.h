@@ -1,10 +1,11 @@
 #pragma once
 
-#include "main.h"
 #include "configuration.h"
 #include "protocol.h"
 #include "log_report_handler.h"
 #include "dragent_message_queues.h"
+
+#include "Poco/ErrorHandler.h"
 
 class dragent_error_handler : public Poco::ErrorHandler
 {

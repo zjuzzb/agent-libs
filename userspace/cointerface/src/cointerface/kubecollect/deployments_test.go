@@ -28,7 +28,7 @@ func deployment_fixture() {
 	deploySelectorCache = NewSelectorCache()
 
 	// Run the deployment informer with a fake client.
-	// This is needed by AddDeploymentParents to work properly
+	// This is needed by AddDeploymentParent to work properly
 	client := fake.NewSimpleClientset()
 	informers := clientgoInformersLib.NewSharedInformerFactory(client, 0)
 	deploymentInf = informers.Apps().V1().Deployments().Informer()
@@ -160,7 +160,7 @@ func TestDeploymentEqualsStatusUpdatedReplicas(t *testing.T) {
 func TestAddDeploymentParents(t *testing.T) {
 	var parents []*draiosproto.CongroupUid
 	// Owner reference is not null here (See the fixture)
-	AddDeploymentParents(&parents, replicaset)
+	AddDeploymentParent(&parents, replicaset)
 
 	// Check that the rs parent id is the deployment uid
 	if len(parents) != 1 || (*parents[0].Id != string(deploymentInf.GetStore().List()[0].(*appsv1.Deployment).UID)) {
@@ -173,19 +173,11 @@ func TestAddDeploymentParents(t *testing.T) {
 
 	deployment := deploymentInf.GetStore().List()[0].(*appsv1.Deployment)
 
-	// Add selector specs
-	deployment.Spec.Selector = &metav1.LabelSelector{
-		MatchLabels:      map[string]string{"key1": "value1", "key2": "value2"},
-		MatchExpressions: nil,
-	}
-
-	// Add labels matching with deployment selector
-	replicaset.Labels = map[string]string{"key1": "value1", "key2": "value2", "key3": "value3"}
 	replicaset.Namespace = deployment.Namespace
 
-	AddDeploymentParents(&parents, replicaset)
+	AddDeploymentParent(&parents, replicaset)
 
-	if len(parents) != 1 || (*parents[0].Id != string(deploymentInf.GetStore().List()[0].(*appsv1.Deployment).UID)) {
+	if len(parents) != 0  {
 		t.Fail()
 	}
 }

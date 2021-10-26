@@ -5,38 +5,37 @@
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
-#include "security_compliance_calendar_message_handler.h"
 #include "common_logger.h"
 #include "protocol.h"
-#include "security_compliance_calender_receiver.h"
+#include "security_compliance_calendar_message_handler.h"
+#include "security_compliance_calendar_receiver.h"
 #include "security_config.h"
+
 #include <string>
 
 namespace
 {
-
 COMMON_LOGGER();
 
-} // end namespace
+}  // end namespace
 
 namespace dragent
 {
-
 security_compliance_calendar_message_handler::security_compliance_calendar_message_handler(
-		security_compliance_calender_receiver& receiver):
-	m_receiver(receiver)
-{ }
+    security_compliance_calendar_receiver& receiver)
+    : m_receiver(receiver)
+{
+}
 
-bool security_compliance_calendar_message_handler::handle_message(
-		const draiosproto::message_type,
-		const uint8_t* const buffer,
-		const size_t buffer_size)
+bool security_compliance_calendar_message_handler::handle_message(const draiosproto::message_type,
+                                                                  const uint8_t* const buffer,
+                                                                  const size_t buffer_size)
 {
 #if !defined(CYGWING_AGENT)
 	draiosproto::comp_calendar calendar;
 	std::string errstr;
 
-	if(!libsanalyzer::security_config::instance().get_enabled())
+	if (!libsanalyzer::security_config::instance().get_enabled())
 	{
 		LOG_DEBUG("Security disabled, ignoring COMP_CALENDAR message");
 		return false;
@@ -45,13 +44,11 @@ bool security_compliance_calendar_message_handler::handle_message(
 	dragent_protocol::buffer_to_protobuf(buffer, buffer_size, &calendar);
 
 	if (!m_receiver.set_compliance_calendar(
-				calendar,
-				libsanalyzer::security_config::instance().get_send_compliance_results(),
-				libsanalyzer::security_config::instance().get_send_compliance_events(),
-				errstr))
+	        calendar,
+	        libsanalyzer::security_config::instance().get_send_compliance_results(),
+	        libsanalyzer::security_config::instance().get_send_compliance_events()))
 	{
-		LOG_WARNING("Could not set compliance calendar: %s",
-		            errstr.c_str());
+		LOG_WARNING("Could not set compliance calendar");
 		return false;
 	}
 #endif
@@ -59,4 +56,4 @@ bool security_compliance_calendar_message_handler::handle_message(
 	return true;
 }
 
-} // namespace dragent
+}  // namespace dragent
