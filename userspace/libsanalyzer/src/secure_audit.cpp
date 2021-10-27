@@ -224,11 +224,15 @@ void secure_audit::init(sinsp_ipv4_connection_manager* conn,
 		}
 
 		// Register callback
-		analyzer_fd_listener->subscribe_on_file_open_write(
-		    [this](thread_analyzer_info* tinfo,
+		analyzer_fd_listener->subscribe_on_file_open(WRITES_ONLY,
+		    [this](bool is_write,
+		           thread_analyzer_info* tinfo,
 		           uint64_t ts,
 		           const std::string& fullpath,
-		           uint32_t flags) { emit_file_access_async(tinfo, ts, fullpath, flags); });
+		           uint32_t flags)
+		    {
+			    emit_file_access_async(tinfo, ts, fullpath, flags);
+		    });
 	}
 }
 

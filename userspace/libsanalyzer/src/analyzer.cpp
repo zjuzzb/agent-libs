@@ -290,6 +290,7 @@ type_config<std::string> c_hidden_processes("", "", "ui", "hidden_processes");
 
 type_config<bool> c_audit_tap_emit_local_connections(false, "Track local connections", "audit_tap", "emit_local_connections");
 type_config<bool> c_audit_tap_emit_pending_connections(false, "Track pending connections", "audit_tap", "emit_pending_connections");
+type_config<bool> c_audit_tap_emit_file_open(false, "Track opened files", "audit_tap", "emit_opened_files");
 type_config<bool> c_use_working_set(false, 
 				    "For containers, use working set instead of rss memory. This can be useful for capacity planning since it matches kubectl top.", 
 				    "container_memory_as_working_set");
@@ -8095,6 +8096,13 @@ void sinsp_analyzer::enable_audit_tap()
 		m_tap = std::make_shared<audit_tap>(&m_env_hash_config,
 		                                    m_configuration->get_machine_id(),
 		                                    c_audit_tap_emit_local_connections.get_value());
+	    if (c_audit_tap_emit_file_open.get_value()){
+		    m_fd_listener->subscribe_on_file_open(ALL_EVENTS,
+		        [this](bool is_write, thread_analyzer_info* tinfo,
+		                 uint64_t ts, const std::string& fullpath, uint32_t flags){
+			        this->m_tap->register_file_access(is_write, tinfo, ts, fullpath, flags);
+		    });
+	    }
 }
 
 void sinsp_analyzer::enable_secure_audit()

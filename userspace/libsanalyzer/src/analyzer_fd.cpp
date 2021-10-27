@@ -692,19 +692,29 @@ void sinsp_analyzer_fd_listener::on_file_open(sinsp_evt* evt,
 	{
 		ASSERT(evt->m_fdinfo->is_file());
 		ASSERT(evt->m_fdinfo->m_name == fullpath);
+		bool is_write = flags & (PPM_O_WRONLY | PPM_O_CREAT | PPM_O_APPEND);
 		if (evt->m_fdinfo->is_file())
 		{
-			if (flags & (PPM_O_WRONLY | PPM_O_CREAT | PPM_O_APPEND))
+			if (is_write)
 			{
 				for (const auto& on_file_open_write_cb : m_on_file_open_write_cb)
 				{
-					on_file_open_write_cb(thread_analyzer_info::get_thread_from_event(evt),
+					on_file_open_write_cb(true,
+					                      thread_analyzer_info::get_thread_from_event(evt),
 					                      evt->get_ts(),
 					                      fullpath,
 					                      flags);
 				}
 			}
 
+			for (const auto& on_file_open_cb : m_on_file_open_cb)
+			{
+				on_file_open_cb(is_write,
+				                thread_analyzer_info::get_thread_from_event(evt),
+				                evt->get_ts(),
+				                fullpath,
+				                flags);
+			}
 			//
 			// File open count update
 			//

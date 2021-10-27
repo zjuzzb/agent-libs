@@ -12,6 +12,7 @@ namespace tap
 class AuditLog;
 class ConnectionAudit;
 class NewProcess;
+class FilesAudit;
 }  // namespace tap
 
 union _ipv4tuple;
@@ -42,7 +43,9 @@ public:
 	 * Using the given connection table, emit the network connections between
 	 * processes.
 	 */
-	void emit_connections(sinsp_ipv4_connection_manager* conn_manager, userdb* userdb, infrastructure_state_iface *infra_state);
+	void emit_connections(sinsp_ipv4_connection_manager* conn_manager,
+	                      userdb* userdb,
+	                      infrastructure_state_iface* infra_state);
 
 	/**
 	 * When connections are emitted, we limit the number of environments
@@ -62,14 +65,25 @@ public:
 	void clear();
 
 	/**
+	 * Registers a single file access for audit tap
+	 */
+	void register_file_access(bool is_write,
+	                          thread_analyzer_info* tinfo,
+	                          uint64_t ts,
+	                          const std::string& fullpath,
+	                          uint32_t flags);
+
+	/**
 	 * Return the (configured) maximum length to send for arguments to the
 	 * command line.
 	 */
 	static unsigned int max_command_argument_length();
 
 private:
-	void emit_process(thread_analyzer_info *tinfo, userdb *userdb, infrastructure_state_iface* infra_state);
-	bool emit_environment(tap::NewProcess *proc, thread_analyzer_info *tinfo);
+	void emit_process(thread_analyzer_info* tinfo,
+	                  userdb* userdb,
+	                  infrastructure_state_iface* infra_state);
+	bool emit_environment(tap::NewProcess* proc, thread_analyzer_info* tinfo);
 
 	void emit_network_audit(tap::ConnectionAudit* conn_audit,
 	                        const _ipv4tuple& iptuple,
@@ -78,7 +92,6 @@ private:
 	void emit_labels(tap::NewProcess *process, infrastructure_state_iface* infra_state);
 	void populate_process(tap::NewProcess *process, userdb* userdb, sinsp_threadinfo *tinfo);
 	void configure_labels_set();
-
 
 	std::string m_machine_id;
 	std::string m_hostname;
@@ -92,4 +105,6 @@ private:
 	int m_num_envs_sent;
 	audit_tap_connection_aggregator m_connection_aggregator;
 	std::unordered_set<std::string> m_labels;
+	int m_num_files;
+	int m_num_skipped_files;
 };

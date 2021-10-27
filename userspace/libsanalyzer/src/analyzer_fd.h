@@ -8,6 +8,11 @@
 
 class sinsp_ipv4_connection_manager;
 
+enum FileOpenCallbacks {
+	ALL_EVENTS,
+	WRITES_ONLY
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 // This class listens on FD activity and performs advanced analysis
 ///////////////////////////////////////////////////////////////////////////////
@@ -51,14 +56,23 @@ public:
 	bool patch_network_role(thread_analyzer_info* ptinfo, sinsp_fdinfo_t* pfdinfo, bool incoming);
 	void set_ipv4_connection_manager(sinsp_ipv4_connection_manager* ipv4_connection_manager);
 
-	using on_file_open_cb = std::function<void(thread_analyzer_info* tinfo,
+	using on_file_open_cb = std::function<void(bool is_write,
+	                                           thread_analyzer_info* tinfo,
 	                                           uint64_t ts,
 	                                           const std::string& fullpath,
 	                                           uint32_t flags)>;
-	// Register a callback for every file opened for writing
-	void subscribe_on_file_open_write(on_file_open_cb callback)
+	// Register a callback for every file opened
+	void subscribe_on_file_open(FileOpenCallbacks filter, const on_file_open_cb& callback)
 	{
-		m_on_file_open_write_cb.emplace_back(callback);
+		if(filter == FileOpenCallbacks::WRITES_ONLY){
+			m_on_file_open_write_cb.emplace_back(callback);
+		}
+		else
+		{
+			// ALL_EVENTS
+			m_on_file_open_cb.emplace_back(callback);
+		}
+
 	}
 
 	analyzer_top_file_stat_map m_files_stat;
@@ -98,4 +112,5 @@ private:
 	sinsp_configuration* m_sinsp_config;
 	sinsp_ipv4_connection_manager* m_ipv4_connections;
 	std::list<on_file_open_cb> m_on_file_open_write_cb;
+	std::list<on_file_open_cb> m_on_file_open_cb;
 };

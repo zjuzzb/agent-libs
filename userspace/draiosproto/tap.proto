@@ -26,6 +26,7 @@ message AuditLog {
     repeated Connection connectionEvents = 6;
     repeated EnvironmentVariables environmentVariables = 7;
     ConnectionAudit connectionAudit = 8;
+    FilesAudit filesAudit = 9;
 }
 
 message NewProcess {
@@ -89,4 +90,17 @@ message ConnectionAudit {
     uint32 connectionCountIn = 2;
     uint32 connectionCountOut = 3;
     repeated Connection connections = 4;
+}
+
+message FilesAudit {
+    uint32 skipped = 1;
+    repeated FileAccess fileAccess = 2;
+}
+
+message FileAccess {
+    string containerId = 1;
+    uint32 pid = 2;
+    uint64 timestamp = 3;
+    bool write = 4;
+    string path = 5;
 }
