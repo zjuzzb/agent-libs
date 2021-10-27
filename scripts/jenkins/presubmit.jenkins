@@ -124,7 +124,7 @@ pipeline {
                     stages {
                         stage('Build Container') {
                             steps {
-                                setBuildStatus('QA Test', 'In Progress', 'PENDING')
+                                setBuildStatus('Systemic Regression Test', 'In Progress', 'PENDING')
                                 build job:'agent-build-container',parameters:[
                                     string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),
                                     string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
@@ -147,10 +147,10 @@ pipeline {
                     }
                     post {
                         success {
-                            setBuildStatus('QA Test', 'Zero problems found', 'SUCCESS')
+                            setBuildStatus('Systemic Regression Test', 'Zero problems found', 'SUCCESS')
                         }
                         failure {
-                            setBuildStatus('QA Test', 'FAILED! see Jenkins console output for more info.', 'FAILURE')
+                            setBuildStatus('Systemic Regression Test', 'FAILED! see Jenkins console output for more info.', 'FAILURE')
                         }
                     }
                 }
