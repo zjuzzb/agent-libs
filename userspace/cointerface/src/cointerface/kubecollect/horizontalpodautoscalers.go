@@ -114,19 +114,19 @@ func watchHorizontalPodAutoscalers(evtc chan<- draiosproto.CongroupUpdateEvent) 
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldHPA := (*v1as.HorizontalPodAutoscaler)(nil)
-				switch obj.(type) {
+				switch obj := obj.(type) {
 				case *v1as.HorizontalPodAutoscaler:
-					oldHPA = obj.(*v1as.HorizontalPodAutoscaler)
+					oldHPA = obj
 				case cache.DeletedFinalStateUnknown:
-					d := obj.(cache.DeletedFinalStateUnknown)
+					d := obj
 					o, ok := (d.Obj).(*v1as.HorizontalPodAutoscaler)
 					if ok {
 						oldHPA = o
 					} else {
-						log.Warn("DeletedFinalStateUnknown without hpa object")
+						_ = log.Warn("DeletedFinalStateUnknown without hpa object")
 					}
 				default:
-					log.Warn("Unknown object type in hpa DeleteFunc")
+					_ = log.Warn("Unknown object type in hpa DeleteFunc")
 				}
 				if oldHPA == nil {
 					return

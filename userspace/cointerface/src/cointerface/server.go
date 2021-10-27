@@ -72,7 +72,7 @@ func (c *coInterfaceServer) PerformCriCommand(ctx context.Context, cmd *sdc_inte
 
 	cri, err := NewCriClient(fmt.Sprintf("unix:///%s%s", getSysdigRoot(), cmd.GetCriSocketPath()))
 	if err != nil {
-		log.Errorf("Could not connect to cri-o: %s\n", err)
+		_ = log.Errorf("Could not connect to cri-o: %s\n", err)
 		return nil, err
 	}
 	defer cri.Close()
@@ -92,14 +92,14 @@ func (c *coInterfaceServer) PerformCriCommand(ctx context.Context, cmd *sdc_inte
 
 	default:
 		ferr := fmt.Errorf("Unknown cri-o command %d", int(cmd.GetCmd()))
-		log.Errorf(ferr.Error())
+		_ = log.Errorf(ferr.Error())
 		return nil, ferr
 	}
 
 	res := &sdc_internal.CriCommandResult{}
 	res.Successful = proto.Bool(err == nil)
 	if err != nil {
-		log.Errorf("Error while handling cri-o command %d: %s", cmd.GetCmd(), err)
+		_ = log.Errorf("Error while handling cri-o command %d: %s", cmd.GetCmd(), err)
 		res.Errstr = proto.String(err.Error())
 	}
 
@@ -132,7 +132,7 @@ func (c *coInterfaceServer) PerformDockerCommand(ctx context.Context, cmd *sdc_i
 
 	default:
 		ferr := fmt.Errorf("Unknown docker command %d", int(cmd.GetCmd()))
-		log.Errorf(ferr.Error())
+		_ = log.Errorf(ferr.Error())
 		return nil, ferr
 	}
 
@@ -156,7 +156,7 @@ func (c *coInterfaceServer) PerformPing(ctx context.Context, cmd *sdc_internal.P
 	res.Pid = proto.Int32(pid)
 	res.MemoryUsed = proto.Uint64(0)
 
-	if informersStarted == true {
+	if informersStarted {
 		res.Ready = proto.Bool(true)
 	}
 	if kubecollect_common.GetCointDelegation() {
@@ -170,7 +170,7 @@ func (c *coInterfaceServer) PerformPing(ctx context.Context, cmd *sdc_internal.P
 			res.Delegation.Status = sdc_internal.DelegationStatus_DELEGATED.Enum()
 		}
 		nodes := kubecollect_common.GetDelegatedNodes()
-		if nodes != nil && len(nodes) > 0 {
+		if len(nodes) > 0 {
 			log.Debugf("Sending delegated nodes: %v", nodes)
 			res.Delegation.DelegatedNodes = nodes
 		}
@@ -181,12 +181,12 @@ func (c *coInterfaceServer) PerformPing(ctx context.Context, cmd *sdc_internal.P
 	// usage of 0.
 	self, err := process.NewProcess(pid)
 	if err != nil {
-		log.Errorf("Could not get process info for self: %s", err)
+		_ = log.Errorf("Could not get process info for self: %s", err)
 	} else {
 		stat, err := self.MemoryInfo()
 
 		if err != nil {
-			log.Errorf("Could not get memory usage for self: %s", err)
+			_ = log.Errorf("Could not get memory usage for self: %s", err)
 		} else {
 			res.MemoryUsed = proto.Uint64(stat.RSS / 1024)
 		}
@@ -221,7 +221,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	// cleaning up. Try again later.
 	if kubecollect_common.InformerChannelInUse {
 		kubecollect_common.ChannelMutex.Unlock()
-		log.Errorf("[PerformOrchestratorEventsStream] Error: informer channel in use")
+		_ = log.Errorf("[PerformOrchestratorEventsStream] Error: informer channel in use")
 		return errors.New("informer channel in use")
 	}
 
@@ -254,7 +254,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 
 	var pkg kubecollect_common.KubecollectInterface
 
-	if cmd.GetThinCointerface() == true {
+	if cmd.GetThinCointerface() {
 		pkg = kubecollect_tc.KubecollectClientTc{}
 	} else {
 		pkg = kubecollect.KubecollectClient{}
@@ -275,7 +275,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	go func() {
 		select {
 		case _, more := <-fetchDone:
-			if more == false {
+			if !more {
 				log.Debugf("fetchDone channel has been closed")
 			} else {
 				log.Info("Orch events initial fetch complete")
@@ -290,7 +290,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 
 	evtArrayChan, err := kubecollect_common.WatchCluster(ctx, cmd, pkg, fetchDone)
 	if err != nil {
-		log.Errorf("[PerformOrchestratorEventsStream] Error: failure to start informers. Cleaning up")
+		_ = log.Errorf("[PerformOrchestratorEventsStream] Error: failure to start informers. Cleaning up")
 
 		// triggers informers to clean up
 		ctxCancel()
@@ -328,7 +328,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 			} else {
 				if err := stream.Send(&evtArray); err != nil {
 					// If send fails; log error reporting
-					log.Errorf("Send Stream response for {%v} failed: %v", evtArray, err)
+					_ = log.Errorf("Send Stream response for {%v} failed: %v", evtArray, err)
 					return err
 				}
 			}
@@ -337,8 +337,6 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 			return nil
 		}
 	}
-
-	return nil
 }
 
 var userEventStreamActive bool = false
@@ -349,7 +347,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventMessageStream(cmd *sdc_inter
 	log.Debugf("[PerformOrchestratorEventMessageStream] using options: %v", cmd)
 
 	if userEventStreamActive {
-		log.Error("[PerformOrchestratorEventMessageStream] previous stream still active, exiting.")
+		_ = log.Error("[PerformOrchestratorEventMessageStream] previous stream still active, exiting.")
 		return errors.New("Couldn't start user events watch")
 	}
 	userEventStreamActive = true
@@ -394,7 +392,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventMessageStream(cmd *sdc_inter
 				// log.Debugf("[PerformOrchestratorEventMessageStream] sending event: %v", evt)
 				err := stream.Send(&evt)
 				if err != nil {
-					log.Errorf("Stream response for {%v:%v} failed: %v",
+					_ = log.Errorf("Stream response for {%v:%v} failed: %v",
 						evt.Obj.GetKind(), evt.Obj.GetUid(), err)
 					return err
 				}
@@ -409,9 +407,6 @@ func (c *coInterfaceServer) PerformOrchestratorEventMessageStream(cmd *sdc_inter
 			log.Debug("[PerformOrchestratorEventMessageStream] no events for 10 seconds")
 		}
 	}
-	log.Info("[PerformOrchestratorEventMessageStream] exiting select loop.")
-
-	return nil
 }
 
 func (c *coInterfaceServer) PerformSetK8SOption(ctx context.Context, cmd *sdc_internal.K8SOptionCommand) (*sdc_internal.K8SOptionResult, error) {
@@ -451,7 +446,7 @@ func setGC(newGC int) int {
 
 	const defaultGC = 100
 	if prevGC != defaultGC {
-		log.Warnf("Starting orch events RPC, orig GC was %v instead of %v",
+		_ = log.Warnf("Starting orch events RPC, orig GC was %v instead of %v",
 			prevGC, defaultGC)
 	}
 
@@ -464,7 +459,7 @@ func cleanupGC(origGC int, initGC int) {
 		origGC, prevGC)
 
 	if prevGC != initGC {
-		log.Errorf("Cleaning up orch events RPC, GC val was %v, expected %v",
+		_ = log.Errorf("Cleaning up orch events RPC, GC val was %v, expected %v",
 			prevGC, initGC)
 	}
 
@@ -482,16 +477,15 @@ func startServer(sock string, modulesDir string) int {
 		err := os.Remove(sock)
 
 		if err != nil {
-			log.Errorf("Could not remove exiting socket %s: %s. Exiting.", sock, err)
+			_ = log.Errorf("Could not remove exiting socket %s: %s. Exiting.", sock, err)
 			return 1
 		}
 	}
 
 	listener, err := net.Listen("unix", sock)
-
 	if err != nil {
-		log.Criticalf("Could not listen on socket %s: %s", sock, err)
-		return (1)
+		_ = log.Criticalf("Could not listen on socket %s: %v", sock, err)
+		return 1
 	}
 
 	defer listener.Close()
@@ -503,12 +497,12 @@ func startServer(sock string, modulesDir string) int {
 	grpcServer := grpc.NewServer()
 	sdc_internal.RegisterCoInterfaceServer(grpcServer, &coInterfaceServer{})
 	if err = compliance.Register(grpcServer, modulesDir); err != nil {
-		log.Errorf("Could not initialize compliance grpc server: %s. Exiting.", err.Error())
+		_ = log.Errorf("Could not initialize compliance grpc server: %v. Exiting.", err)
 		return 1
 	}
 
 	if err = k8s_audit.Register(grpcServer); err != nil {
-		log.Errorf("Could not initialize k8s audit grpc server: %s. Exiting.", err.Error())
+		_ = log.Errorf("Could not initialize k8s audit grpc server: %v. Exiting.", err)
 		return 1
 	}
 
@@ -524,7 +518,7 @@ func startServer(sock string, modulesDir string) int {
 		}
 	}()
 
-	grpcServer.Serve(listener)
+	_ = grpcServer.Serve(listener)
 
 	return 0
 }

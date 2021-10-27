@@ -244,15 +244,14 @@ func TestResourceTypeIncludesWithBoolFalse(t *testing.T) {
 
 // Helper method that sets up the chan and context for
 // many of the Test methods below.
-func setupChanTestInfra() (
+func setupChanTestInfra() ( // nolint:unused
 	chan draiosproto.CongroupUpdateEvent,
 	chan sdc_internal.ArrayCongroupUpdateEvent,
 	context.Context) {
 	evtChan := make(chan draiosproto.CongroupUpdateEvent, 100)
 	evtArrChan := make(chan sdc_internal.ArrayCongroupUpdateEvent, 1)
-	ctx, _ := context.WithCancel(context.Background())
 
-	return evtChan, evtArrChan, ctx
+	return evtChan, evtArrChan, context.Background()
 }
 
 // UT that tests the working of batchEvents method in client.go
@@ -370,7 +369,7 @@ func TestDrainChanOnEvtArrayChan(t *testing.T) {
 	}
 }
 
-func startNamespaceSends(
+func startNamespaceSends( // nolint:unused
 	evtc chan<- draiosproto.CongroupUpdateEvent,
 	numNamespaces int) {
 

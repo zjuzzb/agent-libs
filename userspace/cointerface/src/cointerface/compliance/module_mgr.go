@@ -17,19 +17,18 @@ import (
 )
 
 type ModuleMgr struct {
-	ModulesDir          string `json:"modules_dir"`
-	initialized         bool
-	customerId          string
-	machineId           string
-	metricsStatsdPort   uint32
-	Calendar            *draiosproto.CompCalendar
-	Tasks               map[uint64]*draiosproto.CompTask
-	IncludeDesc         bool
-	SendFailedResults   bool
-	SaveTempFiles       bool
-	availModules        map[string]*Module
-	evtsChannel         chan *sdc_internal.CompTaskEvent
-	metricsResetChannel chan bool
+	ModulesDir        string `json:"modules_dir"`
+	initialized       bool
+	customerId        string
+	machineId         string
+	metricsStatsdPort uint32
+	Calendar          *draiosproto.CompCalendar
+	Tasks             map[uint64]*draiosproto.CompTask
+	IncludeDesc       bool
+	SendFailedResults bool
+	SaveTempFiles     bool
+	availModules      map[string]*Module
+	evtsChannel       chan *sdc_internal.CompTaskEvent
 
 	// A cancel function used to cancel background operations
 	// spawned in Start()
@@ -89,8 +88,8 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 		Name: "docker-bench-security",
 		Prog: "bash",
 		Impl: &DockerBenchImpl{
-			customerId: customerId,
-			machineId:  machineId,
+			CustomerId: customerId,
+			MachineId:  machineId,
 		},
 	}
 
@@ -98,8 +97,8 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 		Name: "kube-bench",
 		Prog: "./kube-bench",
 		Impl: &KubeBenchImpl{
-			customerId: customerId,
-			machineId:  machineId,
+			CustomerId: customerId,
+			MachineId:  machineId,
 		},
 	}
 
@@ -107,8 +106,8 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 		Name: "linux-bench",
 		Prog: "./linux-bench",
 		Impl: &LinuxBenchImpl{
-			customerId: customerId,
-			machineId:  machineId,
+			CustomerId: customerId,
+			MachineId:  machineId,
 		},
 	}
 
@@ -116,8 +115,8 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 		Name: "test-module",
 		Prog: "bash",
 		Impl: &TestModuleImpl{
-			customerId: customerId,
-			machineId:  machineId,
+			CustomerId: customerId,
+			MachineId:  machineId,
 		},
 	}
 
@@ -125,8 +124,8 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 		Name: "fail-module",
 		Prog: "not-runnable",
 		Impl: &TestModuleImpl{
-			customerId: customerId,
-			machineId:  machineId,
+			CustomerId: customerId,
+			MachineId:  machineId,
 		},
 	}
 
@@ -202,10 +201,10 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 				Errstr:         proto.String(fmt.Sprintf("Could not schedule task %s: %s", *task.Name, err.Error())),
 			}
 
-			log.Errorf("Could not schedule task %s: %s", *task.Name, err.Error())
+			_ = log.Errorf("Could not schedule task %s: %s", *task.Name, err.Error())
 
 			if err := stream.Send(evt); err != nil {
-				log.Errorf("Could not send event %s: %v",
+				_ = log.Errorf("Could not send event %s: %v",
 					evt.String(), err.Error())
 				mgr.Calendar = nil
 				return err
@@ -227,7 +226,7 @@ RunTasks:
 		select {
 		case evt := <-mgr.evtsChannel:
 			if err := stream.Send(evt); err != nil {
-				log.Errorf("Could not send event %s: %v",
+				_ = log.Errorf("Could not send event %s: %v",
 					evt.String(), err.Error())
 				mgr.Calendar = nil
 				return err
@@ -284,7 +283,7 @@ func (mgr *ModuleMgr) GetFutureRuns(ctx context.Context, req *sdc_internal.CompG
 	if err != nil {
 		ret.Successful = proto.Bool(false)
 		ret.Errstr = proto.String("Could not parse start time " + *req.Start)
-		log.Errorf("Returning from GetFutureRuns: %v", ret)
+		_ = log.Errorf("Returning from GetFutureRuns: %v", ret)
 		return ret, nil
 	}
 
@@ -292,6 +291,12 @@ func (mgr *ModuleMgr) GetFutureRuns(ctx context.Context, req *sdc_internal.CompG
 
 	stask := NewScheduledTask(mgr, req.Task, nil)
 	err = stask.ParseSchedule(*req.Task.Schedule, start)
+	if err != nil {
+		ret.Successful = proto.Bool(false)
+		ret.Errstr = proto.String("Could not parse schedule " + *req.Task.Schedule)
+		_ = log.Errorf("Returning from GetFutureRuns: %v", ret)
+		return ret, nil
+	}
 
 	ret.Runs = stask.FutureRuns(start, *req.NumRuns)
 

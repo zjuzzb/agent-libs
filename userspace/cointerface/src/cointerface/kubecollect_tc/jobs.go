@@ -56,14 +56,14 @@ func handleJobEvent(event watch.Event, evtc chan<- draiosproto.CongroupUpdateEve
 
 	if event.Type == watch.Added {
 		kubecollect_common.EventReceived("jobs")
-		evtc <- jobEvent(kubecollect.CoJob{job}, draiosproto.CongroupEventType_ADDED.Enum(), true)
+		evtc <- jobEvent(kubecollect.CoJob{Job: job}, draiosproto.CongroupEventType_ADDED.Enum(), true)
 		kubecollect_common.AddEvent("Job", kubecollect_common.EVENT_ADD)
 	} else if event.Type == watch.Modified {
 		kubecollect_common.AddEvent("Job", kubecollect_common.EVENT_UPDATE)
-		evtc <- jobEvent(kubecollect.CoJob{job}, draiosproto.CongroupEventType_UPDATED.Enum(), true)
+		evtc <- jobEvent(kubecollect.CoJob{Job: job}, draiosproto.CongroupEventType_UPDATED.Enum(), true)
 		kubecollect_common.AddEvent("Job", kubecollect_common.EVENT_UPDATE_AND_SEND)
 	} else if event.Type == watch.Deleted {
-		evtc <- jobEvent(kubecollect.CoJob{job}, draiosproto.CongroupEventType_REMOVED.Enum(), false)
+		evtc <- jobEvent(kubecollect.CoJob{Job: job}, draiosproto.CongroupEventType_REMOVED.Enum(), false)
 		kubecollect_common.AddEvent("Job", kubecollect_common.EVENT_DELETE)
 	}
 }

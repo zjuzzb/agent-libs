@@ -165,19 +165,18 @@ func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 			DeleteFunc: func(obj interface{}) {
 				ds := CoDaemonSet{nil}
-				switch obj.(type) {
+				switch obj := obj.(type) {
 				case *appsv1.DaemonSet:
-					ds = CoDaemonSet{obj.(*appsv1.DaemonSet)}
+					ds = CoDaemonSet{DaemonSet: obj}
 				case cache.DeletedFinalStateUnknown:
-					d := obj.(cache.DeletedFinalStateUnknown)
-					o, ok := (d.Obj).(*appsv1.DaemonSet)
+					o, ok := (obj.Obj).(*appsv1.DaemonSet)
 					if ok {
 						ds = CoDaemonSet{o}
 					} else {
-						log.Warn("DeletedFinalStateUnknown without daemonset object")
+						_ = log.Warn("DeletedFinalStateUnknown without daemonset object")
 					}
 				default:
-					log.Warn("Unknown object type in daemonset DeleteFunc")
+					_ = log.Warn("Unknown object type in daemonset DeleteFunc")
 				}
 				if ds.DaemonSet == nil {
 					return

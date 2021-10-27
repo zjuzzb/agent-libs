@@ -129,7 +129,7 @@ func tryUserEventsWatch(userEventContext context.Context,
 			case e, ok := <-eventExportChannel:
 				if !ok {
 					// Shouldn't happen
-					log.Error("UserEvents: event export channel died")
+					_ = log.Error("UserEvents: event export channel died")
 					abort = true
 				}
 				if e != 0 {
@@ -179,7 +179,7 @@ func StartUserEventsWatch(userEventContext context.Context,
 	listOptions := v1meta.ListOptions{FieldSelector: fieldstr}
 	watcher, err := client.Watch(listOptions)
 	if err != nil {
-		log.Errorf("UserEvents: Failed to start watcher: %s", err)
+		_ = log.Errorf("UserEvents: Failed to start watcher: %s", err)
 		return false
 	}
 
@@ -204,7 +204,7 @@ func watchUserEvents(watcher watch.Interface,
 		case e, ok := <-eventExportChannel:
 			if !ok {
 				// Shouldn't happen
-				log.Error("UserEvents: event export channel died")
+				_ = log.Error("UserEvents: event export channel died")
 				watcher.Stop()
 				return false
 			}
@@ -219,7 +219,7 @@ func watchUserEvents(watcher watch.Interface,
 			return false
 		case event, ok := <-ch:
 			if !ok {
-				log.Warn("UserEvents: watcher channel failed. Shutting it down and retrying.")
+				_ = log.Warn("UserEvents: watcher channel failed. Shutting it down and retrying.")
 				return false
 			}
 			switch event.Type {
@@ -229,7 +229,7 @@ func watchUserEvents(watcher watch.Interface,
 			case watch.Added:
 				evt, ok := event.Object.(*v1.Event)
 				if !ok {
-					log.Errorf("UserEvents: unexpected type: %v", event.Object)
+					_ = log.Errorf("UserEvents: unexpected type: %v", event.Object)
 				}
 				// Filter out old events. There doesn't seem to be a way to
 				// filter by timestamp in the fieldselector

@@ -80,7 +80,7 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 			sendEvent, newType = true, draiosproto.CongroupEventType_REMOVED
 		}
 
-		if sendEvent == true {
+		if sendEvent {
 			kubecollect_common.NewContainerEvent(contEvents, &c, podUID, newType)
 		}
 	}
@@ -195,7 +195,7 @@ func podWatcherLoop(ctx context.Context, getTerm bool, kubeClient kubeclient.Int
 		log.Debugf("Start new Pod Watcher, delegated:%v", deleg)
 
 		watcherWg := &sync.WaitGroup{}
-		watcherCtx, cancelWatcher := context.WithCancel(ctx)
+		watcherCtx, cancelWatcher := context.WithCancel(ctx) // nolint:govet
 		startPodWatcherReally(watcherCtx, getTerm, deleg, kubeClient, watcherWg)
 
 		var restart bool = false
@@ -205,11 +205,11 @@ func podWatcherLoop(ctx context.Context, getTerm bool, kubeClient kubeclient.Int
 				log.Debug("PodWatcherLoop: context cancelled, waiting for watcher wg")
 				watcherWg.Wait()
 				log.Debug("PodWatcherLoop: watcher done, closing")
-				return
+				return // nolint:govet
 			case d, ok := <-delegChan:
 				if !ok {
-					log.Warn("PodWatcherLoop: delegation channel closed")
-					return
+					_ = log.Warn("PodWatcherLoop: delegation channel closed")
+					return // nolint:govet
 				}
 				log.Debugf("PodWatcherLoop: delegation channel sent deleg=%v", d)
 				if d != deleg {

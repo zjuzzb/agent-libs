@@ -174,7 +174,7 @@ func newPersistentVolumeCongroup(pv *v1.PersistentVolume) *draiosproto.Container
 }
 
 func addPersistentVolumeMetrics(metrics *[]*draiosproto.AppMetric, pv *v1.PersistentVolume) {
-	size, _ := pv.Spec.Capacity["storage"]
+	size := pv.Spec.Capacity["storage"]
 	kubecollect_common.AppendMetricInt64(metrics, metricPrefix+"storage", size.Value())
 
 	// A cluster-wide count of PVs. the usual namespace-wide count does not apply
@@ -205,19 +205,18 @@ func watchPersistentVolumes(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldPV := (*v1.PersistentVolume)(nil)
-				switch obj.(type) {
+				switch obj := obj.(type) {
 				case *v1.PersistentVolume:
-					oldPV = obj.(*v1.PersistentVolume)
+					oldPV = obj
 				case cache.DeletedFinalStateUnknown:
-					d := obj.(cache.DeletedFinalStateUnknown)
-					o, ok := (d.Obj).(*v1.PersistentVolume)
+					o, ok := (obj.Obj).(*v1.PersistentVolume)
 					if ok {
 						oldPV = o
 					} else {
-						log.Warn("DeletedFinalStateUnknown without pv object")
+						_ = log.Warn("DeletedFinalStateUnknown without pv object")
 					}
 				default:
-					log.Warn("Unknown object type in pv DeleteFunc")
+					_ = log.Warn("Unknown object type in pv DeleteFunc")
 				}
 				if oldPV == nil {
 					return

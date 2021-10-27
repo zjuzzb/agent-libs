@@ -3,7 +3,6 @@ package kubecollect
 import (
 	"cointerface/kubecollect_common"
 	"context"
-	"fmt"
 	draiosproto "protorepo/agent-be/proto"
 	"sort"
 	"strings"
@@ -50,9 +49,6 @@ func increaseStatusMap(namespace string, status string) {
 		statusMap[namespace] = make(map[string]uint64)
 	}
 
-	if statusMap[namespace][status] < 0 {
-		panic("Key [" + namespace + "," + status + "]:" + fmt.Sprint(statusMap[namespace][status]))
-	}
 	statusMap[namespace][status]++
 }
 
@@ -62,9 +58,6 @@ func decreaseStatusMap(namespace string, status string) {
 	}
 
 	statusMap[namespace][status]--
-	if statusMap[namespace][status] < 0 {
-		panic("Key [" + namespace + "," + status + "]:" + fmt.Sprint(statusMap[namespace][status]))
-	}
 }
 
 func toLowerArray(ar []string) []string {
@@ -207,9 +200,9 @@ func getStatusFromPod(pod *v1.Pod) string {
 			// initialization is failed
 			if len(container.State.Terminated.Reason) == 0 {
 				if container.State.Terminated.Signal != 0 {
-					reason = fmt.Sprintf("Init:Signaled")
+					reason = "Init:Signaled"
 				} else {
-					reason = fmt.Sprintf("Init:ErrorExit")
+					reason = "Init:ErrorExit"
 				}
 			} else {
 				reason = "Init:Terminated"
@@ -219,7 +212,7 @@ func getStatusFromPod(pod *v1.Pod) string {
 			reason = "Init:Waiting"
 			initializing = true
 		default:
-			reason = fmt.Sprintf("Initializing")
+			reason = "Initializing"
 			initializing = true
 		}
 		break
@@ -235,9 +228,9 @@ func getStatusFromPod(pod *v1.Pod) string {
 				reason = container.State.Terminated.Reason
 			} else if container.State.Terminated != nil && container.State.Terminated.Reason == "" {
 				if container.State.Terminated.Signal != 0 {
-					reason = fmt.Sprintf("Signaled")
+					reason = "Signaled"
 				} else {
-					reason = fmt.Sprintf("ErrorExit")
+					reason = "ErrorExit"
 				}
 			} else if container.Ready && container.State.Running != nil {
 				hasRunning = true

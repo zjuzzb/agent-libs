@@ -52,14 +52,14 @@ func handleDeploymentEvent(event watch.Event, evtc chan<- draiosproto.CongroupUp
 
 	if event.Type == watch.Added {
 		kubecollect_common.EventReceived("deployments")
-		evtc <- deploymentEvent(kubecollect.CoDeployment{deployment}, draiosproto.CongroupEventType_ADDED.Enum(), true)
+		evtc <- deploymentEvent(kubecollect.CoDeployment{Deployment: deployment}, draiosproto.CongroupEventType_ADDED.Enum(), true)
 		kubecollect_common.AddEvent("deployment", kubecollect_common.EVENT_ADD)
 	} else if event.Type == watch.Modified {
 		kubecollect_common.AddEvent("deployment", kubecollect_common.EVENT_UPDATE)
-		evtc <- deploymentEvent(kubecollect.CoDeployment{deployment}, draiosproto.CongroupEventType_UPDATED.Enum(), true)
+		evtc <- deploymentEvent(kubecollect.CoDeployment{Deployment: deployment}, draiosproto.CongroupEventType_UPDATED.Enum(), true)
 		kubecollect_common.AddEvent("deployment", kubecollect_common.EVENT_UPDATE_AND_SEND)
 	} else if event.Type == watch.Deleted {
-		evtc <- deploymentEvent(kubecollect.CoDeployment{deployment}, draiosproto.CongroupEventType_REMOVED.Enum(), false)
+		evtc <- deploymentEvent(kubecollect.CoDeployment{Deployment: deployment}, draiosproto.CongroupEventType_REMOVED.Enum(), false)
 		kubecollect_common.AddEvent("deployment", kubecollect_common.EVENT_DELETE)
 	}
 }

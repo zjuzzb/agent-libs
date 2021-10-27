@@ -69,14 +69,14 @@ func TestSelectorCache(t *testing.T) {
 
 	// Fail to Get() a filtered obj2
 	obj2.filter = true
-	sel, exists = cache.Get(obj2)
+	_, exists = cache.Get(obj2)
 	AssertEqual(t, 0, obj2.GenCount())
 	AssertEqual(t, 1, len(cache.selectors))
 	AssertEqual(t, false, exists)
 
 	// Succeed at Get()'ing an unfiltered obj2
 	obj2.filter = false
-	sel, exists = cache.Get(obj2)
+	_, exists = cache.Get(obj2)
 	AssertEqual(t, 1, obj2.GenCount())
 	AssertEqual(t, 2, len(cache.selectors))
 	AssertEqual(t, true, exists)

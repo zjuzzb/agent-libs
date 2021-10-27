@@ -40,5 +40,6 @@
   },
   "cointerface_delegation": true,
   "min_rnd_conn_delay": 0,
-  "per_node_conn_delay": 0.25
+  "per_node_conn_delay": 0.25,
+  "annotation_conf": {}
 }

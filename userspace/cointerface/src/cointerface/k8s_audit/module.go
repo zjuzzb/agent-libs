@@ -43,7 +43,7 @@ func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream 
 	_, err := ks.Stop(ctx, &sdc_internal.K8SAuditServerStop{})
 	if err != nil {
 		errmsg := fmt.Sprintf("Stop() returned error: %v", err)
-		log.Errorf("K8s Audit Start: %s", errmsg)
+		_ = log.Errorf("K8s Audit Start: %s", errmsg)
 		return status.Error(codes.FailedPrecondition, errmsg)
 	}
 
@@ -66,14 +66,14 @@ func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream 
 	}
 
 	/* HTTP only (TLS is disabled) */
-	if start.GetTlsEnabled() == false {
+	if !start.GetTlsEnabled() {
 		log.Infof("K8s Audit Server setting up endpoint over HTTP: %v", httpServer.Addr)
 
 		go func() {
 			if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 				// This only returns when the server has an error or is cancelled
 				errmsg := fmt.Sprintf("ListenAndServe returned error: %v", err)
-				log.Errorf("K8s Audit Start: %s", errmsg)
+				_ = log.Errorf("K8s Audit Start: %s", errmsg)
 			}
 		}()
 	} else { /* HTTPS */
@@ -84,13 +84,13 @@ func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream 
 
 		if x509 == nil {
 			errmsg := "GetX509(): X509 object is not present"
-			log.Errorf("K8s Audit Start: %s", errmsg)
+			_ = log.Errorf("K8s Audit Start: %s", errmsg)
 			return status.Error(codes.InvalidArgument, errmsg)
 		}
 		/* Validation on the number of x509 objs */
 		if len(x509) > 3 {
 			errmsg := "Validate x509 object: too many certificates provided (max is 3)"
-			log.Errorf("K8s Audit Start: %s", errmsg)
+			_ = log.Errorf("K8s Audit Start: %s", errmsg)
 			return status.Error(codes.InvalidArgument, errmsg)
 		}
 
@@ -107,7 +107,7 @@ func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream 
 
 			if err != nil {
 				errmsg := fmt.Sprintf("Could not load tls X509KeyPair(): %v", err)
-				log.Errorf("K8s Audit Start: %s", errmsg)
+				_ = log.Errorf("K8s Audit Start: %s", errmsg)
 				return status.Error(codes.InvalidArgument, errmsg)
 			}
 
@@ -126,7 +126,7 @@ func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream 
 			if err := httpServer.ListenAndServeTLS("", ""); err != http.ErrServerClosed {
 				// This only returns when the server has an error or is cancelled
 				errmsg := fmt.Sprintf("ListenAndServeTLS returned error: %v", err)
-				log.Errorf("K8s Audit Start: %s", errmsg)
+				_ = log.Errorf("K8s Audit Start: %s", errmsg)
 			}
 		}()
 	}
@@ -144,7 +144,7 @@ RunTasks:
 		case evt := <-evtsChannel:
 			log.Debugf("Sending K8s Audit Event to agent %d", evt.GetEvtId())
 			if err := stream.Send(evt); err != nil {
-				log.Errorf("Could not send event %s: %v",
+				_ = log.Errorf("Could not send event %s: %v",
 					evt.GetEvtId(), err.Error())
 			}
 		case <-evtsCtx.Done():
@@ -153,7 +153,7 @@ RunTasks:
 			defer shutdownCancel()
 			if err := httpServer.Shutdown(shutdownCtx); err != nil {
 				errmsg := fmt.Sprintf("Shutdown returned error: %v", err)
-				log.Errorf("K8s Audit Start: %s", errmsg)
+				_ = log.Errorf("K8s Audit Start: %s", errmsg)
 				return status.Error(codes.FailedPrecondition, errmsg)
 			}
 			break RunTasks
@@ -176,7 +176,7 @@ func (ks *k8sAuditServer) Stop(ctx context.Context, stop *sdc_internal.K8SAuditS
 	if ks.cancel != nil {
 		log.Infof("Cancelling prior K8s Audit Start()")
 		ks.cancel()
-		_ = <-ks.cancelDone
+		<-ks.cancelDone
 		ks.cancel = nil
 		ks.cancelDone = nil
 	}
@@ -194,7 +194,7 @@ func (ks *k8sAuditHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		jsn, err := ioutil.ReadAll(r.Body)
 
 		if err != nil {
-			log.Errorf("Invalid K8s audit event: error while reading")
+			_ = log.Errorf("Invalid K8s audit event: error while reading")
 			w.WriteHeader(http.StatusInternalServerError)
 			message = "Invalid Body"
 		} else {
@@ -210,7 +210,7 @@ func (ks *k8sAuditHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			select {
 			case ks.evtsChannel <- evt:
 			default:
-				log.Errorf("Dropping Audit Content (buffer full)")
+				_ = log.Errorf("Dropping Audit Content (buffer full)")
 			}
 		}
 	default:
@@ -218,7 +218,7 @@ func (ks *k8sAuditHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		message = "Method " + string(r.Method) + " not allowed\n"
 	}
 
-	w.Write([]byte(message))
+	_, _ = w.Write([]byte(message))
 }
 
 func Register(grpcServer *grpc.Server) error {

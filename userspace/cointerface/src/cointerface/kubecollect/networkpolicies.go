@@ -127,21 +127,21 @@ func watchNetworkPolicies(evtc chan<- draiosproto.CongroupUpdateEvent) {
 
 				oldRQ := (*v1.NetworkPolicy)(nil)
 
-				switch obj.(type) {
+				switch obj := obj.(type) {
 				case *v1.NetworkPolicy:
-					oldRQ = obj.(*v1.NetworkPolicy)
+					oldRQ = obj
 
 				case cache.DeletedFinalStateUnknown:
-					d := obj.(cache.DeletedFinalStateUnknown)
+					d := obj
 					o, ok := (d.Obj).(*v1.NetworkPolicy)
 					if ok {
 						oldRQ = o
 					} else {
-						log.Warn("DeletedFinalStateUnknown without networkpolicy object")
+						_ = log.Warn("DeletedFinalStateUnknown without networkpolicy object")
 					}
 
 				default:
-					log.Warn("Unknown object type in networkpolicy DeleteFunc")
+					_ = log.Warn("Unknown object type in networkpolicy DeleteFunc")
 				}
 
 				if oldRQ == nil {

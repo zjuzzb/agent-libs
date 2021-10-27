@@ -37,8 +37,8 @@ func (impl *DockerBenchImpl) ShouldRun(stask *ScheduledTask) bool {
 }
 
 type DockerBenchImpl struct {
-	customerId string `json:"customerId"`
-	machineId  string `json:"machineId"`
+	CustomerId string `json:"customerId"`
+	MachineId  string `json:"machineId"`
 }
 
 // Used to parse the json output of the docker-bench-security script
@@ -120,12 +120,12 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 	}
 
 	cevts := &draiosproto.CompEvents{
-		MachineId:  proto.String(impl.machineId),
-		CustomerId: proto.String(impl.customerId),
+		MachineId:  proto.String(impl.MachineId),
+		CustomerId: proto.String(impl.CustomerId),
 	}
 	results := &draiosproto.CompResults{
-		MachineId:  proto.String(impl.machineId),
-		CustomerId: proto.String(impl.customerId),
+		MachineId:  proto.String(impl.MachineId),
+		CustomerId: proto.String(impl.CustomerId),
 	}
 
 	metrics := []string{}
@@ -133,7 +133,7 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 	// Read /tmp/docker-bench.log.json to find any events.
 	raw, err := ioutil.ReadFile(rootPath + "/docker-bench.log.json")
 	if err != nil {
-		log.Errorf("Could not read json output: %v", err.Error())
+		_ = log.Errorf("Could not read json output: %v", err.Error())
 		return err
 	}
 
@@ -141,14 +141,14 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 	err = json.Unmarshal(raw, &bres)
 
 	if err != nil {
-		log.Errorf("Could not read json output: %v", err.Error())
+		_ = log.Errorf("Could not read json output: %v", err.Error())
 		return err
 	}
 
 	result := &ExtendedTaskResult{
 		Id:           *task.Id,
 		TimestampNS:  bres.Start * 1e9,
-		HostMac:      impl.machineId,
+		HostMac:      impl.MachineId,
 		TaskName:     *task.Name,
 		ResultSchema: bres.DockerBenchSecurity,
 		TestsRun:     0,
@@ -276,13 +276,13 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 				}
 				tmpl, err := template.New("test").Parse(tmplstr)
 				if err != nil {
-					log.Errorf("Could not format output string: %v", err.Error())
+					_ = log.Errorf("Could not format output string: %v", err.Error())
 					return err
 				}
 				var outputString bytes.Buffer
 				err = tmpl.Execute(&outputString, fields)
 				if err != nil {
-					log.Errorf("Could not format output string: %v", err.Error())
+					_ = log.Errorf("Could not format output string: %v", err.Error())
 					return err
 				}
 
@@ -335,7 +335,7 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 
 	ofbytes, err := json.Marshal(result)
 	if err != nil {
-		log.Errorf("Could not serialize test result: %v", err.Error())
+		_ = log.Errorf("Could not serialize test result: %v", err.Error())
 		return err
 	}
 

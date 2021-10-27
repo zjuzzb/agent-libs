@@ -100,7 +100,7 @@ func performDockerCommand(client sdc_internal.CoInterfaceClient, dockerCommand s
 	return nil
 }
 
-func performOrchestratorEventStream(client sdc_internal.CoInterfaceClient, msgFile string, kubeconfig string) error {
+func performOrchestratorEventStream(client sdc_internal.CoInterfaceClient, msgFile string, kubeconfig string, n int) error {
 	cmd := &sdc_internal.OrchestratorEventsStreamCommand{}
 
 	msgPayload, err := ioutil.ReadFile(msgFile)
@@ -126,12 +126,18 @@ func performOrchestratorEventStream(client sdc_internal.CoInterfaceClient, msgFi
 		return fmt.Errorf("could not perform orchestrator events stream: %s", err)
 	}
 
-	evt, err := res.Recv()
-	if err != nil {
-		return fmt.Errorf("error occurred while retrieving update event: %s", err)
-	}
+	for i := 0; i < n; i++ {
+		evt, err := res.Recv()
+		if err != nil {
+			return fmt.Errorf("error occurred while retrieving update event: %s", err)
+		}
 
-	log.Infof("Orchestrator event stream response: %s", evt.GetEvents())
+		events, err := json.Marshal(evt.GetEvents())
+		if err != nil {
+			return fmt.Errorf("error occurred while marshaling events: %s", err)
+		}
+		log.Infof("Orchestrator event stream response: %s", events)
+	}
 
 	return nil
 }
@@ -280,7 +286,7 @@ func mymain() int {
 		err = performDockerCommand(client, *dockerCmdPtr, *containerPtr)
 
 	case messageOrchestratorEventStream:
-		err = performOrchestratorEventStream(client, *messageFilePtr, *kubeconfigFilePtr)
+		err = performOrchestratorEventStream(client, *messageFilePtr, *kubeconfigFilePtr, 1)
 	}
 
 	if err != nil {

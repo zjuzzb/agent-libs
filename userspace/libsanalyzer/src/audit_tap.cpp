@@ -13,6 +13,7 @@
 #include <google/protobuf/util/json_util.h>
 
 #include <fstream>
+#include <memory>
 #include <sstream>
 
 namespace
@@ -65,6 +66,10 @@ type_config<std::vector<std::string>> c_exclude_labels({},
                                                        "Labels to exclude in audit tap",
                                                        "audit_tap",
                                                        "excluded_labels");
+type_config<int> c_max_files_cache(1000,
+                                   "max amount of file names to keep in memory for files audit",
+                                   "audit_tap",
+                                   "max_files_tracked");
 type_config<int> c_max_parents(0,
                                "Hierarchy of parent processes to climb",
                                "audit_tap",
@@ -138,7 +143,9 @@ audit_tap::audit_tap(env_hash_config* config,
                 "kubernetes.namespace.name",
                 "kubernetes.deployment.name",
                 "kubernetes.pod.name",
-                "kubernetes.node.name"})
+                "kubernetes.node.name"}),
+      m_num_files(0),
+      m_num_skipped_files(0)
 {
 	clear();
 	configure_labels_set();
@@ -515,6 +522,7 @@ const tap::AuditLog* audit_tap::get_events()
 	}
 
 	m_event_batch->set_timestamp(sinsp_utils::get_current_time_ns() / 1000000);
+	m_event_batch->mutable_filesaudit()->set_skipped(m_num_skipped_files);
 
 	write_to_file(*m_event_batch);
 
@@ -527,6 +535,8 @@ void audit_tap::clear()
 	m_event_batch->set_hostmac(m_machine_id);
 	m_event_batch->set_hostname(m_hostname);
 	m_num_envs_sent = 0;
+	m_num_files = 0;
+	m_num_skipped_files = 0;
 }
 
 void audit_tap::configure_labels_set()
@@ -617,6 +627,25 @@ void audit_tap::emit_labels(tap::NewProcess* process, infrastructure_state_iface
 		}
 	}
 #endif
+}
+
+void audit_tap::register_file_access(bool is_write, thread_analyzer_info* tinfo, uint64_t ts,
+                          const std::string& fullpath, uint32_t flags)
+{
+	auto max_files_cache = c_max_files_cache.get_value();
+	if(max_files_cache > 0 && m_num_files > max_files_cache){
+		m_num_skipped_files++;
+		return;
+	}
+
+	auto files = m_event_batch->mutable_filesaudit();
+	auto fa = files->add_fileaccess();
+	fa->set_containerid(tinfo->m_container_id);
+	fa->set_pid(tinfo->m_pid);
+	fa->set_timestamp(ts);
+	fa->set_write(is_write);
+	fa->set_path(fullpath);
+	m_num_files++;
 }
 
 // static

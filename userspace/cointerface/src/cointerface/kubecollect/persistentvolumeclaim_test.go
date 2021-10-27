@@ -49,7 +49,7 @@ func fixture() {
 	informers := informers2.NewSharedInformerFactory(client, 0)
 	namespaceInf = informers.Core().V1().Namespaces().Informer()
 	// Add the previously created namespace to the informer
-	namespaceInf.GetStore().Add(namespace)
+	_ = namespaceInf.GetStore().Add(namespace)
 }
 
 // if pointers argmument is false, do not instantiate pointer type members.

@@ -91,7 +91,7 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 				newEvent, newType = true, draiosproto.CongroupEventType_REMOVED
 			}
 		default:
-			log.Errorf("Unexpected state=%v while processing containers", state)
+			_ = log.Errorf("Unexpected state=%v while processing containers", state)
 		}
 
 		if newEvent {
@@ -388,7 +388,7 @@ func podInfManagerLoop(ctx context.Context, getTerm bool, kubeClient kubeclient.
 		// May want to get the kubeClient from global store and monitor for closure
 		podInf = startPodsInfReally(ctx, getTerm, deleg, kubeClient)
 		watchPods()
-		infCtx, cancelInf := context.WithCancel(ctx)
+		infCtx, cancelInf := context.WithCancel(ctx) // nolint:govet
 
 		infWg := &sync.WaitGroup{}
 		infWg.Add(1)
@@ -413,13 +413,13 @@ func podInfManagerLoop(ctx context.Context, getTerm bool, kubeClient kubeclient.
 				log.Debug("PodInfManager: context cancelled, waiting for informer wg")
 				infWg.Wait()
 				log.Debug("PodInfManager: informer done, closing")
-				return
+				return // nolint:govet
 			case d, ok := <-delegChan:
 				if !ok {
-					log.Warn("PodInfManager: delegation channel closed")
+					_ = log.Warn("PodInfManager: delegation channel closed")
 					cancelInf()
 					infWg.Wait()
-					return
+					return // nolint:govet
 				}
 				log.Debugf("PodInfManager: delegation channel sent deleg=%v", d)
 				if d != deleg {
@@ -464,19 +464,18 @@ func startPodsInfReally(ctx context.Context, getTerm bool, deleg bool, kubeClien
 func podDeleteFunc(obj interface{}) {
 	oldPod := (*v1.Pod)(nil)
 
-	switch obj.(type) {
+	switch obj := obj.(type) {
 	case *v1.Pod:
-		oldPod = obj.(*v1.Pod)
+		oldPod = obj
 	case cache.DeletedFinalStateUnknown:
-		d := obj.(cache.DeletedFinalStateUnknown)
-		p, ok := (d.Obj).(*v1.Pod)
+		p, ok := (obj.Obj).(*v1.Pod)
 		if ok {
 			oldPod = p
 		} else {
-			log.Warn("DeletedFinalStateUnknown without pod object")
+			_ = log.Warn("DeletedFinalStateUnknown without pod object")
 		}
 	default:
-		log.Warn("Unknown object type in pod DeleteFunc")
+		_ = log.Warn("Unknown object type in pod DeleteFunc")
 	}
 
 	if oldPod == nil {

@@ -33,7 +33,7 @@ func startInformers(
 		default:
 		}
 		if interrupted {
-			log.Warn("K8s informer startup interrupted by cancelled context")
+			_ = log.Warn("K8s informer startup interrupted by cancelled context")
 			break
 		}
 
@@ -101,14 +101,12 @@ func startInformers(
 			for {
 				var lastTick time.Time
 				evtcLen := 0
-				select {
-				case lastTick = <-ticker.C:
-					if channelType == kubecollect_common.ChannelTypeInformer {
-						// Number of events is length of Informer channel
-						// plus length of events in SdcEvtArray
-						lenQueue := int(atomic.LoadUint32(queueLength))
-						evtcLen = len(kubecollect_common.InformerChannel) + lenQueue
-					}
+				lastTick = <-ticker.C
+				if channelType == kubecollect_common.ChannelTypeInformer {
+					// Number of events is length of Informer channel
+					// plus length of events in SdcEvtArray
+					lenQueue := int(atomic.LoadUint32(queueLength))
+					evtcLen = len(kubecollect_common.InformerChannel) + lenQueue
 				}
 
 				// XXX should use resourceReady()
@@ -126,7 +124,7 @@ func startInformers(
 
 				if lastTick.Sub(tickerStart) >= totalWaitTime {
 					if kubecollect_common.ReceivedEvent(resource) {
-						log.Warnf("High activity during initial fetch of %v objects",
+						_ = log.Warnf("High activity during initial fetch of %v objects",
 							resource)
 					}
 					break
