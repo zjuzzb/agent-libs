@@ -124,12 +124,7 @@ pipeline {
                     stages {
                         stage('Build Container') {
                             steps {
-                                script {
-                                    sh '''
-                                        echo "branch name: " ${BRANCH_NAME}
-                                    '''
-                                }
-                                setBuildStatus('QA Test', 'Building Container', 'PENDING')
+                                setBuildStatus('QA Test', 'In Progress', 'PENDING')
                                 build job:'agent-build-container',parameters:[
                                     string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),
                                     string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
@@ -141,7 +136,6 @@ pipeline {
                         }
                         stage('QA - Extended Label Set Test') {
                             steps {
-                                setBuildStatus('QA Test', 'In Progress', 'PENDING')
                                 build job:'QA-agent/extended-label-set-test',parameters:[
                                     string(name:'REGISTRY', value:"docker.internal.sysdig.com"),
                                     string(name:'AGENT_REPOSITORY', value:"agent-internal"),
