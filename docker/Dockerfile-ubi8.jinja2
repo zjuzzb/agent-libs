@@ -106,6 +106,8 @@ RUN	(rpm -q kernel-headers && rpm -e --nodeps kernel-headers; true) && \
 	rm -rf /usr/src/kernels && \
 	ln -s $SYSDIG_HOST_ROOT/lib/modules /lib/modules
 
+RUN (rpm -e --nodeps python3-pip-wheel platform-python-pip || true)
+
 COPY ./docker-entrypoint.sh /
 
 {% if p.build_kernel_module and not p.launch_dragent %}
