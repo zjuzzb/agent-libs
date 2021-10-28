@@ -42,15 +42,20 @@ pipeline {
         stage('Build Builder') {
             parallel {
                 stage('Regular Builder') {
-                    when {   
+                    when {
                         expression { params.BUILD_BUILDER == true }
                     }
                     steps {
-                        build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),string(name:'PROMETHEUS_BRANCH', value:"${params.PROMETHEUS_BRANCH}")]
+                        build job:'agent-build-builder',parameters:[
+                            string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),
+                            string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
+                            string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
+                            string(name:'PROMETHEUS_BRANCH', value:"${params.PROMETHEUS_BRANCH}")
+                        ]
                     }
                 }
                 stage('Alpine Builder') {
-                    when {   
+                    when {
                         expression { params.BUILD_BUILDER == true }
                     }
                     steps {
@@ -119,9 +124,9 @@ pipeline {
                     stages {
                         stage('Build Container') {
                             steps {
-                                setBuildStatus('QA Test', 'Building Container', 'PENDING')
+                                setBuildStatus('Systemic Regression Test', 'In Progress', 'PENDING')
                                 build job:'agent-build-container',parameters:[
-                                    string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"), 
+                                    string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),
                                     string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
                                     string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
                                     string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
@@ -129,18 +134,23 @@ pipeline {
                                 ]
                             }
                         }
-                        stage('Run Test') {
+                        stage('QA - Extended Label Set Test') {
                             steps {
-                                echo "Running QA test...someday."
+                                build job:'QA-agent/extended-label-set-test',parameters:[
+                                    string(name:'REGISTRY', value:"docker.internal.sysdig.com"),
+                                    string(name:'AGENT_REPOSITORY', value:"agent-internal"),
+                                    string(name:'AGENT_VERSION', value:"${env.BRANCH_NAME}"),
+                                    string(name:'SLACK_CHANNEL', value:"")
+                                ]
                             }
                         }
                     }
                     post {
                         success {
-                            setBuildStatus('QA Test', 'Zero problems found', 'SUCCESS')
+                            setBuildStatus('Systemic Regression Test', 'Zero problems found', 'SUCCESS')
                         }
                         failure {
-                            setBuildStatus('QA Test', 'FAILED! see Jenkins console output for more info.', 'FAILURE')
+                            setBuildStatus('Systemic Regression Test', 'FAILED! see Jenkins console output for more info.', 'FAILURE')
                         }
                     }
                 }
