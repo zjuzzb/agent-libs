@@ -96,9 +96,10 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 }
 
 void main_thread_analyzer_info::hash_environment(thread_analyzer_info* tinfo,
-                                                 const env_hash::regex_list_t& blacklist)
+                                                 const env_hash::regex_list_t& blacklist,
+                                                 bool force)
 {
-	if (!m_env_hash.is_valid())
+	if (force || !m_env_hash.is_valid())
 	{
 		m_env_hash.update(tinfo, blacklist);
 	}

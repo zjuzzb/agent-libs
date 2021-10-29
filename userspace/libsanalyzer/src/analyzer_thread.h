@@ -101,7 +101,13 @@ struct main_thread_analyzer_info
 	analyzer_top_file_stat_map m_files_stat;
 	analyzer_top_device_stat_map m_devs_stat;
 
-	void hash_environment(thread_analyzer_info* tinfo, const env_hash::regex_list_t& blacklist);
+	/**
+	 * Hashes the environment variables from tinfo ignoring the ones from blacklist
+	 * @param tinfo
+	 * @param blacklist
+	 * @param force forces the regeneration of the hash, even if it has been already initialized
+	 */
+	void hash_environment(thread_analyzer_info* tinfo, const env_hash::regex_list_t& blacklist, bool force = false);
 };
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -842,7 +842,8 @@ void sinsp_analyzer_fd_listener::on_execve(sinsp_evt* evt)
 		if (tinfo)
 		{
 			tinfo->main_thread_ainfo()->hash_environment(tinfo,
-			                                             m_analyzer->get_environment_blacklist());
+			                                             m_analyzer->get_environment_blacklist(),
+			                                             true);
 		}
 	}
 }
