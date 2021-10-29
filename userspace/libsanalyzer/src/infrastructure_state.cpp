@@ -101,6 +101,11 @@ type_config<bool> infrastructure_state::c_k8s_terminated_pods_enabled(
     false,
     "Enable terminated pods handling",
     "k8s_terminated_pod_enabled");
+type_config<bool> infrastructure_state::c_k8s_completed_jobs_enabled(
+    false,
+    "Enable sending events related to completed jobs (always enabled when thin cointerface is "
+    "used)",
+    "k8s_completed_jobs_enabled");
 type_config<uint32_t>
     infrastructure_state::c_k8s_event_counts_log_time(0, "", "k8s_event_counts_log_time");
 type_config<std::string> infrastructure_state::c_k8s_url("", "URL of k8s api server", "k8s_uri");
@@ -633,6 +638,9 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 		                                           c_k8s_pod_status_wl.get_value().end()};
 		    cmd.set_terminated_pods_enabled(c_k8s_terminated_pods_enabled.get_value());
 		    cmd.set_thin_cointerface(c_thin_cointerface_enabled.get_value());
+		    cmd.set_completed_jobs_enabled(c_thin_cointerface_enabled.get_value()
+		                                       ? true
+		                                       : c_k8s_completed_jobs_enabled.get_value());
 		    cmd.set_cointerface_delegation(c_k8s_delegation_election.get_value());
 		    cmd.set_delegated_num(m_analyzer.m_configuration->get_k8s_delegated_nodes());
 

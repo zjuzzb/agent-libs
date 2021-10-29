@@ -521,6 +521,7 @@ public: // configs
 	static type_config<std::vector<std::string>> c_k8s_include_types;
 	static type_config<std::vector<std::string>> c_k8s_pod_status_wl;
 	static type_config<bool> c_k8s_terminated_pods_enabled;
+	static type_config<bool> c_k8s_completed_jobs_enabled;
 	static type_config<uint32_t> c_k8s_event_counts_log_time;
 	static type_config<uint64_t> c_k8s_timeout_s;
 	static type_config<std::string>::ptr c_k8s_ssl_key_password;

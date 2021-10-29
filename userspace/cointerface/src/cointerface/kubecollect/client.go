@@ -55,7 +55,7 @@ func startInformers(
 		case "ingress":
 			StartIngressSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "jobs":
-			startJobsSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+			startJobsSInformer(ctx, opts, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "namespaces":
 			StartNamespacesSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "nodes":

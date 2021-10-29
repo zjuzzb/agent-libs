@@ -71,6 +71,7 @@ sdc_internal::orchestrator_events_stream_command stream_request()
 	req.set_max_rnd_conn_delay(0);
 	req.set_thin_cointerface(false);
 	req.set_terminated_pods_enabled(false);
+	req.set_completed_jobs_enabled(false);
 	req.set_cold_start_num(0);
 	req.set_max_wait_for_lock(0);
 	req.set_max_cold_start_duration(0);

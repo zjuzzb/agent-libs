@@ -54,21 +54,23 @@ const (
 
 // stores which informers have been allocated, so at least we don't segfault
 // does not imply we've successfully registered with the API server
+// TODO(irozzo): Reduce this global state.
 var StartedMap map[string]bool
 var StartedMutex sync.RWMutex
 
-var receiveMap map[string]bool
+// Initializing the maps should not harm and ease unit testing.
+var receiveMap map[string]bool = make(map[string]bool)
 var receiveMutex sync.RWMutex
 var annotFilter map[string]bool
 
 var eventCountsLogTime uint32
-var eventMapAdd map[string]int
+var eventMapAdd map[string]int = make(map[string]int)
 var emAddMutex sync.RWMutex
-var eventMapUpd map[string]int
+var eventMapUpd map[string]int = make(map[string]int)
 var emUpdMutex sync.RWMutex
-var eventMapUpds map[string]int
+var eventMapUpds map[string]int = make(map[string]int)
 var emUpdsMutex sync.RWMutex
-var eventMapDel map[string]int
+var eventMapDel map[string]int = make(map[string]int)
 var emDelMutex sync.RWMutex
 
 var COLDSTART_LEASENAME = "cold-start"

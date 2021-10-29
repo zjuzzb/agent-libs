@@ -162,6 +162,7 @@ message orchestrator_events_stream_command {
     required uint32 min_rnd_conn_delay = 35;
     required double per_node_conn_delay = 36;
     required annotation_conf annotation_conf = 37;
+    required bool completed_jobs_enabled = 38;
 }
 
 message orchestrator_attach_user_events_stream_command {

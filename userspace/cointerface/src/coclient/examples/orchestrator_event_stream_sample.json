@@ -27,6 +27,7 @@
       "kube-controller-manager"
   ],
   "terminated_pods_enabled": false,
+  "completed_jobs_enabled": false,
   "cold_start_num": 10,
   "max_wait_for_lock": 0,
   "max_cold_start_duration": 60,
