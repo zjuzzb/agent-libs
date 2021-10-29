@@ -28,8 +28,8 @@ else()
 			ExternalProject_Add(protobuf
 				PREFIX "${PROJECT_BINARY_DIR}/protobuf-prefix"
 				DEPENDS openssl zlib
-				URL "http://download.sysdig.com/dependencies/protobuf-cpp-3.5.0.tar.gz"
-				URL_MD5 "e4ba8284a407712168593e79e6555eb2"
+				URL "https://download.sysdig.com/dependencies/protobuf-cpp-3.5.0.tar.gz"
+				URL_HASH "SHA256=8dd6b051c2b39ab95dfe1f53cc5e1662ceb852d856db57d85751696859698551"
 				# TODO what if using system zlib?
 				CONFIGURE_COMMAND /usr/bin/env CPPFLAGS=-I${ZLIB_INCLUDE} LDFLAGS=-L${ZLIB_SRC} ./configure --with-zlib --disable-shared --enable-static --prefix=${PROTOBUF_INSTALL_DIR}
 				COMMAND aclocal && automake
