@@ -302,7 +302,7 @@ bool prom_config_file_manager::merge_and_save_configs(draiosproto::config_file_t
 				if (!out_yaml[name])
 				{
 					LOG_DEBUG("Don't have global yet, copying");
-					out_yaml[name] = line->second;
+					out_yaml[name] = YAML::Clone(line->second);
 					continue;
 				}
 				for (auto glob_line = line->second.begin(); glob_line != line->second.end(); glob_line++)
@@ -310,7 +310,7 @@ bool prom_config_file_manager::merge_and_save_configs(draiosproto::config_file_t
 					if (!out_yaml[name][glob_line->first.as<string>()])
 					{
 						LOG_DEBUG("Didn't find %s.%s, adding", name.c_str(), glob_line->first.as<string>().c_str());
-						out_yaml[name][glob_line->first.as<string>()] = glob_line->second;
+						out_yaml[name][glob_line->first.as<string>()] = YAML::Clone(glob_line->second);
 					}
 					else
 					{
@@ -328,7 +328,7 @@ bool prom_config_file_manager::merge_and_save_configs(draiosproto::config_file_t
 				if (!out_yaml[name])
 				{
 					LOG_DEBUG("Don't have scrape_configs yet, copying");
-					out_yaml[name] = line->second;
+					out_yaml[name] = YAML::Clone(line->second);
 				}
 				else
 				{
@@ -353,7 +353,7 @@ bool prom_config_file_manager::merge_and_save_configs(draiosproto::config_file_t
 							continue;
 						}
 						LOG_DEBUG("Adding scrape job %s", job_name.c_str());
-						out_yaml[name].push_back(job);
+						out_yaml[name].push_back(YAML::Clone(job));
 					}
 				}
 			}
@@ -362,7 +362,7 @@ bool prom_config_file_manager::merge_and_save_configs(draiosproto::config_file_t
 				if (!out_yaml[name])
 				{
 					LOG_DEBUG("Didn't find %s, adding", name.c_str());
-					out_yaml[name] = line->second;
+					out_yaml[name] = YAML::Clone(line->second);
 				}
 				else
 				{
