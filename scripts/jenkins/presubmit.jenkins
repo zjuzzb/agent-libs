@@ -134,16 +134,6 @@ pipeline {
                                 ]
                             }
                         }
-                        stage('QA - Extended Label Set Test') {
-                            steps {
-                                build job:'QA-agent/extended-label-set-test',parameters:[
-                                    string(name:'REGISTRY', value:"docker.internal.sysdig.com"),
-                                    string(name:'AGENT_REPOSITORY', value:"agent-internal"),
-                                    string(name:'AGENT_VERSION', value:"${env.BRANCH_NAME}"),
-                                    string(name:'SLACK_CHANNEL', value:"")
-                                ]
-                            }
-                        }
                     }
                     post {
                         success {
