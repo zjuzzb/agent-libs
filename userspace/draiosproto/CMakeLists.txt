@@ -14,15 +14,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}) # generated files refer to ship
 
 add_custom_target(
     preproc_proto
-    ALL
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
-            ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto
-            ${CMAKE_CURRENT_BINARY_DIR}/common.proto
-            ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
-            ${CMAKE_CURRENT_BINARY_DIR}/handshake.proto
-            ${CMAKE_CURRENT_BINARY_DIR}/metadata.proto
-            ${CMAKE_CURRENT_BINARY_DIR}/profiling.proto
-            ${CMAKE_CURRENT_BINARY_DIR}/secure.proto
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/preproc_proto_success.txt
 )
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/agentino.proto
@@ -33,6 +25,7 @@ add_custom_command(
            ${CMAKE_CURRENT_BINARY_DIR}/metadata.proto
            ${CMAKE_CURRENT_BINARY_DIR}/profiling.proto
            ${CMAKE_CURRENT_BINARY_DIR}/secure.proto
+           ${CMAKE_CURRENT_BINARY_DIR}/preproc_proto_success.txt
     COMMENT "Fetching proto files from proto repo"
     DEPENDS ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/agentino.proto
             ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/aggregation_context.proto
@@ -44,6 +37,7 @@ add_custom_command(
             ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/secure.proto
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMAND ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/cpp/preproc.sh ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/preproc_proto_success.txt
 )
 
 if(NOT CYGWIN)
