@@ -473,25 +473,6 @@ void sinsp_worker::run()
 }
 
 #ifndef CYGWING_AGENT
-void sinsp_worker::request_load_policies_v2(const draiosproto::policies_v2& policies_v2)
-{
-	if (m_security_mgr)
-	{
-		m_security_mgr->request_load_policies_v2(policies_v2);
-		return;
-	}
-
-	LOG_INFO("Saving policies_v2");
-	if (m_security_policies_v2_backup)
-	{
-		*m_security_policies_v2_backup = policies_v2;
-	}
-	else
-	{
-		m_security_policies_v2_backup = make_unique<draiosproto::policies_v2>(policies_v2);
-	}
-}
-
 bool sinsp_worker::is_stall_fatal() const
 {
 	// If the input filename is not empty then we are reading an scap file

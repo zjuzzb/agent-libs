@@ -33,8 +33,7 @@ public:
 };
 
 class sinsp_worker : public Poco::Runnable,
-                     public dragent::security_host_metadata_receiver,
-                     public dragent::security_policy_v2_loader
+                     public dragent::security_host_metadata_receiver
 {
 public:
 	sinsp_worker(dragent_configuration* configuration,
@@ -83,7 +82,6 @@ public:
 	}
 
 #ifndef CYGWING_AGENT
-	void request_load_policies_v2(const draiosproto::policies_v2& policies_v2) override;
 	void receive_hosts_metadata(const draiosproto::orchestrator_events& evts) override;
 #endif
 
@@ -131,8 +129,6 @@ private:
 
 	user_event_queue::ptr_t m_user_event_queue;
 	internal_metrics::sptr_t m_internal_metrics;
-
-	std::unique_ptr<draiosproto::policies_v2> m_security_policies_v2_backup;
 
 	friend class dragent_app;
 	friend class memdump_test;

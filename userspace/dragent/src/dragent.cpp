@@ -1466,16 +1466,10 @@ int dragent_app::sdagent_main()
 		      std::make_shared<dump_request_stop_message_handler>(m_capture_job_handler)},
 		     {draiosproto::message_type::CONFIG_DATA,
 		      std::make_shared<config_data_message_handler>(m_configuration)},
-		     {draiosproto::message_type::POLICIES,  // Legacy -- no longer used
-		      std::make_shared<null_message_handler>()},
-		     {draiosproto::message_type::POLICIES_V2,
-		      std::make_shared<security_policies_v2_message_handler>(m_sinsp_worker)},
 		     {draiosproto::message_type::ORCHESTRATOR_EVENTS,
 		      std::make_shared<security_orchestrator_events_message_handler>(m_sinsp_worker)},
 		     {draiosproto::message_type::AGGREGATION_CONTEXT,
-		      dragent::aggregator_limits::global_limits},
-		     {draiosproto::message_type::BASELINES,  // Legacy -- no longer used
-		      std::make_shared<null_message_handler>()}});
+		      dragent::aggregator_limits::global_limits}});
 
 		metric_limit_source::callback cb = std::bind(&dragent_app::handle_metric_limit,
 		                                             this,
@@ -1577,6 +1571,11 @@ int dragent_app::sdagent_main()
 			                                &m_capture_job_handler,
 			                                &m_configuration,
 			                                m_internal_metrics);
+
+			connection_manager_instance->set_message_handler(
+			    draiosproto::message_type::POLICIES_V2,
+			    std::make_shared<security_policies_v2_message_handler>(
+			        *security_manager_instance));
 		}
 
 		compliance_mgr* compliance_manager_instance = nullptr;
