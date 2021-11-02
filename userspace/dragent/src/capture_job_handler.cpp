@@ -1,5 +1,5 @@
-#include "capture_job_handler.h"
 #include "capture.h"
+#include "capture_job_handler.h"
 #include "configuration_manager.h"
 #include "dragent_message_queues.h"
 #include "feature_manager.h"
@@ -18,6 +18,7 @@
 
 using namespace std;
 using Poco::NumberFormatter;
+using namespace capture_job_queue_handler;
 COMMON_LOGGER();
 
 type_config<uint32_t> c_memdump_max_init_attempts(10, "", "memdump", "max_init_attempts");
@@ -213,12 +214,14 @@ bool capture_job::start(sinsp* inspector,
 	                ", filter='" + details.m_filter + "'" +
 	                ", defer_send=" + (m_defer_send ? "true" : "false"));
 
-	if(m_timer_thread != nullptr)
+	if (m_timer_thread != nullptr)
 	{
-		m_deadline_timer = make_unique<TimerEvent<Callback>>([job_state]() {
-			job_state->log_debug("Capture duration reached.");
-			job_state->stop();
-		});
+		m_deadline_timer = make_unique<TimerEvent<Callback>>(
+		    [job_state]()
+		    {
+			    job_state->log_debug("Capture duration reached.");
+			    job_state->stop();
+		    });
 		m_timer_thread->schedule(m_deadline_timer.get(), m_duration_ns);
 	}
 
@@ -314,9 +317,10 @@ void capture_job::stop(bool remove_unsent_job)
 		return;
 	}
 
-	if(m_capture)
+	if (m_capture)
 	{
-		log_information("stopped. captured events: " + NumberFormatter::format(m_capture->get_num_events()));
+		log_information("stopped. captured events: " +
+		                NumberFormatter::format(m_capture->get_num_events()));
 	}
 	else
 	{
@@ -363,7 +367,8 @@ void capture_job::flush(uint64_t ts, bool& throttled)
 	log_debug("flushing");
 
 	m_keepalive_interval.run(
-	    [this, ts]() {
+	    [this, ts]()
+	    {
 		    // Send keepalives once we've sent at least one chunk
 		    if (m_send_file && m_last_chunk_idx > 0)
 		    {
@@ -379,7 +384,7 @@ void capture_job::flush(uint64_t ts, bool& throttled)
 	if (m_state == ST_INPROGRESS)
 	{
 		struct stat st;
-		if(m_capture_reader->stat(st) != 0)
+		if (m_capture_reader->stat(st) != 0)
 		{
 			log_error("error checking file size");
 			m_handler->send_error(m_token, "Error checking file size");
@@ -582,12 +587,12 @@ void capture_job::read_chunk()
 	{
 		size_t to_read = min<u_int64_t>(buffer.size(), chunk_size);
 		ssize_t res = m_capture_reader->read_back(buffer.begin(), to_read);
-		if(res == 0)
+		if (res == 0)
 		{
 			log_debug("EOF");
 			eof = true;
 		}
-		else if(res < 0)
+		else if (res < 0)
 		{
 			const std::string msg = "error while reading " + m_file + ": " + strerror(errno);
 			log_error(msg);
@@ -652,8 +657,7 @@ void capture_job_handler::init(const sinsp* inspector)
 
 	if (feature_manager::instance().get_enabled(MEMDUMP))
 	{
-		LOG_INFO(m_name +
-		         ": enabling memdump, size=" + to_string(m_memdump_size));
+		LOG_INFO(m_name + ": enabling memdump, size=" + to_string(m_memdump_size));
 		m_memdumper = make_unique<sinsp_memory_dumper>((sinsp*)inspector);
 		m_memdumper->init(m_memdump_size,
 		                  m_memdump_size,
@@ -681,7 +685,8 @@ void capture_job_handler::do_run()
 		m_last_job_check_ns = sinsp_utils::get_current_time_ns();
 
 		m_log_stats_interval.run(
-		    [this]() {
+		    [this]()
+		    {
 			    uint32_t num_jobs = 0;
 			    uint64_t oldest = m_last_job_check_ns;
 			    {
@@ -698,9 +703,8 @@ void capture_job_handler::do_run()
 			    }
 			    if (num_jobs > 0)
 			    {
-				    LOG_INFO(
-				        "capture_jobs: nj=" + to_string(num_jobs) +
-				        " oldest_delta_ms=" + to_string((m_last_job_check_ns - oldest) / 1000000));
+				    LOG_INFO("capture_jobs: nj=" + to_string(num_jobs) + " oldest_delta_ms=" +
+				             to_string((m_last_job_check_ns - oldest) / 1000000));
 			    }
 		    },
 		    m_last_job_check_ns);
@@ -755,9 +759,8 @@ void capture_job_handler::process_event(sinsp_evt* ev)
 	}
 }
 
-bool capture_job_handler::queue_job_request(sinsp* inspector,
-                                            std::shared_ptr<dump_job_request> job_request,
-                                            string& errstr)
+bool capture_job_handler::queue_job_request(std::shared_ptr<dump_job_request> job_request,
+                                            std::string& errmsg)
 {
 	Poco::ScopedReadRWLock jobs_lck(m_jobs_lock);
 
@@ -767,14 +770,14 @@ bool capture_job_handler::queue_job_request(sinsp* inspector,
 	if (job_request->m_request_type == dump_job_request::JOB_START &&
 	    (m_jobs.size() + m_dump_job_requests.size()) >= m_configuration->m_max_sysdig_captures)
 	{
-		errstr = "maximum number of outstanding captures (" +
-		         to_string(m_configuration->m_max_sysdig_captures) + ") reached";
+		errmsg = "maximum number of outstanding captures (" + to_string(m_configuration->m_max_sysdig_captures) + ") reached";
+		send_error(job_request->m_token, errmsg.c_str());
 		return false;
 	}
 
 	LOG_INFO(m_name + ": scheduling job request type=" +
-	                   dump_job_request::request_type_str(job_request->m_request_type) +
-	                   ", token= " + job_request->m_token);
+	         dump_job_request::request_type_str(job_request->m_request_type) +
+	         ", token= " + job_request->m_token);
 
 	// If doing a traditional (i.e. not back-in-time) capture,
 	// create a sinsp_dumper tied to the provided inspector and
@@ -783,7 +786,8 @@ bool capture_job_handler::queue_job_request(sinsp* inspector,
 	{
 		if (!job_request->m_start_details)
 		{
-			errstr = "no details provided for start job";
+			errmsg = "Insufficient details to start job";
+			send_error(job_request->m_token, errmsg.c_str());
 			return false;
 		}
 
@@ -793,7 +797,7 @@ bool capture_job_handler::queue_job_request(sinsp* inspector,
 		if (job_request->m_start_details->m_past_duration_ns == 0)
 		{
 			job_request->m_start_details->m_capture =
-			    capture::start(inspector,
+			    capture::start(m_inspector,
 			                   job_request->m_start_details->m_file,
 			                   job_request->m_start_details->m_delete_file_when_done);
 		}
@@ -805,11 +809,35 @@ bool capture_job_handler::queue_job_request(sinsp* inspector,
 		{
 			job_request->m_start_details->m_capture = nullptr;
 		}
-		errstr = "Capture job handler queue full";
+		errmsg = "Capture job handler queue full";
+		send_error(job_request->m_token, errmsg.c_str());
 		return false;
 	}
 
 	return true;
+}
+
+void capture_job_handler::yolo_dump(const std::string& reason)
+{
+	LOG_INFO("Starting dump. Reason: %s", reason.c_str());
+
+	std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request =
+	    make_shared<capture_job_queue_handler::dump_job_request>();
+
+	job_request->m_start_details = make_unique<capture_job_queue_handler::start_job_details>();
+
+	job_request->m_request_type = capture_job_queue_handler::dump_job_request::JOB_START;
+	job_request->m_token = string("dump").append(NumberFormatter::format(time(NULL)));
+	job_request->m_start_details->m_duration_ns = 20000000000LL;
+	job_request->m_start_details->m_delete_file_when_done = false;
+	job_request->m_start_details->m_send_file = false;
+
+	std::string errmsg;
+	bool rc = queue_job_request(job_request, errmsg);
+	if (!rc)
+	{
+		LOG_ERROR("Could not start dump: %s", errmsg.c_str());
+	}
 }
 
 void capture_job_handler::cleanup()
@@ -846,8 +874,7 @@ void capture_job_handler::cleanup()
 	if (m_jobs.size() > 0)
 	{
 		Poco::ScopedWriteRWLock jobs_lck(m_jobs_lock);
-		LOG_WARNING(m_name + ": " + to_string(m_jobs.size()) +
-		               " jobs remaining, deleting anyway");
+		LOG_WARNING(m_name + ": " + to_string(m_jobs.size()) + " jobs remaining, deleting anyway");
 
 		m_jobs.clear();
 	}
@@ -859,8 +886,8 @@ void capture_job_handler::process_job_requests()
 	while (m_dump_job_requests.get(&request, 0))
 	{
 		LOG_DEBUG(m_name + ": dequeued dump request type=" +
-		             dump_job_request::request_type_str(request->m_request_type) +
-		             " token=" + request->m_token);
+		          dump_job_request::request_type_str(request->m_request_type) +
+		          " token=" + request->m_token);
 		switch (request->m_request_type)
 		{
 		case dump_job_request::JOB_START:
@@ -967,15 +994,15 @@ void capture_job_handler::start_job(string& token, start_job_details& details)
 		return;
 	}
 
-	if (details.m_past_duration_ns != 0 &&
-	    (!feature_manager::instance().get_enabled(MEMDUMP) ||
-             !(m_memdumper && m_memdumper->is_enabled())))
+	if (details.m_past_duration_ns != 0 && (!feature_manager::instance().get_enabled(MEMDUMP) ||
+	                                        !(m_memdumper && m_memdumper->is_enabled())))
 	{
 		send_error(token,
 		           string("memory dump functionality not enabled in the target agent ") +
 		               string("configured=") +
 		               (feature_manager::instance().get_enabled(MEMDUMP) ? "true" : "false") +
-		               string(" enabled=") + (m_memdumper && m_memdumper->is_enabled() ? "true" : "false") +
+		               string(" enabled=") +
+		               (m_memdumper && m_memdumper->is_enabled() ? "true" : "false") +
 		               string(". Cannot perform back in time capture."));
 		return;
 	}

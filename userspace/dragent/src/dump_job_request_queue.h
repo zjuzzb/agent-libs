@@ -7,18 +7,26 @@
  */
 #pragma once
 
-#include "capture_job_handler.h"
 #include <memory>
+
+namespace capture_job_queue_handler
+{
+class dump_job_request;
+}
 
 namespace dragent
 {
-
 class dump_job_request_queue
 {
 public:
 	virtual ~dump_job_request_queue() = default;
 
-	virtual void queue_job_request(std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request) = 0;
+	/**
+	 * queue a job request
+	 */
+	virtual bool queue_job_request(
+	    std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request,
+	    std::string& errmsg) = 0;
 };
 
-} // namespace dragent
+}  // namespace dragent

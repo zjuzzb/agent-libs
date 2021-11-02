@@ -109,7 +109,7 @@ void security_mgr::init(sinsp *inspector,
 			const std::string &agent_container_id,
 			infrastructure_state_iface *infra_state,
 			secure_k8s_audit_event_sink_iface *k8s_audit_evt_sink,
-			capture_job_queue_handler *capture_job_queue_handler,
+			dragent::dump_job_request_queue *capture_job_queue_handler,
 			dragent_configuration *configuration,
 			const internal_metrics::sptr_t& metrics)
 
@@ -921,7 +921,7 @@ bool security_mgr::start_capture(uint64_t ts_ns,
 	job_request->m_start_details->m_defer_send = true;
 
 	// Note: Not enforcing any maximum size.
-	return m_capture_job_queue_handler->queue_job_request(m_inspector, job_request, errstr);
+	return m_capture_job_queue_handler->queue_job_request(job_request, errstr);
 }
 
 void security_mgr::start_sending_capture(const string &token)
@@ -934,7 +934,7 @@ void security_mgr::start_sending_capture(const string &token)
 	job_request->m_request_type = capture_job_queue_handler::dump_job_request::JOB_SEND_START;
 	job_request->m_token = token;
 
-	if (!m_capture_job_queue_handler->queue_job_request(m_inspector, job_request, errstr))
+	if (!m_capture_job_queue_handler->queue_job_request(job_request, errstr))
 	{
 		LOG_ERROR("security_mgr::start_sending_capture could not start sending capture token=" + token + "(" + errstr + "). Trying to stop capture.");
 		stop_capture(token);
@@ -957,7 +957,7 @@ void security_mgr::stop_capture(const string &token)
 	// capture, in which case the capture should not be sent at all.
 	stop_request->m_stop_details->m_remove_unsent_job = true;
 
-	if (!m_capture_job_queue_handler->queue_job_request(m_inspector, stop_request, errstr))
+	if (!m_capture_job_queue_handler->queue_job_request(stop_request, errstr))
 	{
 		LOG_CRITICAL("security_mgr::start_sending_capture could not stop capture token=" + token + "(" + errstr + ")");
 

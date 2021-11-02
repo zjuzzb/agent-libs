@@ -51,14 +51,14 @@ public:
 };
 
 class test_capture_job_queue_handler :
-		public capture_job_queue_handler
+		public dragent::dump_job_request_queue
 {
 public:
 	test_capture_job_queue_handler();
 
 	virtual ~test_capture_job_queue_handler();
 
-	bool queue_job_request(sinsp *inspector, std::shared_ptr<dump_job_request> job_request, std::string &errstr);
+	bool queue_job_request(std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request, std::string& errmsg) override;
 
-	std::vector<std::shared_ptr<dump_job_request>> m_job_requests;
+	std::vector<std::shared_ptr<capture_job_queue_handler::dump_job_request>> m_job_requests;
 };

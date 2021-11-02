@@ -33,7 +33,6 @@ public:
 };
 
 class sinsp_worker : public Poco::Runnable,
-                     public dragent::dump_job_request_queue,
                      public dragent::security_host_metadata_receiver,
                      public dragent::security_policy_v2_loader
 {
@@ -45,14 +44,6 @@ public:
 	~sinsp_worker();
 
 	void run() override;
-
-	// This is a way to schedule capture jobs from threads other
-	// than the sinsp_worker thread. It actually passes the
-	// request along to the capture_job_handler thread, but does
-	// some necessary prep work such as creating sinsp_dumper
-	// objects, etc.
-	void queue_job_request(
-	    std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request) override;
 
 	uint64_t get_last_loop_ns() const { return m_last_loop_ns; }
 
@@ -102,8 +93,6 @@ private:
 	          security_mgr* sm,
 	          compliance_mgr* cm);
 	void do_grpc_tracing();
-	void process_job_requests(bool should_dump);
-	bool handle_signal_dump();
 
 	void get_internal_metrics();
 

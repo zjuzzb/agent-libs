@@ -66,7 +66,7 @@ public:
 	} dump_response_t;
 
 	test_sinsp_worker(
-	    shared_ptr<blocking_queue<std::shared_ptr<capture_job_handler::dump_job_request>>>&
+	    shared_ptr<blocking_queue<std::shared_ptr<capture_job_queue_handler::dump_job_request>>>&
 	        dump_job_requests,
 	    shared_ptr<blocking_queue<dump_response_t>>& dump_job_responses,
 	    capture_job_handler* capture_job_handler)
@@ -89,49 +89,10 @@ public:
 
 	const sinsp* get_inspector() const { return m_inspector.get(); }
 
-	void process_job_requests()
-	{
-		string errstr;
-
-		std::shared_ptr<capture_job_handler::dump_job_request> request;
-		while (m_dump_job_requests->get(&request, 0))
-		{
-			string errstr;
-
-			g_log->debug("sinsp_worker: dequeued dump request token=" + request->m_token);
-
-			if (m_capture_job_handler->queue_job_request(m_inspector.get(), request, errstr))
-			{
-				dump_response_t res = {true, ""};
-
-				ASSERT_TRUE(m_dump_job_responses->put(res));
-			}
-			else
-			{
-				dump_response_t res = {false, errstr};
-
-				ASSERT_TRUE(m_dump_job_responses->put(res));
-			}
-		}
-	}
-
-	bool queue_job_request(std::shared_ptr<capture_job_handler::dump_job_request> job_request,
+	bool queue_job_request(std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request,
 	                       std::string& errstr)
 	{
-		if (!m_dump_job_requests->put(job_request))
-		{
-			errstr = "Could add to job request queue";
-			return false;
-		}
-		dump_response_t res;
-		if (!m_dump_job_responses->get(&res, 5000))
-		{
-			errstr = "Could not receive response from job response queue";
-			return false;
-		}
-
-		errstr = res.errstr;
-		return res.successful;
+		return m_capture_job_handler->queue_job_request(job_request, errstr);
 	}
 
 	void run()
@@ -159,8 +120,6 @@ public:
 				throw sinsp_exception(m_inspector->getlasterr().c_str());
 			}
 
-			m_job_requests_interval.run([this]() { process_job_requests(); }, ev->get_ts());
-
 			m_capture_job_handler->process_event(ev);
 			if (!m_ready)
 			{
@@ -180,7 +139,7 @@ public:
 
 private:
 	run_on_interval m_job_requests_interval;
-	shared_ptr<blocking_queue<shared_ptr<capture_job_handler::dump_job_request>>>
+	shared_ptr<blocking_queue<shared_ptr<capture_job_queue_handler::dump_job_request>>>
 	    m_dump_job_requests;
 	shared_ptr<blocking_queue<dump_response_t>> m_dump_job_responses;
 	capture_job_handler* m_capture_job_handler;
@@ -234,7 +193,7 @@ protected:
 		m_capture_job_handler =
 		    new capture_job_handler(&m_configuration, m_queue, nullptr, 10 * 1024 * 1024);
 		m_dump_job_requests =
-		    make_shared<blocking_queue<shared_ptr<capture_job_handler::dump_job_request>>>(1);
+		    make_shared<blocking_queue<shared_ptr<capture_job_queue_handler::dump_job_request>>>(1);
 		m_dump_job_responses = make_shared<blocking_queue<test_sinsp_worker::dump_response_t>>(1);
 		m_sinsp_worker =
 		    new test_sinsp_worker(m_dump_job_requests, m_dump_job_responses, m_capture_job_handler);
@@ -344,16 +303,16 @@ protected:
 		FAIL() << "All captures did not complete within 60 seconds";
 	}
 
-	std::shared_ptr<capture_job_handler::dump_job_request> generate_dump_request(const string& tag,
+	std::shared_ptr<capture_job_queue_handler::dump_job_request> generate_dump_request(const string& tag,
 	                                                                             bool filter_events,
 	                                                                             bool defer_send,
 	                                                                             uint32_t before_ms,
 	                                                                             uint32_t after_ms)
 	{
-		std::shared_ptr<capture_job_handler::dump_job_request> req =
-		    std::make_shared<capture_job_handler::dump_job_request>();
-		req->m_start_details = make_unique<capture_job_handler::start_job_details>();
-		req->m_request_type = capture_job_handler::dump_job_request::JOB_START;
+		std::shared_ptr<capture_job_queue_handler::dump_job_request> req =
+		    std::make_shared<capture_job_queue_handler::dump_job_request>();
+		req->m_start_details = make_unique<capture_job_queue_handler::start_job_details>();
+		req->m_request_type = capture_job_queue_handler::dump_job_request::JOB_START;
 		req->m_start_details->m_delete_file_when_done = false;
 		req->m_start_details->m_send_file = true;
 		// Only measure our own process to get semi-consistent trace sizes
@@ -382,7 +341,7 @@ protected:
 		string errstr;
 		draiosproto::dump_response response;
 
-		std::shared_ptr<capture_job_handler::dump_job_request> req =
+		std::shared_ptr<capture_job_queue_handler::dump_job_request> req =
 		    generate_dump_request(tag, filter_events, defer_send, before_ms, after_ms);
 
 		g_log->debug("Queuing job request tag=" + tag);
@@ -406,12 +365,12 @@ protected:
 	{
 		string errstr;
 
-		std::shared_ptr<capture_job_handler::dump_job_request> req =
-		    std::make_shared<capture_job_handler::dump_job_request>();
+		std::shared_ptr<capture_job_queue_handler::dump_job_request> req =
+		    std::make_shared<capture_job_queue_handler::dump_job_request>();
 
-		req->m_stop_details = make_unique<capture_job_handler::stop_job_details>();
+		req->m_stop_details = make_unique<capture_job_queue_handler::stop_job_details>();
 
-		req->m_request_type = capture_job_handler::dump_job_request::JOB_STOP;
+		req->m_request_type = capture_job_queue_handler::dump_job_request::JOB_STOP;
 		req->m_token = make_token(tag);
 
 		req->m_stop_details->m_remove_unsent_job = remove_unsent_job;
@@ -426,10 +385,10 @@ protected:
 	{
 		string errstr;
 
-		std::shared_ptr<capture_job_handler::dump_job_request> req =
-		    std::make_shared<capture_job_handler::dump_job_request>();
+		std::shared_ptr<capture_job_queue_handler::dump_job_request> req =
+		    std::make_shared<capture_job_queue_handler::dump_job_request>();
 
-		req->m_request_type = capture_job_handler::dump_job_request::JOB_SEND_START;
+		req->m_request_type = capture_job_queue_handler::dump_job_request::JOB_SEND_START;
 		req->m_token = make_token(tag);
 
 		g_log->debug("Queuing job request send_start tag=" + tag);
@@ -466,10 +425,15 @@ protected:
 	{
 		open_test_file("before");
 
+		// we (hope) that 1s is enough that this gets processed by the event loop
+		// In reality we should check that we've gotten the event already, but what
+		// can one do?
+		sleep(1);
+
 		// When limiting by size, we don't limit by time.
 		ASSERT_NO_FATAL_FAILURE({
 			send_dump_request("single",
-			                  (dump_before ? 1000 : 0),
+			                  (dump_before ? 3000 : 0),
 			                  dump_after ? 3000 : 0,
 			                  filter_events,
 			                  false,
@@ -533,7 +497,7 @@ protected:
 		for (uint32_t i = 0; i < 10; i++)
 		{
 			g_log->debug("Queuing request for capture " + to_string(i));
-			std::shared_ptr<capture_job_handler::dump_job_request> req =
+			std::shared_ptr<capture_job_queue_handler::dump_job_request> req =
 			    generate_dump_request(to_string(i), true, false, (back_in_time ? 500 : 0), 30000);
 			ASSERT_TRUE(m_sinsp_worker->queue_job_request(req, errstr))
 			    << "Could not queue job request: " << errstr;
@@ -546,7 +510,7 @@ protected:
 		sleep(5);
 
 		g_log->debug("Starting capture over limit (should fail)");
-		std::shared_ptr<capture_job_handler::dump_job_request> req =
+		std::shared_ptr<capture_job_queue_handler::dump_job_request> req =
 		    generate_dump_request(to_string(10), true, false, (back_in_time ? 3000 : 0), 30000);
 		ASSERT_FALSE(m_sinsp_worker->queue_job_request(req, errstr));
 
@@ -638,7 +602,7 @@ protected:
 	capture_job_handler* m_capture_job_handler;
 	dragent_configuration m_configuration;
 	protocol_queue* m_queue;
-	shared_ptr<blocking_queue<shared_ptr<capture_job_handler::dump_job_request>>>
+	shared_ptr<blocking_queue<shared_ptr<capture_job_queue_handler::dump_job_request>>>
 	    m_dump_job_requests;
 	shared_ptr<blocking_queue<test_sinsp_worker::dump_response_t>> m_dump_job_responses;
 	memdump_error_handler m_error_handler;

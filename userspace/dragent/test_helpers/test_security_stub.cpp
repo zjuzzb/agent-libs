@@ -1,5 +1,7 @@
 #include "test_security_stub.h"
 
+using namespace capture_job_queue_handler;
+
 test_infrastructure_state::test_infrastructure_state()
 {
 }
@@ -88,9 +90,7 @@ test_capture_job_queue_handler::~test_capture_job_queue_handler()
 {
 }
 
-bool test_capture_job_queue_handler::queue_job_request(sinsp *inspector,
-						       std::shared_ptr<dump_job_request> job_request,
-						       std::string &errstr)
+bool test_capture_job_queue_handler::queue_job_request(std::shared_ptr<dump_job_request> job_request, std::string& errmsg)
 {
 	m_job_requests.push_back(job_request);
 	return true;

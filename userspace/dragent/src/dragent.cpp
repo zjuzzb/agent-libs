@@ -1461,9 +1461,9 @@ int dragent_app::sdagent_main()
 		        ? std::initializer_list<dragent_protocol::protocol_version>{4, 5}
 		        : std::initializer_list<dragent_protocol::protocol_version>{4},
 		    {{draiosproto::message_type::DUMP_REQUEST_START,
-		      std::make_shared<dump_request_start_message_handler>(m_sinsp_worker)},
+		      std::make_shared<dump_request_start_message_handler>(m_capture_job_handler)},
 		     {draiosproto::message_type::DUMP_REQUEST_STOP,
-		      std::make_shared<dump_request_stop_message_handler>(m_sinsp_worker)},
+		      std::make_shared<dump_request_stop_message_handler>(m_capture_job_handler)},
 		     {draiosproto::message_type::CONFIG_DATA,
 		      std::make_shared<config_data_message_handler>(m_configuration)},
 		     {draiosproto::message_type::POLICIES,  // Legacy -- no longer used
@@ -1783,6 +1783,22 @@ int dragent_app::sdagent_main()
 			                                        compressor);
 			m_transmit_queue.put(buf, protocol_queue::BQ_PRIORITY_LOW);
 			next_heartbeat = now + heartbeat_interval;
+		}
+
+		if (dragent_configuration::m_signal_dump)
+		{
+			analyzer->dump_infrastructure_state_on_next_flush();
+			m_capture_job_handler.yolo_dump("SIGUSR1");
+			dragent_configuration::m_signal_dump = false;
+		}
+
+		if (dragent_configuration::m_enable_trace)
+		{
+			if (m_configuration.m_enable_grpc_tracing)
+			{
+				m_sinsp_worker.do_grpc_tracing();
+			}
+			dragent_configuration::m_enable_trace = false;
 		}
 
 		Thread::sleep(1000);

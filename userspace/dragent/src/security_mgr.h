@@ -49,7 +49,7 @@ public:
 		  const std::string &agent_container_id,
 		  infrastructure_state_iface *infra_state,
 		  secure_k8s_audit_event_sink_iface *k8s_audit_evt_sink,
-		  capture_job_queue_handler *capture_job_queue_handler,
+		  dragent::dump_job_request_queue *capture_job_queue_handler,
 		  dragent_configuration *configuration,
 		  const internal_metrics::sptr_t& metrics);
 
@@ -406,7 +406,7 @@ private:
 	security_result_handler& m_result_handler;
 	infrastructure_state_iface *m_infra_state;
 	secure_k8s_audit_event_sink_iface *m_k8s_audit_evt_sink;
-	capture_job_queue_handler *m_capture_job_queue_handler;
+	dragent::dump_job_request_queue *m_capture_job_queue_handler;
 	dragent_configuration *m_configuration;
 	std::string m_install_root;
 	std::string m_cointerface_sock_path;

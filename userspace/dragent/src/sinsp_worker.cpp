@@ -404,16 +404,11 @@ void sinsp_worker::run()
 			}
 		}
 
-		const bool should_dump = handle_signal_dump();
-
 		//
 		// Update the time
 		//
 		ts = ev->get_ts();
 		m_last_loop_ns = ts;
-
-		m_job_requests_interval.run([this, should_dump]() { process_job_requests(should_dump); },
-		                            ts);
 
 		if (dragent_configuration::c_enable_aws_metadata.get_value())
 		{
@@ -477,41 +472,6 @@ void sinsp_worker::run()
 	LOG_INFO("sinsp_worker: Terminating");
 }
 
-bool sinsp_worker::handle_signal_dump()
-{
-	if (!dragent_configuration::m_signal_dump)
-	{
-		return false;
-	}
-
-	dragent_configuration::m_signal_dump = false;
-
-	m_analyzer->dump_infrastructure_state_on_next_flush();
-
-	return true;
-}
-
-void sinsp_worker::queue_job_request(
-    std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request)
-{
-	LOG_INFO(
-	    m_name + ": scheduling job request type=" +
-	    capture_job_queue_handler::dump_job_request::request_type_str(job_request->m_request_type) +
-	    ", token= " + job_request->m_token);
-
-	if (!m_dump_job_requests.put(job_request))
-	{
-		// Note that although the queue is for communication
-		// between some other thread and the sinsp_worker
-		// thread, the error response is sent via the capture
-		// job handler, as it has the queue of messages that
-		// go back to the connection manager.
-
-		m_capture_job_handler->send_error(job_request->m_token,
-		                                  "Maximum number of requests reached");
-	}
-}
-
 #ifndef CYGWING_AGENT
 void sinsp_worker::request_load_policies_v2(const draiosproto::policies_v2& policies_v2)
 {
@@ -565,61 +525,5 @@ void sinsp_worker::do_grpc_tracing()
 		LOG_INFO("Received SIGSTKFLT, enabling gRPC tracing");
 		grpc_tracer_set_enabled("all", 1);
 		gpr_set_log_verbosity(GPR_LOG_SEVERITY_DEBUG);
-	}
-}
-
-// Receive job requests and pass them along to the capture job
-// handler, adding a sinsp_dumper object associated with our
-// inspector.
-
-void sinsp_worker::process_job_requests(bool should_dump)
-{
-	string errstr;
-
-	if (should_dump)
-	{
-		LOG_INFO("Received SIGUSR1, starting dump");
-
-		std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request =
-		    make_shared<capture_job_queue_handler::dump_job_request>();
-
-		job_request->m_start_details = make_unique<capture_job_queue_handler::start_job_details>();
-
-		job_request->m_request_type = capture_job_queue_handler::dump_job_request::JOB_START;
-		job_request->m_token = string("dump").append(Poco::NumberFormatter::format(time(NULL)));
-		job_request->m_start_details->m_duration_ns = 20000000000LL;
-		job_request->m_start_details->m_delete_file_when_done = false;
-		job_request->m_start_details->m_send_file = false;
-
-		if (!m_capture_job_handler->queue_job_request(m_inspector.get(), job_request, errstr))
-		{
-			LOG_ERROR("sinsp_worker: could not start capture: " + errstr);
-		}
-	}
-
-	if (dragent_configuration::m_enable_trace)
-	{
-		dragent_configuration::m_enable_trace = false;
-
-		if (m_configuration->m_enable_grpc_tracing)
-		{
-			do_grpc_tracing();
-		}
-	}
-
-	std::shared_ptr<capture_job_queue_handler::dump_job_request> request;
-	while (m_dump_job_requests.get(&request, 0))
-	{
-		string errstr;
-
-		LOG_DEBUG("sinsp_worker: dequeued dump request token=" + request->m_token);
-
-		if (!m_capture_job_handler->queue_job_request(m_inspector.get(), request, errstr))
-		{
-			// It's assumed these requests were ones from
-			// the backend, so send an error to the
-			// backend.
-			m_capture_job_handler->send_error(request->m_token, errstr);
-		}
 	}
 }
