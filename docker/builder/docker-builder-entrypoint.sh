@@ -9,16 +9,13 @@ BUILD_DIR=$WORK_DIR/agent/build
 ARCH=`uname -m`
 
 if [[ "$ARCH" == "s390x" ]]; then
-	DOCKERFILE=Dockerfile.s390x
-	USE_LOCAL_DOCKERFILE=true
+	DOCKERFILE=/code/agent/docker/local/Dockerfile.s390x
 	USE_SCL_FOR_BOOTSTRAP_AGENT=false
 elif [[ "$ARCH" == "aarch64" ]]; then
-	DOCKERFILE=Dockerfile.aarch64
-	USE_LOCAL_DOCKERFILE=true
+	DOCKERFILE=/code/agent/docker/local/Dockerfile.aarch64
 	USE_SCL_FOR_BOOTSTRAP=false
 else
-	DOCKERFILE=Dockerfile
-	USE_LOCAL_DOCKERFILE=false
+	DOCKERFILE=docker/local/Dockerfile
 	USE_SCL_FOR_BOOTSTRAP=true
 fi
 
@@ -48,11 +45,7 @@ if [[ -z $USE_OLD_DIRS ]]; then
   export USE_OLD_DIRS="false"
 fi
 
-if [ "$USE_LOCAL_DOCKERFILE" = true ]; then
-    rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude $DOCKERFILE $CODE_DIR/agent/ $WORK_DIR/agent/
-else
-    rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/agent/ $WORK_DIR/agent/
-fi
+rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude $DOCKERFILE $CODE_DIR/agent/ $WORK_DIR/agent/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' $CODE_DIR/oss-falco/ $WORK_DIR/oss-falco/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/protorepo/ $WORK_DIR/protorepo/
 # we need this (instead of the dropped libscap) for sysdig-probe-loader
@@ -80,18 +73,13 @@ bootstrap_agent() {
 build_docker_image()
 {
 	cp docker/local/docker-entrypoint.sh "$1"
-	if [ "$USE_LOCAL_DOCKERFILE" = true ]; then
-		DOCKERFILE_DIR=/code/agent/docker/local
-	else
-		DOCKERFILE_DIR=docker/local
-	fi
 	if [ -n "$AGENT_VERSION" ]; then
-		awk -v "new_ver=$AGENT_VERSION" '/^ENV AGENT_VERSION/ { $3 = new_ver } { print }' < $DOCKERFILE_DIR/$DOCKERFILE > "$1/$DOCKERFILE"
+		awk -v "new_ver=$AGENT_VERSION" '/^ENV AGENT_VERSION/ { $3 = new_ver } { print }' < $DOCKERFILE > "$1/Dockerfile"
 	else
-	        cp $DOCKERFILE_DIR/$DOCKERFILE "$1/$DOCKERFILE"
+        cp $DOCKERFILE "$1/Dockerfile"
 	fi
 	cd "$1"
-	docker build -t $AGENT_IMAGE -f $DOCKERFILE --pull .
+	docker build -t $AGENT_IMAGE --pull .
 }
 
 build_benchmarks()
