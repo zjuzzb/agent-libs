@@ -12,6 +12,7 @@
 
 #include "security_config.h"
 #include "security_mgr.h"
+#include <dns_manager.h>
 
 // we get nlohmann jsons from falco k8s audit, while dragent dragent
 // generally uses the `jsoncpp' library
@@ -724,6 +725,7 @@ void security_mgr::process_event_v2(gen_event *evt)
 
 				if (ret.successful)
 				{
+					sinsp_dns_manager::get().clear_cache();
 					LOG_DEBUG("Scoping policies");
 					// Note: if there are multiple successful futures then we will
 					// do all this work multiple times. That is not expected to be
