@@ -11,12 +11,21 @@ ARCH=`uname -m`
 if [[ "$ARCH" == "s390x" ]]; then
 	DOCKERFILE=/code/agent/docker/local/Dockerfile.s390x
 	USE_SCL_FOR_BOOTSTRAP_AGENT=false
+	CONTAINER_BUILD_DEB_ONLY=ON
+	CONTAINER_BUILD_RPM_ONLY=OFF
+	CONTAINER_PACKAGE_EXT=deb
 elif [[ "$ARCH" == "aarch64" ]]; then
 	DOCKERFILE=/code/agent/docker/local/Dockerfile.aarch64
 	USE_SCL_FOR_BOOTSTRAP=false
+	CONTAINER_BUILD_DEB_ONLY=ON
+	CONTAINER_BUILD_RPM_ONLY=OFF
+	CONTAINER_PACKAGE_EXT=deb
 else
-	DOCKERFILE=docker/local/Dockerfile
+	DOCKERFILE=docker/ubi/Dockerfile.local-dev
 	USE_SCL_FOR_BOOTSTRAP=true
+	CONTAINER_BUILD_DEB_ONLY=OFF
+	CONTAINER_BUILD_RPM_ONLY=ON
+	CONTAINER_PACKAGE_EXT=rpm
 fi
 
 if [[ -z $MAKE_JOBS ]]; then
@@ -72,7 +81,7 @@ bootstrap_agent() {
 
 build_docker_image()
 {
-	cp docker/local/docker-entrypoint.sh "$1"
+	cp /code/agent/docker/{docker-entrypoint.sh,get-rpm-url.py} "$1"
 	if [ -n "$AGENT_VERSION" ]; then
 		awk -v "new_ver=$AGENT_VERSION" '/^ENV AGENT_VERSION/ { $3 = new_ver } { print }' < $DOCKERFILE > "$1/Dockerfile"
 	else
@@ -118,11 +127,11 @@ build_container()
 	DOCKER_CONTEXT=$(mktemp -d /out/agent-container.XXXXXX)
 	make -j$MAKE_JOBS package
 
-	cp *.deb /out
+	cp *.$CONTAINER_PACKAGE_EXT /out
 
 	# copy the agent package to a temporary directory so that we don't send
 	# the whole /out directory as the Docker build context
-	cp draios-*-agent.deb "$DOCKER_CONTEXT"
+	cp draios-*-agent.$CONTAINER_PACKAGE_EXT "$DOCKER_CONTEXT"
 	build_docker_image "$DOCKER_CONTEXT"
 
 	rm -rf "$DOCKER_CONTEXT"
@@ -349,7 +358,8 @@ case "$1" in
 		bash
 		;;
 	container)
-		export BUILD_DEB_ONLY=ON
+		export BUILD_DEB_ONLY=${CONTAINER_BUILD_DEB_ONLY}
+		export BUILD_RPM_ONLY=${CONTAINER_BUILD_RPM_ONLY}
 		bootstrap_agent "${2:-"release-internal"}"
 		build_container
 		;;
