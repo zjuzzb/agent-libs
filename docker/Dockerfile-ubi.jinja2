@@ -36,9 +36,10 @@ RUN microdnf install python-lxml python-requests && \
 {% endmacro %}
 
 {% if p.include_agent_package == "local" %}
-ADD draios-0.1.1dev-x86_64-agent.rpm /tmp/packages
+ENV AGENT_VERSION 0.1.1dev
+ADD draios-${AGENT_VERSION}-x86_64-agent.rpm /tmp/packages/draios-${AGENT_VERSION}-x86_64-agent.rpm
 {{ install_nodeps('https://dl.fedoraproject.org/pub/epel/7/x86_64/ dkms', 'http://mirror.centos.org/centos/7/os/x86_64/ elfutils-libelf-devel') }}
-RUN rpm -ihv /tmp/packages/draios-0.1.1dev-x86_64-agent.rpm && rm -rf /tmp/packages
+RUN rpm -ihv --nodeps /tmp/packages/draios-${AGENT_VERSION}-x86_64-agent.rpm && rm -rf /tmp/packages
 
 {% else %}
 RUN rpm --import https://download.sysdig.com/DRAIOS-GPG-KEY.public && \
