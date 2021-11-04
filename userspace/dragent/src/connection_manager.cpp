@@ -1205,7 +1205,7 @@ bool connection_manager::perform_agentino_handshake()
 		dragent_protocol::buffer_to_protobuf(m_pending_message.payload(),
 		                                     payload_len,
 		                                     &err_msg);
-		handle_collector_error(err_msg);
+		handle_collector_error(err_msg, true); // in_handshake = true
 		return false;
 	}
 
@@ -1347,7 +1347,7 @@ bool connection_manager::perform_handshake()
 			}
 
 			// Otherwise just use the standard error handler
-			handle_collector_error(err_msg);
+			handle_collector_error(err_msg, true); // in_handshake = true
 			return false;
 		}
 		else
@@ -2157,7 +2157,7 @@ void connection_manager::set_legacy_mode()
 	m_queue->clear();
 }
 
-void connection_manager::handle_collector_error(draiosproto::error_message& msg)
+void connection_manager::handle_collector_error(draiosproto::error_message& msg, bool in_handshake)
 {
 	// Weed out bogus messages
 	if(!msg.has_type())
@@ -2203,6 +2203,13 @@ void connection_manager::handle_collector_error(draiosproto::error_message& msg)
 		// will just pound away trying to connect to the collector.
 		// Make the agent backoff in this case.
 		disconnect_and_backoff();
+	}
+	else if (in_handshake)
+	{
+		// If an error is received during handshake, we want to disconnect
+		// to avoid connection attempts from bogus state 4 (HANDSHAKE).
+		// See SMAGENT-3244.
+		disconnect();
 	}
 }
 

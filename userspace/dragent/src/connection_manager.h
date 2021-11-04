@@ -639,7 +639,7 @@ private:
 	 * The error message is first given to the message handler, where it's
 	 * deserialized and then sent back into the CM via this function.
 	 */
-	void handle_collector_error(draiosproto::error_message& msg);
+	void handle_collector_error(draiosproto::error_message& msg, bool in_handshake = false);
 
 	void disconnect();
 	void disconnect_and_backoff();
