@@ -1468,6 +1468,8 @@ int dragent_app::sdagent_main()
 		      std::make_shared<config_data_message_handler>(m_configuration)},
 		     {draiosproto::message_type::ORCHESTRATOR_EVENTS,
 		      std::make_shared<security_orchestrator_events_message_handler>(m_sinsp_worker)},
+		     {draiosproto::message_type::BASELINES,
+		      std::make_shared<null_message_handler>()},
 		     {draiosproto::message_type::AGGREGATION_CONTEXT,
 		      dragent::aggregator_limits::global_limits}});
 
