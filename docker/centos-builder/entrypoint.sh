@@ -70,6 +70,7 @@ configure_build()
 		-DBUILD_DRIVER=${BUILD_DRIVER:-OFF} \
 		-DBUILD_BPF=${BUILD_BPF:-OFF} \
 		-DPACKAGE_DEB_ONLY=${BUILD_DEB_ONLY:-OFF} \
+		-DPACKAGE_RPM_ONLY=${BUILD_RPM_ONLY:-OFF} \
 		-DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX:-/opt/draios}" \
 		-DCOMBINED_PACKAGE=${COMBINED_PACKAGE:-ON} \
 		-DBUILD_WARNINGS_AS_ERRORS=${BUILD_WARNINGS_AS_ERRORS:-ON} \
@@ -99,16 +100,16 @@ build_container()
 build_agent_container()
 {
     VARIANT="ReleaseInternal"
-    BUILD_DEB_ONLY=ON
+    BUILD_RPM_ONLY=ON
     configure_build
     DOCKER_CONTEXT=$(mktemp -d /out/agent-container.XXXXXX)
 
     pushd $BUILD_DIR/$VARIANT
     make -j$MAKE_JOBS package
 
-    cp draios-*-agent.deb "$DOCKER_CONTEXT"
-    cp docker/local/docker-entrypoint.sh "$DOCKER_CONTEXT"
-    awk -v "new_ver=$AGENT_VERSION" '/^ENV AGENT_VERSION/ { $3 = new_ver } { print }' <docker/local/Dockerfile >"$DOCKER_CONTEXT/Dockerfile"
+    cp draios-*-agent.rpm "$DOCKER_CONTEXT"
+    cp /code/agent/docker/{docker-entrypoint.sh,get-rpm-url.py} "$DOCKER_CONTEXT"
+    awk -v "new_ver=$AGENT_VERSION" '/^ENV AGENT_VERSION/ { $3 = new_ver } { print }' < docker/ubi/Dockerfile.local-dev >"$DOCKER_CONTEXT/Dockerfile"
     popd
 
     pushd $DOCKER_CONTEXT
