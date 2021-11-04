@@ -1333,7 +1333,28 @@ TEST_F(connection_manager_fixture, test_error_message_handler)
 	t.join();
 }
 
-TEST_F(connection_manager_fixture, handshake_backoff)
+// connection_manager_fixture.handshake_backoff: handle ERR_DUPLICATE_AGENT
+//
+// ERR_DUPLICATE_AGENT is an error by which the backend indicates
+// its conviction about an agent with the same machine id being
+// already connected. The nature of this error is likely transient
+// and might be attributable to Sysdig.
+// So when received during handshake, we should disconnect
+// and slighly back off (or just keep the existing backoff time)
+// to keep downtime to a minimum.
+//
+// ERR_INVALID_CUSTOMER_KEY and ERR_CONN_LIMIT on the other hand
+// likely indicate a problem on the customer's licensing side
+// which won't fix itself.
+// So in that case we want to back off to avoid pounding the backend.
+//
+// This test exercises the following scenario during handshake
+// 1. Send ERR_INVALID_CUSTOMER_KEY -> disconnect and set backoff to 1s, for starters
+// 2. Send ERR_DUPLICATE_AGENT -> disconnect and keep backoff to 1s
+// 3. Send ERR_CONN_LIMIT -> disconnect and double backoff time to 2s
+// 4. Send ERR_DUPLICATE_AGENT -> disconnect and keep backoff to 2s
+
+TEST_F(connection_manager_fixture, handshake_error_and_backoff)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
@@ -1404,26 +1425,65 @@ TEST_F(connection_manager_fixture, handshake_backoff)
 	ASSERT_EQ(0, fc.get_num_disconnects());
 	ASSERT_EQ(0, cm.get_reconnect_interval());
 
-	// Now send an INVALID CUSTOMER KEY error
 	draiosproto::error_message err;
+	bool ret;
+	int exp_num_disc = 0;
+
+	// First, send an INVALID_CUSTOMER_KEY error -- this should cause it to back off
 	err.set_type(draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY);
 	err.set_description("CM UNIT TEST");
 
 	// Send the message
-	bool ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
-	                                     dragent_protocol::PROTOCOL_VERSION_NUMBER,
-	                                     err);
+	ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
+	                                dragent_protocol::PROTOCOL_VERSION_NUMBER,
+	                                err);
 	ASSERT_TRUE(ret);
 
 	// Ensure the CM drops the connection
-	for(uint32_t loops = 0; fc.get_num_disconnects() < 1 && loops < 5000; ++loops)
+	exp_num_disc++;
+	for(uint32_t loops = 0; fc.get_num_disconnects() < exp_num_disc && loops < 5000; ++loops)
 	{
 		usleep(1000);
 	}
-
+	// Make sure we actually got disconnected
+	ASSERT_EQ(exp_num_disc, fc.get_num_disconnects());
 	// The backoff should now be 1
 	ASSERT_EQ(1, cm.get_reconnect_interval());
 
+	// Make sure it hasn't connected yet
+	ASSERT_EQ(0, fc.has_data());
+	// Wait for the CM to start the handshake again
+	for(uint32_t loops = 0; fc.has_data() == 0 && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+	ASSERT_EQ(fc.has_data(), 1);
+	// Consume the data we just received
+	(void)fc.pop_data();
+
+
+	// Second, send a DUPLICATE_AGENT error -- this should cause it to slightly back off
+	err.set_type(draiosproto::error_type::ERR_DUPLICATE_AGENT);
+	err.set_description("CM UNIT TEST");
+
+	// Send the message
+	ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
+	                                dragent_protocol::PROTOCOL_VERSION_NUMBER,
+	                                err);
+	ASSERT_TRUE(ret);
+
+	// Ensure the CM drops the connection
+	exp_num_disc++;
+	for(uint32_t loops = 0; fc.get_num_disconnects() < exp_num_disc && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+	// Make sure we actually got disconnected
+	ASSERT_EQ(exp_num_disc, fc.get_num_disconnects());
+	// The backoff should now be the same as before, i.e. 1
+	ASSERT_EQ(1, cm.get_reconnect_interval());
+
+	// Make sure it hasn't connected yet
 	ASSERT_EQ(0, fc.has_data());
 	// Wait for the CM to start the handshake again
 	for(uint32_t loops = 0; fc.has_data() == 0 && loops < 5000; ++loops)
@@ -1432,8 +1492,11 @@ TEST_F(connection_manager_fixture, handshake_backoff)
 	}
 
 	ASSERT_EQ(fc.has_data(), 1);
+	// Consume the data we just received
+	(void)fc.pop_data();
 
-	// Now send the ERR_CONN_LIMIT should also back off error again
+
+	// Third, send the ERR_CONN_LIMIT which should also back off again, doubling the time
 	err.set_type(draiosproto::error_type::ERR_CONN_LIMIT);
 	err.set_description("CM UNIT TEST");
 	ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
@@ -1442,12 +1505,49 @@ TEST_F(connection_manager_fixture, handshake_backoff)
 	ASSERT_TRUE(ret);
 
 	// Ensure the CM drops the connection yet again
-	for(uint32_t loops = 0; fc.get_num_disconnects() < 2 && loops < 5000; ++loops)
+	exp_num_disc++;
+	for(uint32_t loops = 0; fc.get_num_disconnects() < exp_num_disc && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+	// Make sure we actually got disconnected
+	ASSERT_EQ(exp_num_disc, fc.get_num_disconnects());
+	// The backoff should now be 2
+	ASSERT_EQ(2, cm.get_reconnect_interval());
+
+	// Make sure it hasn't connected yet
+	ASSERT_EQ(0, fc.has_data());
+	// Wait for the CM to start the handshake again
+	for(uint32_t loops = 0; fc.has_data() == 0 && loops < 5000; ++loops)
 	{
 		usleep(1000);
 	}
 
-	// The backoff should now be 2
+	ASSERT_EQ(fc.has_data(), 1);
+	// Consume the data we just received
+	(void)fc.pop_data();
+
+
+	// Fourth, send a DUPLICATE_AGENT error once again -- this should cause it to keep the existing backoff
+	err.set_type(draiosproto::error_type::ERR_DUPLICATE_AGENT);
+	err.set_description("CM UNIT TEST");
+
+	// Send the message
+	ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
+	                                dragent_protocol::PROTOCOL_VERSION_NUMBER,
+	                                err);
+	ASSERT_TRUE(ret);
+
+	// Ensure the CM drops the connection
+	exp_num_disc++;
+	for(uint32_t loops = 0; fc.get_num_disconnects() < exp_num_disc && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+	// Make sure we actually got disconnected
+	ASSERT_EQ(exp_num_disc, fc.get_num_disconnects());
+
+	// The backoff should now be the same as before, i.e. 2
 	ASSERT_EQ(2, cm.get_reconnect_interval());
 
 	// Shut down all the things
