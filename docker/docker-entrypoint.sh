@@ -39,7 +39,7 @@ if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
     else
         echo "* Setting up kernel tools"
         # searching for the correct libc things
-        SYSDIG_HOST_LD=($(find $SYSDIG_HOST_ROOT/usr/ -name 'ld-*.so'))
+        SYSDIG_HOST_LD=($(find $SYSDIG_HOST_ROOT/usr/ -name 'ld-*.so' -a \! -path '*debug*'))
         if [ -n "$SYSDIG_HOST_LD" ]; then
             if [ "${#SYSDIG_HOST_LD[@]}" -gt 1 ]
             then
