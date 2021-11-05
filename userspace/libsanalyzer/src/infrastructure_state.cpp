@@ -3694,6 +3694,8 @@ void infrastructure_state::handle_update_event_no_thin_cointerface(const draiosp
 		m_state[key]->mutable_ip_addresses()->CopyFrom(evt->object().ip_addresses());
 		m_state[key]->mutable_metrics()->CopyFrom(evt->object().metrics());
 
+		m_state[key]->mutable_k8s_object()->CopyFrom(evt->object().k8s_object());
+
 		add_ip_mappings(m_state[key]);
 	}
 }

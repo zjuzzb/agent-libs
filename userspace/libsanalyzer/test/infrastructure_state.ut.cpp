@@ -1413,24 +1413,45 @@ TEST_F(infrastructure_state_test, enrich_pv)
 
 TEST_F(infrastructure_state_test, enrich_pod_containers)
 {
-	draiosproto::k8s_pod pod1;
-	draiosproto::k8s_pod pod2;
-	draiosproto::k8s_pod pod3;
-	draiosproto::container_group cg;
+	test_helpers::sinsp_mock inspector;
+	audit_tap_handler_dummy athd;
+	null_secure_audit_handler sahd;
+	null_secure_profiling_handler sphd;
+	null_secure_netsec_handler snhd;
+	sinsp_analyzer analyzer(&inspector,
+	                        "",
+	                        std::make_shared<internal_metrics>(),
+	                        athd,
+	                        sahd,
+	                        sphd,
+	                        snhd,
+	                        nullptr,
+	                        []() -> bool { return true; });
+	infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
+	
+	draiosproto::k8s_pod pod;
+	
+	draiosproto::congroup_update_event cue;
+	draiosproto::container_group* cg = cue.mutable_object();
+
+	cue.set_type(draiosproto::ADDED);
+	
+	cg->mutable_uid()->set_kind("k8s_pod");
+	cg->mutable_uid()->set_id("container_test");
 
 	draiosproto::k8s_container_status_details* container1 =
-	    cg.mutable_k8s_object()->mutable_pod()->mutable_pod_status()->mutable_containers()->Add();
+	    cg->mutable_k8s_object()->mutable_pod()->mutable_pod_status()->mutable_containers()->Add();
 	draiosproto::k8s_container_status_details* container2 =
-	    cg.mutable_k8s_object()->mutable_pod()->mutable_pod_status()->mutable_containers()->Add();
+	    cg->mutable_k8s_object()->mutable_pod()->mutable_pod_status()->mutable_containers()->Add();
 	draiosproto::k8s_container_status_details* container3 =
-	    cg.mutable_k8s_object()->mutable_pod()->mutable_pod_status()->mutable_containers()->Add();
+	    cg->mutable_k8s_object()->mutable_pod()->mutable_pod_status()->mutable_containers()->Add();
 
-	draiosproto::k8s_container_status_details* init_container1 = cg.mutable_k8s_object()
+	draiosproto::k8s_container_status_details* init_container1 = cg->mutable_k8s_object()
 	                                                                 ->mutable_pod()
 	                                                                 ->mutable_pod_status()
 	                                                                 ->mutable_init_containers()
 	                                                                 ->Add();
-	draiosproto::k8s_container_status_details* init_container2 = cg.mutable_k8s_object()
+	draiosproto::k8s_container_status_details* init_container2 = cg->mutable_k8s_object()
 	                                                                 ->mutable_pod()
 	                                                                 ->mutable_pod_status()
 	                                                                 ->mutable_init_containers()
@@ -1494,56 +1515,93 @@ TEST_F(infrastructure_state_test, enrich_pod_containers)
 	init_container2->set_requests_mem_bytes(8192);
 	init_container2->set_limits_mem_bytes(8192);
 
-	legacy_k8s::enrich_k8s_common(&cg, &pod1);
-	legacy_k8s::enrich_k8s_global(&cg, &pod1);
+	is.handle_event(&cue);
+	
+	legacy_k8s::export_k8s_object(is.m_parents[{"k8s_pod", "container_test"}],
+	                              is.m_state[{"k8s_pod", "container_test"}].get(),
+	                              &pod,
+	                              true);
 
-	if (google::protobuf::util::MessageDifferencer::Equals(cg.k8s_object().pod().pod_status(),
-	                                                       pod1.pod_status()))
+	if (google::protobuf::util::MessageDifferencer::Equals(cg->k8s_object().pod().pod_status(),
+	                                                       pod.pod_status()))
 	{
 		FAIL() << "Container group:" << std::endl
-		       << cg.k8s_object().pod().pod_status().DebugString() << std::endl
+		       << cg->k8s_object().pod().pod_status().DebugString() << std::endl
 		       << "k8s_pod:" << std::endl
-		       << pod1.pod_status().DebugString() << std::endl;
+		       << pod.pod_status().DebugString() << std::endl;
 	}
 
-	EXPECT_EQ(pod1.pod_status().containers_size(), 2);
-	EXPECT_EQ(pod1.pod_status().init_containers_size(), 0);
+	EXPECT_EQ(pod.pod_status().containers_size(), 2);
+	EXPECT_EQ(pod.pod_status().init_containers_size(), 0);
 	
-	for (auto& container : pod1.pod_status().containers())
+	for (auto& container : pod.pod_status().containers())
 	{
 		if (container.status() != "terminated" && container.status() != "waiting")
 		{
 			FAIL() << "Unexpected container status: " << container.status() << std::endl;
 		}
 	}
+	
+	pod.Clear();
 
 	c_k8s_send_all_containers.set(true);
 
-	legacy_k8s::enrich_k8s_common(&cg, &pod2);
-	legacy_k8s::enrich_k8s_global(&cg, &pod2);
+	legacy_k8s::export_k8s_object(is.m_parents[{"k8s_pod", "container_test"}],
+	                              is.m_state[{"k8s_pod", "container_test"}].get(),
+	                              &pod,
+	                              true);
 	
-	if (!google::protobuf::util::MessageDifferencer::Equals(cg.k8s_object().pod().pod_status(),
-	                                                        pod2.pod_status()))
+	if (!google::protobuf::util::MessageDifferencer::Equals(cg->k8s_object().pod().pod_status(),
+	                                                        pod.pod_status()))
 	{
 		FAIL() << "Container group:" << std::endl
-		       << cg.k8s_object().pod().pod_status().DebugString() << std::endl
+		       << cg->k8s_object().pod().pod_status().DebugString() << std::endl
 		       << "k8s_pod:" << std::endl
-		       << pod2.pod_status().DebugString() << std::endl;
+		       << pod.pod_status().DebugString() << std::endl;
 	}
-
-	legacy_k8s::enrich_k8s_common(&cg, &pod3);
-	legacy_k8s::enrich_k8s_local(&cg, &pod3);
-
-	EXPECT_EQ(pod3.pod_status().containers_size(), 2);
-	EXPECT_EQ(pod3.pod_status().init_containers_size(), 0);
 	
-	for (auto& container : pod3.pod_status().containers())
+	pod.Clear();
+
+	legacy_k8s::export_k8s_object(is.m_parents[{"k8s_pod", "container_test"}],
+	                              is.m_state[{"k8s_pod", "container_test"}].get(),
+	                              &pod,
+	                              false);
+
+	EXPECT_EQ(pod.pod_status().containers_size(), 2);
+	EXPECT_EQ(pod.pod_status().init_containers_size(), 0);
+	
+	for (auto& container : pod.pod_status().containers())
 	{
 		if (container.status() != "terminated" && container.status() != "waiting")
 		{
 			FAIL() << "Unexpected container status: " << container.status() << std::endl;
 		}
 	}
+	
+	pod.Clear();
+	
+	container2->set_status("running");
+	container2->clear_status_reason();
+	
+	cue.set_type(draiosproto::UPDATED);
+
+	is.handle_event(&cue);
+	
+	legacy_k8s::export_k8s_object(is.m_parents[{"k8s_pod", "container_test"}],
+	                              is.m_state[{"k8s_pod", "container_test"}].get(),
+	                              &pod,
+	                              true);
+	
+	if (!google::protobuf::util::MessageDifferencer::Equals(cg->k8s_object().pod().pod_status(),
+	                                                        pod.pod_status()))
+	{
+		FAIL() << "Container group:" << std::endl
+		       << cg->k8s_object().pod().pod_status().DebugString() << std::endl
+		       << "k8s_pod:" << std::endl
+		       << pod.pod_status().DebugString() << std::endl;
+	}
+	
+	pod.Clear();
 }
 
 TEST_F(infrastructure_state_test, storageclass)

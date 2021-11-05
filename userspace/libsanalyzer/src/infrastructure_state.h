@@ -317,6 +317,7 @@ private:
 	FRIEND_TEST(infrastructure_state_test, events_test_2);
 	FRIEND_TEST(infrastructure_state_test, single_update);
 	FRIEND_TEST(infrastructure_state_test, local_remote_pod);
+	FRIEND_TEST(infrastructure_state_test, enrich_pod_containers);
 	FRIEND_TEST(infrastructure_state_test, storageclass);
 
 	void configure_k8s_environment();
