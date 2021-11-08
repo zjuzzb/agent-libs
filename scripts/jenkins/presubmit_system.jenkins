@@ -46,9 +46,9 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
                     sh label: '', script: '''
                         echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
-                        docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
+                        docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos
                         mkdir install || echo "installdir already exists"
-                        docker run -i --rm -e MAKE_JOBS=$(nproc) -v $PWD/install:/opt/draios -v $PWD:/draios:ro -e USE_OLD_DIRS=$USE_LEGACY_LIBS quay.io/sysdig/agent-builder:$BUILDER_VERSION install-test
+                        docker run -i --rm -e MAKE_JOBS=$(nproc) -v $PWD/install:/opt/draios -v $PWD:/draios:ro -e USE_OLD_DIRS=$USE_LEGACY_LIBS quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos make install
                     '''
                 }
             }
@@ -90,7 +90,7 @@ pipeline {
                 sudo pkill -9 fake_cri || echo "no tests to kill"
 
                 sudo rmmod sysdigcloud-probe || echo "not currently loaded"
-                docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+                docker rmi -f $(docker images | grep -vE 'quay.io/sysdig/agent-builder.*latest-(alpine|centos)' | awk 'NR>1 {print $3}') || echo "no containers to remove"
 
                 sudo rm -rf * .[!.]*
             '''
