@@ -149,8 +149,14 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent, completedJobsEnabled
 			AddFunc: func(obj interface{}) {
 				job := obj.(*batchv1.Job)
 				kubecollect_common.EventReceived("jobs")
+				// We don't process finished jobs add events.
+				// This is to avoid flooding the agent with events in clusters
+				// with tons of finished jobs (succeeded or failed).
+				// https://sysdig.atlassian.net/browse/ESC-1198
+				// Note that we could miss some jobs in case they are created
+				// and finished in between two watches.
 				if !completedJobsEnabled && IsJobFinished(job) {
-					log.Debug("Ignoring finished job %s added in namespace %s", job.Name, job.Namespace)
+					log.Debugf("Ignoring finished job %s added in namespace %s", job.Name, job.Namespace)
 					return
 				}
 				evtc <- jobEvent(CoJob{obj.(*batchv1.Job)},
@@ -164,12 +170,11 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent, completedJobsEnabled
 				if oldJob.GetResourceVersion() == newJob.GetResourceVersion() {
 					return
 				}
-				if !completedJobsEnabled && IsJobFinished(newJob.Job) && !IsJobFinished(oldJob.Job) {
-					// If job finishes we don't need it any longer, we can
-					// generate a syntetic REMOVED event to trigger removal
-					// from infrastructure state.
-					evtc <- jobEvent(newJob,
-						draiosproto.CongroupEventType_REMOVED.Enum(), false)
+
+				if !completedJobsEnabled && IsJobFinished(oldJob.Job) && !IsJobFinished(newJob.Job) {
+					// Should never happen unless the status is edited
+					// manually.
+					log.Debugf("Job %s in namespace %s transitioned from finished to unfinished", oldJob.Job.Name, oldJob.Job.Namespace)
 					return
 				}
 
@@ -187,9 +192,6 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent, completedJobsEnabled
 					job.Job = obj
 				case cache.DeletedFinalStateUnknown:
 					if o, ok := (obj.Obj).(*batchv1.Job); ok {
-						// We don't need to process deletion of finished Jobs, as
-						// in the happy path we already sent a REMOVED event when
-						// the Job transitioned to finished.
 						log.Debugf("Job deletion detected after re-list for job %s in namespace %s", o.Name, o.Namespace)
 						job.Job = o
 					} else {
@@ -197,20 +199,16 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent, completedJobsEnabled
 						return
 					}
 				default:
-					// Should never happen
 					_ = log.Warn("Unknown object type in job DeleteFunc")
 					return
 				}
 
-				// We don't need to process deletion of finished Jobs, as
-				// we already sent a REMOVED event when the Job transitioned
-				// to finished.
-				if !completedJobsEnabled && IsJobFinished(job.Job) {
-					log.Debug("Ignoring finished job %s added in namespace %s", job.Job.Name, job.Job.Namespace)
-					return
-				}
-				// In case we missed the transition of the Job to complete we
-				// send the REMOVED event on deletion.
+				// We process all deletions even when finished jobs are
+				// excluded. This is not ideal, but otherwise we should keep
+				// track of the jobs that have been processed to avoid leaks.
+				// This adds some more load on agent, but does not harm as it
+				// ignores deletions of items that are not in the
+				// infrastructure state.
 				evtc <- jobEvent(job,
 					draiosproto.CongroupEventType_REMOVED.Enum(), false)
 				kubecollect_common.AddEvent("Job", kubecollect_common.EVENT_DELETE)

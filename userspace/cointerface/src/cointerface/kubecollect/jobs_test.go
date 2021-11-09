@@ -63,12 +63,12 @@ func TestStartJobInformer(t *testing.T) {
 			initialList: []*batchv1.Job{
 				newJob(metav1.ObjectMeta{Name: "foo1", Namespace: "bar"}, batchv1.JobStatus{
 					Conditions: []batchv1.JobCondition{
-						batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+						{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
 					},
 				}),
 				newJob(metav1.ObjectMeta{Name: "foo2", Namespace: "bar"}, batchv1.JobStatus{
 					Conditions: []batchv1.JobCondition{
-						batchv1.JobCondition{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
+						{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
 					},
 				}),
 			},
@@ -92,7 +92,7 @@ func TestStartJobInformer(t *testing.T) {
 					metav1.ObjectMeta{Name: "foo2", Namespace: "bar"},
 					batchv1.JobStatus{
 						Conditions: []batchv1.JobCondition{
-							batchv1.JobCondition{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
+							{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
 						},
 					})}, draiosproto.CongroupEventType_ADDED.Enum(), false),
 				jobEvent(CoJob{Job: newJob(metav1.ObjectMeta{Name: "foo3", Namespace: "bar"}, batchv1.JobStatus{})},
@@ -122,7 +122,7 @@ func TestStartJobInformer(t *testing.T) {
 			},
 		},
 		{
-			name: "Job completion triggers removed event",
+			name: "Job completion triggers update",
 			expEvents: []draiosproto.CongroupUpdateEvent{
 				jobEvent(CoJob{Job: newJob(metav1.ObjectMeta{Name: "foo", Namespace: "bar"}, batchv1.JobStatus{})},
 					draiosproto.CongroupEventType_ADDED.Enum(), false),
@@ -132,23 +132,35 @@ func TestStartJobInformer(t *testing.T) {
 						Conditions: []batchv1.JobCondition{
 							{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
 						},
-					}),
-				}, draiosproto.CongroupEventType_REMOVED.Enum(), false),
+						Failed: 1,
+					},
+				)}, draiosproto.CongroupEventType_UPDATED.Enum(), false),
+				jobEvent(CoJob{Job: newJob(
+					metav1.ObjectMeta{Name: "foo", Namespace: "bar"},
+					batchv1.JobStatus{
+						Conditions: []batchv1.JobCondition{
+							{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
+						},
+						Failed: 1,
+					},
+				)}, draiosproto.CongroupEventType_REMOVED.Enum(), false),
 			},
 			initialList: []*batchv1.Job{},
-			scenarioFunc: func(_ *fake.Clientset, fw *watch.FakeWatcher) {
+			scenarioFunc: func(c *fake.Clientset, fw *watch.FakeWatcher) {
 				fw.Add(newJob(metav1.ObjectMeta{Name: "foo", Namespace: "bar", ResourceVersion: "0"}, batchv1.JobStatus{}))
 				fw.Modify(newJob(metav1.ObjectMeta{Name: "foo", Namespace: "bar", ResourceVersion: "1"},
 					batchv1.JobStatus{
 						Conditions: []batchv1.JobCondition{
 							{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
 						},
+						Failed: 1,
 					}))
 				fw.Delete(newJob(metav1.ObjectMeta{Name: "foo", Namespace: "bar", ResourceVersion: "2"},
 					batchv1.JobStatus{
 						Conditions: []batchv1.JobCondition{
 							{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
 						},
+						Failed: 1,
 					}))
 			},
 		},
@@ -178,7 +190,7 @@ func TestStartJobInformer(t *testing.T) {
 				)}, draiosproto.CongroupEventType_REMOVED.Enum(), false),
 			},
 			initialList: []*batchv1.Job{},
-			scenarioFunc: func(_ *fake.Clientset, fw *watch.FakeWatcher) {
+			scenarioFunc: func(c *fake.Clientset, fw *watch.FakeWatcher) {
 				fw.Add(newJob(metav1.ObjectMeta{Name: "foo", Namespace: "bar", ResourceVersion: "0"}, batchv1.JobStatus{}))
 				fw.Modify(newJob(
 					metav1.ObjectMeta{Name: "foo", Namespace: "bar", ResourceVersion: "1"},
@@ -210,8 +222,14 @@ func TestStartJobInformer(t *testing.T) {
 			},
 			initialList: []*batchv1.Job{},
 			scenarioFunc: func(_ *fake.Clientset, fw *watch.FakeWatcher) {
-				fw.Add(newJob(metav1.ObjectMeta{Name: "foo", Namespace: "bar", ResourceVersion: "0"}, batchv1.JobStatus{}))
-				fw.Delete(newJob(metav1.ObjectMeta{Name: "foo", Namespace: "bar", ResourceVersion: "0"}, batchv1.JobStatus{}))
+				fw.Add(newJob(
+					metav1.ObjectMeta{Name: "foo", Namespace: "bar", ResourceVersion: "0"},
+					batchv1.JobStatus{},
+				))
+				fw.Delete(newJob(
+					metav1.ObjectMeta{Name: "foo", Namespace: "bar", ResourceVersion: "0"},
+					batchv1.JobStatus{},
+				))
 			},
 		},
 		{
