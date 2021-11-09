@@ -13,6 +13,7 @@ protected:
 	virtual void SetUp()
 	{
 		struct stat s;
+		hosts_size = 0; // make sure we have a sane exit path
 		ASSERT_TRUE(stat("/etc/hosts", &s) == 0);
 		hosts_size = s.st_size;
 
@@ -24,6 +25,12 @@ protected:
 	virtual void TearDown()
 	{
 		sinsp_dns_manager::get().cleanup();
+		// Clean up (i.e. truncate) /etc/hosts file
+		// but only do so when we're sure we actually read its size
+		if (hosts_size > 0)
+		{
+			ASSERT_TRUE(truncate("/etc/hosts", hosts_size) == 0);
+		}
 	}
 
 	off_t hosts_size;
