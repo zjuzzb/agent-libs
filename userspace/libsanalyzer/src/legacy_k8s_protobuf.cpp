@@ -12,7 +12,7 @@ using namespace std;
 
 type_config<bool> c_k8s_send_all_containers(false,
                                             "Send all containers in k8s_pod",
-                                            "k8s_send_all_containers");
+                                            "k8s_send_containers");
 
 namespace
 {
