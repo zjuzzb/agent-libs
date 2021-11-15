@@ -10,6 +10,7 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,10 +21,29 @@ import java.util.logging.Logger;
  * Created by luca on 12/01/15.
  */
 public class Config {
-    private YamlConfig yamlConfig;
     private static final Logger LOGGER = Logger.getLogger(Config.class.getName());
     private static final String ETCDIR = Prefix.getInstallPrefix() + "/etc";
+    
+    /**
+     *  Note: This map must be kept in sync with the mapping done in sdjagent_parser.
+     */
+    private static final Map<String, java.util.logging.Level> logLevelMap;
+    static {
+        Map<String, java.util.logging.Level> ret = new HashMap<String, java.util.logging.Level>();
+        ret.put("fatal", Level.SEVERE);
+        ret.put("critical", Level.SEVERE);
+        ret.put("error", Level.SEVERE);
+        ret.put("warning", Level.WARNING);
+        ret.put("notice", Level.WARNING);
+        ret.put("info", Level.INFO);
+        ret.put("debug", Level.FINE);
+        ret.put("trace", Level.FINE);
+        ret.put("none", Level.OFF);
 
+        logLevelMap = Collections.unmodifiableMap(ret);
+    }
+
+    private YamlConfig yamlConfig;
     private List<BeanQuery> defaultBeanQueries;
     private Map<String, Process> processes;
     private int maxAvailabilityCheckIntervalSec;
@@ -60,7 +80,7 @@ public class Config {
      *  correct level inside sdjagent.
      */
 
-    public String getLevel(String level, List<String> componentStringLevels) {
+    public String getLevelString(String level, List<String> componentStringLevels) {
         for (String str : componentStringLevels) {
             String[] strArr = str.split(": ", 2);
             if ((strArr.length == 2) && (strArr[0].equals("sdjagent"))) {
@@ -69,56 +89,61 @@ public class Config {
             }
         }
         return level;
-	}
+    }
+    
+    private Level getLogLevelFromString(String level) {
+        if (!logLevelMap.containsKey(level)) {
+            /** We got a bad value for the severity so just set it to the default info level.
+             */
+            LOGGER.warning("Invalid log-level specified: " + level);
+            return logLevelMap.get("info");
+        } else {
+            return logLevelMap.get(level);
+        }
+    }
 
     public Level getLogLevel() {
         /** This function gets the dragent.yaml config for the file log file_priority
-		 *  and file_priority_by_component for the component sdjagent to determine the
-		 *  specified stringFileLevel.  It performs a similar action for the console_priority
-		 *  and console_priority_by_component
-		 *
-		 *  The stringFileLevel and stringConsoleLevel are mapped to a sev value.
-		 *  The most permissive sev value is used to determine the return Java logging level.
-		 *
-		 *  Because only a single IPC channel is used for the transfer of log messages
-		 *  from the sdjagent to the dragent subprocess logger, we take the most permissive
-		 *  value of either the log file or console as the priority level we return.
-		 *
-		 *  Note: This map must be kept in sync with the mapping done in sdjagent_parser.
-		 *
-		 *  Define dictionary dict, using the Java HashMap class, and initialize it using put
-		 *  for each key, value pair.
-		 */
-        Map<String, java.util.logging.Level> dict = new HashMap<String, java.util.logging.Level>();
-            dict.put("fatal", Level.SEVERE);
-            dict.put("critical", Level.SEVERE);
-            dict.put("error", Level.SEVERE);
-            dict.put("warning", Level.WARNING);
-            dict.put("notice", Level.WARNING);
-            dict.put("info", Level.INFO);
-            dict.put("debug", Level.FINE);
-            dict.put("trace", Level.FINE);
+         *  and file_priority_by_component for the component sdjagent to determine the
+         *  specified stringFileLevel.  It performs a similar action for the console_priority
+         *  and console_priority_by_component
+         *
+         *  The stringFileLevel and stringConsoleLevel are mapped to a sev value.
+         *  The most permissive sev value is used to determine the return Java logging level.
+         *
+         *  Because only a single IPC channel is used for the transfer of log messages
+         *  from the sdjagent to the dragent subprocess logger, we take the most permissive
+         *  value of either the log file or console as the priority level we return.
+         *
+         *
+         *  Define dictionary dict, using the Java HashMap class, and initialize it using put
+         *  for each key, value pair.
+         */
 
         String stringFileLevel = yamlConfig.getSingle("log.file_priority", "info");
         String stringConsoleLevel = yamlConfig.getSingle("log.console_priority", "info");
         List<String> componentFileStringLevels = yamlConfig.getMergedSequence("log.file_priority_by_component", String.class);
         List<String> componentConsoleStringLevels = yamlConfig.getMergedSequence("log.console_priority_by_component", String.class);
-		java.util.logging.Level fileSev =  Level.INFO;
-		java.util.logging.Level consoleSev =  Level.INFO;
-		stringFileLevel = getLevel(stringFileLevel, componentFileStringLevels);
-		fileSev = dict.get(stringFileLevel);
-		/** Perform similar operations to determine the consoleSev
-		 */
-		stringConsoleLevel = getLevel(stringConsoleLevel, componentConsoleStringLevels);
-		consoleSev = dict.get(stringConsoleLevel);
-		/** Set the sev level to the lower, more permissive value of either the consoleSev or the fileSev
-		 */
-		if (fileSev.intValue() < consoleSev.intValue()) {
+        
+        java.util.logging.Level fileSev =  Level.INFO;
+        java.util.logging.Level consoleSev =  Level.INFO;
+        
+        stringFileLevel = getLevelString(stringFileLevel, componentFileStringLevels);
+        fileSev = getLogLevelFromString(stringFileLevel);
+
+        /** Perform similar operations to determine the consoleSev
+         */
+        stringConsoleLevel = getLevelString(stringConsoleLevel, componentConsoleStringLevels);
+        consoleSev = getLogLevelFromString(stringConsoleLevel);
+        
+        /** Set the sev level to the lower, more permissive value of either the consoleSev or the fileSev
+         */
+        if (fileSev.intValue() < consoleSev.intValue()) {
                         return fileSev;
-		}
-		else {
+        }
+        else {
                         return consoleSev;
-		}
+        }
     }
 
     public int getMaxAvailabilityCheckIntervalSec() {
