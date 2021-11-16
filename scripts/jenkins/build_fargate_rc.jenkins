@@ -14,6 +14,7 @@ pipeline {
         string(name: 'LIBSCAP_HAYABUSA_BRANCH', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true)
         string(name: 'LIBSCAP_BRANCH', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true)
         string(name: 'KILT_DEFINITIONS_BRANCH', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true)
+        string(name: 'PROBEBUILDER_BRANCH', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true)
         string(name: 'RC_NUMBER', defaultValue: '', description: 'a distinct number for this RC within this release', trim: true)
     }
     environment {
@@ -47,6 +48,10 @@ pipeline {
                 dir('protorepo') {
                     checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
                     sh "git checkout ${params.PROTOREPO_BRANCH}"
+                }
+                dir('probe-builder') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/probe-builder']]])
+                    sh "git checkout ${params.PROBEBUILDER_BRANCH}"
                 }
             }
         }
