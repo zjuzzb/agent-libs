@@ -19,6 +19,11 @@ type_config<bool> c_support_actions(true,
                                     "indicates whether taking actions based on policies is supported",
                                     "security",
                                     "actions_enabled");
+
+type_config<bool> c_actions_long_container_id(true,
+                                    "indicates whether cri/docker actions should use long container id",
+                                    "security",
+                                    "actions_long_container_id");
 }
 
 security_actions::actions_result::actions_result()
@@ -164,11 +169,16 @@ void security_actions::perform_container_action(uint64_t ts_ns,
 		}
 		else
 		{
+			const std::string& c_id =
+			    c_actions_long_container_id.get_value() && !container->m_full_id.empty()
+			        ? container->m_full_id
+			        : container_id;
+			
 			switch (container->m_type)
 			{
 				case sinsp_container_type::CT_DOCKER:
-					m_active_container_actions.insert(pair<string, uint64_t>(container_id, ts_ns));
-					m_coclient->perform_docker_cmd(cmd, container_id, [result, astate, this] (bool successful, google::protobuf::Message *response_msg)
+					m_active_container_actions.insert(pair<string, uint64_t>(c_id, ts_ns));
+					m_coclient->perform_docker_cmd(cmd, c_id, [result, astate, this] (bool successful, google::protobuf::Message *response_msg)
 					{
 						google::protobuf::TextFormat::Printer print;
 
@@ -193,8 +203,8 @@ void security_actions::perform_container_action(uint64_t ts_ns,
 				case sinsp_container_type::CT_CONTAINERD:
 				case sinsp_container_type::CT_CRI:
 				case sinsp_container_type::CT_CRIO:
-					m_active_container_actions.insert(pair<string, uint64_t>(container_id, ts_ns));
-					m_coclient->perform_cri_cmd(c_cri_socket_path->get_value(), cmd, container_id,
+					m_active_container_actions.insert(pair<string, uint64_t>(c_id, ts_ns));
+					m_coclient->perform_cri_cmd(c_cri_socket_path->get_value(), cmd, c_id,
 						[result, astate, this] (bool successful, google::protobuf::Message *response_msg)
 					{
 						google::protobuf::TextFormat::Printer print;
