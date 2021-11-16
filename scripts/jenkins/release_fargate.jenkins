@@ -25,9 +25,6 @@ pipeline {
             dir('oss-falco') {
                 checkout([$class: 'GitSCM', branches: [[name: 'master-sync']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
             }
-            dir('libscap') {
-                checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap']]])
-            }
             dir('libscap-hayabusa') {
                 checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap-hayabusa']]])
             }
@@ -39,6 +36,9 @@ pipeline {
             }
             dir('agent-libs') {
                 checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/agent-libs']]])
+            }
+            dir('probe-builder') {
+                checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/probe-builder']]])
             }
         }
     }
@@ -54,9 +54,6 @@ pipeline {
             dir('agent-libs') {
                 sh "git checkout fargate-release-${params.RELEASE_BASE}"
             }
-            dir('libscap') {
-                sh "git checkout fargate-release-${params.RELEASE_BASE}"
-            }
             dir('libscap-hayabusa') {
                 sh "git checkout fargate-release-${params.RELEASE_BASE}"
             }
@@ -67,6 +64,9 @@ pipeline {
                 sh "git checkout fargate-release-${params.RELEASE_BASE}"
             }
             dir('kilt-definitions') {
+                sh "git checkout fargate-release-${params.RELEASE_BASE}"
+            }
+            dir('probe-builder') {
                 sh "git checkout fargate-release-${params.RELEASE_BASE}"
             }
         }
@@ -94,14 +94,6 @@ pipeline {
                         git checkout -b fargate-release-${params.RELEASE_VERSION}
                         export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
                         git remote add origin2 ssh://git@github.com/draios/agent-libs.git
-                        git push -u origin2 fargate-release-${params.RELEASE_VERSION}
-                    """
-                }
-                dir('libscap') {
-                    sh label: '', script: """
-                        git checkout -b fargate-release-${params.RELEASE_VERSION}
-                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-                        git remote add origin2 ssh://git@github.com/draios/libscap.git
                         git push -u origin2 fargate-release-${params.RELEASE_VERSION}
                     """
                 }
@@ -137,6 +129,14 @@ pipeline {
                         git push -u origin2 fargate-release-${params.RELEASE_VERSION}
                     """
                 }
+                dir('probe-builder') {
+                    sh label: '', script: """
+                        git checkout -b fargate-release-${params.RELEASE_VERSION}
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git remote add origin2 ssh://git@github.com/draios/probe-builder.git
+                        git push -u origin2 fargate-release-${params.RELEASE_VERSION}
+                    """
+                }
             }
         }
     }
@@ -150,9 +150,6 @@ pipeline {
             dir('agent-libs') {
                 sh "git checkout fargate-release-${params.RELEASE_VERSION}"
             }
-            dir('libscap') {
-                sh "git checkout fargate-release-${params.RELEASE_VERSION}"
-            }
             dir('libscap-hayabusa') {
                 sh "git checkout fargate-release-${params.RELEASE_VERSION}"
             }
@@ -163,6 +160,9 @@ pipeline {
                 sh "git checkout fargate-release-${params.RELEASE_VERSION}"
             }
             dir('kilt-definitions') {
+                sh "git checkout fargate-release-${params.RELEASE_VERSION}"
+            }
+            dir('probe-builder') {
                 sh "git checkout fargate-release-${params.RELEASE_VERSION}"
             }
         }
@@ -210,9 +210,9 @@ pipeline {
                     build job:'agent-presubmit-ut',parameters:[
                         string(name:'AGENT_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
                         string(name:'LIBS_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
-                        string(name:'LIBSCAP_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
                         string(name:'FALCO_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
                         string(name:'PROTOREPO_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
+                        string(name:'PROBEBUILDER_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
                         string(name:'BUILDER_VERSION', value:"fargate-release-${params.RELEASE_VERSION}")
                     ]
                 }
@@ -235,10 +235,10 @@ pipeline {
             build job:'agent-build-fargate-rc',parameters:[
                 string(name:'AGENT_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
                 string(name:'LIBS_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
-                string(name:'LIBSCAP_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
                 string(name:'LIBSCAP_HAYABUSA_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
                 string(name:'FALCO_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
                 string(name:'PROTOREPO_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
+                string(name:'PROBEBUILDER_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
                 string(name:'BUILDER_VERSION', value:"fargate-release-${params.RELEASE_VERSION}"),
                 string(name:'RELEASE_VERSION', value:"${params.RELEASE_VERSION}"),
                 booleanParam(name:'UPLOAD', value:true),
@@ -328,16 +328,6 @@ pipeline {
                         git push origin2 fargate/${params.RELEASE_VERSION}
                     """
                 }
-                dir('libscap') {
-                    sh label: '', script: """
-                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-                        git remote add origin2 ssh://git@github.com/draios/libscap.git || echo "remote already exists"
-                        git tag -d fargate/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
-                        git push origin2 :refs/tags/fargate/${params.RELEASE_VERSION}
-                        git tag fargate/${params.RELEASE_VERSION}
-                        git push origin2 fargate/${params.RELEASE_VERSION}
-                    """
-                }
                 dir('libscap-hayabusa') {
                     sh label: '', script: """
                         export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
@@ -378,7 +368,16 @@ pipeline {
                         git push origin2 fargate/${params.RELEASE_VERSION}
                     """
                 }
-
+                dir('probe-builder') {
+                    sh label: '', script: """
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git remote add origin2 ssh://git@github.com/draios/probe-builder.git || echo "remote already exists"
+                        git tag -d fargate/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
+                        git push origin2 :refs/tags/fargate/${params.RELEASE_VERSION}
+                        git tag fargate/${params.RELEASE_VERSION}
+                        git push origin2 fargate/${params.RELEASE_VERSION}
+                    """
+                }
             }
         }
     }

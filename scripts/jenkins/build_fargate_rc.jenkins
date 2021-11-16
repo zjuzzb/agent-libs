@@ -12,8 +12,8 @@ pipeline {
         string(name: 'BUILDER_VERSION', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true, description: 'version of the builder to use')
         string(name: 'LIBSINSP_BRANCH', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true)
         string(name: 'LIBSCAP_HAYABUSA_BRANCH', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true)
-        string(name: 'LIBSCAP_BRANCH', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true)
         string(name: 'KILT_DEFINITIONS_BRANCH', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true)
+        string(name: 'PROBEBUILDER_BRANCH', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true)
         string(name: 'RC_NUMBER', defaultValue: '', description: 'a distinct number for this RC within this release', trim: true)
     }
     environment {
@@ -36,10 +36,6 @@ pipeline {
                     checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/agent-libs']]])
                     sh "git checkout ${params.LIBS_BRANCH}"
                 }
-                dir('libscap') {
-                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap']]])
-                    sh "git checkout ${params.LIBSCAP_BRANCH}"
-                }
                 dir('libscap-hayabusa') {
                     checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap-hayabusa']]])
                     sh "git checkout ${params.LIBSCAP_HAYABUSA_BRANCH}"
@@ -47,6 +43,10 @@ pipeline {
                 dir('protorepo') {
                     checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
                     sh "git checkout ${params.PROTOREPO_BRANCH}"
+                }
+                dir('probe-builder') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/probe-builder']]])
+                    sh "git checkout ${params.PROBEBUILDER_BRANCH}"
                 }
             }
         }
