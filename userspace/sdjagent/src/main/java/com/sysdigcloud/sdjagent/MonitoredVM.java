@@ -255,6 +255,9 @@ public class MonitoredVM {
             try
             {
                 this.address = AttachAPI.loadManagementAgent(monitoredVMpid);
+                if (this.address != null) {
+                    available = true;
+                }
             } catch (IOException e)
             {
                 LOGGER.warning(String.format("%s Cannot load agent on process: %s (vpid=%d root=%s args=%s)",
