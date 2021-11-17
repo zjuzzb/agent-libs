@@ -4,6 +4,20 @@ set -exo pipefail
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 AGENT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd -P)"
 
+# Determine DOCKERFILE to use for CPU architecture
+ARCH="$(uname -m)"
+    
+if [[ "$ARCH" == "aarch64" ]]; then 
+	DOCKERFILE="Dockerfile.aarch64"
+elif [[ "$ARCH" == "s390x" ]]; then
+	DOCKERFILE="Dockerfile.s390x"
+elif [[ "$ARCH" == "x86_64" ]]; then
+	DOCKERFILE="Dockerfile"
+else
+	echo ERROR: UNRECOGNIZED ARCH $ARCH
+	exit 1
+fi
+
 DOCKER_CONTEXT=$(mktemp -d /tmp/build-context.XXXXXX)
 cp $SCRIPT_DIR/* $DOCKER_CONTEXT
 
@@ -18,7 +32,7 @@ cp --parents $(find . -name go.mod -o -name go.sum) $DOCKER_CONTEXT/go_mods/
 popd
 
 pushd $DOCKER_CONTEXT
-docker build --build-arg max_parallelism=${MAKE_JOBS:-1} -t ${IMAGE_NAME:-centos-builder:latest-local} -f Dockerfile .
+docker build --build-arg max_parallelism=${MAKE_JOBS:-1} -t ${IMAGE_NAME:-centos-builder:latest-local} -f $DOCKERFILE .
 popd
 
 rm -rf $DOCKER_CONTEXT

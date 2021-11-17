@@ -8,10 +8,26 @@ VERSION=$2
 DEPENDENCIES_URL=$3
 MAKE_JOBS=$4
 GO_MODS_DIR=$5
-GO_ARCHIVE_SHA256="f32501aeb8b7b723bc7215f6c373abb6981bbc7e1c7b44e9f07317e1a300dce2"
+
+
+ARCH=$(uname -m)
+case "$ARCH" in
+	"aarch64")
+		GO_ARCHIVE="go${VERSION}.linux-arm64.tar.gz"
+		GO_ARCHIVE_SHA256="430dbe185417204f6788913197ab3b189b6deae9c9b524f262858e53dab239c2"
+		;;
+	"s390x")
+		GO_ARCHIVE="go${VERSION}.linux-s390x.tar.gz"
+		GO_ARCHIVE_SHA256="d311d0637b49c0debb34efb229ab0272f26709bc64e27fda2c3470a55426f980"
+		;;
+	*)
+		GO_ARCHIVE="go${VERSION}.linux-amd64.tar.gz"
+		GO_ARCHIVE_SHA256="f32501aeb8b7b723bc7215f6c373abb6981bbc7e1c7b44e9f07317e1a300dce2"
+		;;
+esac
+
 
 cd $DEPENDENCIES_DIR
-GO_ARCHIVE="go$VERSION.linux-amd64.tar.gz"
 GOROOT="$DEPENDENCIES_DIR/go-$VERSION"
 wget $DEPENDENCIES_URL/$GO_ARCHIVE
 # Verify the checksum of the archive

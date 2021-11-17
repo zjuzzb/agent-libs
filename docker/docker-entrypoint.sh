@@ -51,7 +51,14 @@ if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
             fi
             SYSDIG_HOST_LIB_DIR=$(dirname $SYSDIG_HOST_LD)
 
-            for host_tool in scripts/basic/fixdep tools/objtool/objtool scripts/mod/modpost
+            ARCH="$(uname -m)"
+            if [[ "$ARCH" == "aarch64" ]]; then 
+                HOST_TOOL_SET="scripts/basic/fixdep scripts/mod/modpost"
+            else
+                HOST_TOOL_SET="scripts/basic/fixdep tools/objtool/objtool scripts/mod/modpost"
+            fi
+
+            for host_tool in $HOST_TOOL_SET
             do
                 host_tool=$KERNEL_DIR/$host_tool
                 t=$(basename $host_tool)

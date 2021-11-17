@@ -1,0 +1,97 @@
+FROM docker.internal.sysdig.com/sysdig-mini-ubi:1.1.14-s390x
+
+MAINTAINER Sysdig <support@sysdig.com>
+
+ENV SYSDIG_BUILD_KERNEL_MODULE={{ p.build_kernel_module }} \
+    SYSDIG_LAUNCH_DRAGENT={{ p.launch_dragent }} \
+    SYSDIG_HOST_ROOT=/host
+
+ENV HOME /root
+
+USER root
+HEALTHCHECK CMD /bin/true
+
+RUN microdnf update && microdnf clean all
+RUN microdnf install findutils && microdnf clean all
+RUN microdnf install python2-lxml
+RUN pip2 install requests lxml
+ADD get-rpm-url.py /bin
+
+RUN microdnf install platform-python python2 python3 python3-lxml python3-libs-3.6.8-41.el8 python3-requests
+RUN microdnf install gdbm python3-six util-linux
+
+{% macro install_nodeps() %}
+RUN microdnf install python3-six && \
+{% for pkg in varargs %}
+	rpm -ihv --nodeps $(/bin/get-rpm-url.py {{ pkg }}) && \
+{% endfor %}
+	true
+{% endmacro %}
+
+{% if p.include_agent_package == "local" %}
+ENV AGENT_VERSION 0.1.1dev
+ADD draios-${AGENT_VERSION}-s390x-agent.rpm /tmp/packages/draios-${AGENT_VERSION}-s390x-agent.rpm
+{{ install_nodeps('https://dl.fedoraproject.org/pub/epel/8/Everything/s390x/ dkms') }}
+RUN rpm -ihv --nodeps /tmp/packages/draios-${AGENT_VERSION}-s390x-agent.rpm && rm -rf /tmp/packages
+
+{% else %}
+RUN rpm --import https://download.sysdig.com/DRAIOS-GPG-KEY.public && \
+	curl -s -o /etc/yum.repos.d/draios.repo http://download.sysdig.com/{{ p.sysdig_repository }}/rpm/draios.repo
+
+{% if p.build_kernel_module %}
+{{ install_nodeps('https://dl.fedoraproject.org/pub/epel/8/Everything/s390x/ dkms', 'https://download.sysdig.com/' ~ p.sysdig_repository ~ '/rpm/s390x/ draios-agent-kmodule') }}
+{% endif %}
+
+{% if p.launch_dragent %}
+RUN microdnf install draios-agent-slim
+{% else %}
+ADD get-version-and-exec.sh /
+ADD sysdigcloud-probe-loader /opt/draios/bin/
+{% endif %}
+
+{% endif %}
+
+{% if p.build_kernel_module %}
+# for historical reasons, /usr/bin/gcc-4.8 is ignored, so pretend the shipped gcc is 5.0
+# the gcc-8 symlink is needed for debian 10, which hardcodes `gcc-8` as the path
+# AmazonLinux2 uses `gcc10-gcc` for some kernels so link that too
+RUN rpm -ihv https://dl.fedoraproject.org/pub/epel/8/Everything/s390x/Packages/p/patchelf-0.12-1.el8.s390x.rpm && \
+	microdnf clean all && \
+	microdnf install \
+		gcc \
+		make \
+		kmod \
+		perl \
+		llvm \
+		llvm-toolset \
+		xz \
+		zlib-devel && \
+	rm -f /usr/bin/gcc && \
+	ln -s /usr/bin/s390x-redhat-linux-gcc /usr/bin/gcc-8 && \
+	ln -s /usr/bin/gcc-8 /usr/bin/gcc
+{% endif %}
+
+{% if p.launch_dragent %}
+ENV LD_LIBRARY_PATH /opt/draios/lib
+RUN	curl -fsSL https://download.docker.com/linux/rhel/docker-ce.repo > /etc/yum.repos.d/docker-ce.repo && \
+	microdnf clean all && \
+	microdnf install \
+		java-1.8.0-openjdk-headless \
+		docker-ce-cli \
+		iproute \
+		python38 \
+		util-linux && \
+	ln -s /etc/pki/tls/certs/ca-bundle.crt /opt/draios/lib/python-deps/certifi/cacert.pem
+{% endif %}
+
+RUN	(rpm -q kernel-headers && rpm -e --nodeps kernel-headers; true) && \
+	find / -xdev -perm /04000 -o -perm /02000 | xargs chmod -s && \
+	rm -df /lib/modules && \
+	rm -rf /usr/src/kernels && \
+	ln -s $SYSDIG_HOST_ROOT/lib/modules /lib/modules
+
+RUN (rpm -e --nodeps python3-pip-wheel platform-python-pip || true)
+
+COPY ./docker-entrypoint.sh /
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
