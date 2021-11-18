@@ -17,6 +17,7 @@ limitations under the License.
 
 #ifndef _WIN32
 #include <dlfcn.h>
+#define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 #include <string.h>
 #include <vector>
