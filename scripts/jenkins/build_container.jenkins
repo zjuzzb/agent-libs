@@ -47,12 +47,16 @@ pipeline {
         stage('Build') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
-                    sh label: '', script: '''
-                        echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
-                        docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos
-                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agent-internal:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos container
-                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agentone:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos agentone
-                    '''
+                    script {
+                        docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
+                            sh label: '', script: '''
+                                echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
+                                docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos
+                                docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agent-internal:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock -v $DOCKER_CONFIG:/root/.docker quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos container
+                                docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agentone:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock -v $DOCKER_CONFIG:/root/.docker quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos agentone
+                            '''
+                        }
+                    }
                 }
             }
         }
