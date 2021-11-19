@@ -45,7 +45,7 @@ std::string get_current_cgroup(const std::string& subsys)
 	return "";
 }
 
-void subprocess_cpu_cgroup::create()
+void subprocess_cpu_cgroup::create_if_needed()
 {
 	if(m_shares > 0 || m_quota > 0)
 	{

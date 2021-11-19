@@ -44,12 +44,6 @@ public:
 	virtual ~subprocess_cgroup() = default;
 
 	/**
-	 * Create the cgroup, setting m_created to true if it succeeds
-	 * or the cgroup has existed before
-	 */
-	virtual bool create();
-
-	/**
 	 * Remove the cgroup, waiting up to the specified timeout for the removal
 	 * to succeed
 	 *
@@ -83,11 +77,22 @@ public:
 	static std::string get_current_cgroup(const std::string& subsys);
 
 protected:
+	/**
+	 * Create the cgroup, setting m_created to true if it succeeds
+	 * or the cgroup has existed before
+	 */
+	virtual bool create();
+
 	virtual void set_value(const std::string& name, int64_t value);
+
+	std::string m_subsys;
+	std::string m_name;
 
 private:
 	std::string m_full_path;
 	bool m_created;
+	bool m_valid;
+	bool m_warned;
 };
 
 class subprocess_cpu_cgroup : public subprocess_cgroup {
@@ -104,7 +109,7 @@ public:
 		m_quota(quota)
 	{}
 
-	bool create() override;
+	bool create_if_needed();
 
 private:
 	int64_t m_shares;

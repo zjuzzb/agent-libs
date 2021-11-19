@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <utils.h>
 #include <sinsp.h>
+#include <common_logger.h>
 
 type_config<int64_t> c_default_cpu_shares(
 	-1,
@@ -64,6 +65,7 @@ type_config<int64_t> c_cgroup_cleanup_timeout_ms(
 
 namespace process_helpers
 {
+COMMON_LOGGER();
 
 bool change_priority(int pid, int prio)
 {
@@ -71,12 +73,16 @@ bool change_priority(int pid, int prio)
 	return result == 0;
 }
 
-subprocess_cgroup::subprocess_cgroup(const std::string &subsys, const std::string &name)
+subprocess_cgroup::subprocess_cgroup(const std::string &subsys, const std::string &name):
+	m_subsys(subsys),
+	m_name(name),
+	m_valid(false)
 {
 	auto current_cgroup = get_current_cgroup(subsys);
 	if(!current_cgroup.empty())
 	{
 		m_full_path = current_cgroup + name;
+		m_valid = true;
 	}
 
 	m_created = false;
@@ -97,7 +103,16 @@ subprocess_cgroup::subprocess_cgroup(const std::string &subsys, const std::strin
 
 bool subprocess_cgroup::create()
 {
-	if(m_full_path.empty() || m_created)
+	if(!m_valid)
+	{
+		LOG_WARNING("Configuration for cgroup %s with subsys %s is invalid on this system",
+					m_name.c_str(),
+					m_subsys.c_str());
+
+		return false;
+	}
+
+	if(m_created)
 	{
 		return true;
 	}
@@ -105,6 +120,10 @@ bool subprocess_cgroup::create()
 	if(mkdir(m_full_path.c_str(), 0700) == 0 || errno == EEXIST)
 	{
 		m_created = true;
+	}
+	else
+	{
+		LOG_ERROR("Could not create cgroup %s: %s", m_full_path.c_str(), strerror(errno));
 	}
 	return m_created;
 }
@@ -236,22 +255,29 @@ std::string subprocess_cgroup::get_current_cgroup(const std::string& subsys)
 }
 
 
-bool subprocess_cpu_cgroup::create()
+bool subprocess_cpu_cgroup::create_if_needed()
 {
+	if (m_shares <= 0 && m_quota <= 0) {
+		return true;
+	}
+
+	if(!subprocess_cgroup::create())
+	{
+		LOG_WARNING("Could not create %s cgroup, required by cpu_shares=%ld and/or cpu_quota=%ld",
+					m_name.c_str(),
+		            m_shares,
+		            m_quota);
+		return false;
+	}
+
+	LOG_INFO("Created %s cgroup successfully", m_name.c_str());
+
 	if(m_shares > 0)
 	{
-		if(!subprocess_cgroup::create())
-		{
-			return false;
-		}
 		set_value("cpu.shares", m_shares);
 	}
 	if(m_quota > 0)
 	{
-		if(!subprocess_cgroup::create())
-		{
-			return false;
-		}
 		int64_t quota = m_quota * CPU_QUOTA_PERIOD / 100;
 		set_value("cpu.cfs_quota_us", quota);
 		set_value("cpu.cfs_period_us", CPU_QUOTA_PERIOD);

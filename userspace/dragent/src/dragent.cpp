@@ -668,34 +668,19 @@ int dragent_app::main(const std::vector<std::string>& args)
 	process_helpers::subprocess_cpu_cgroup default_cpu_cgroup("/default",
 	                                                          c_default_cpu_shares.get_value(),
 	                                                          c_default_cpu_quota.get_value());
-	if (!default_cpu_cgroup.create())
-	{
-		LOG_WARNING("Could not create default cgroup, required by %s and/or %s",
-		            c_default_cpu_shares.to_string().c_str(),
-		            c_default_cpu_quota.to_string().c_str());
-	}
+	default_cpu_cgroup.create_if_needed();
 
 	process_helpers::subprocess_cpu_cgroup cointerface_cpu_cgroup(
 	    "/cointerface",
 	    c_cointerface_cpu_shares.get_value(),
 	    c_cointerface_cpu_quota.get_value());
-	if (!cointerface_cpu_cgroup.create())
-	{
-		LOG_WARNING("Could not create cointerface cgroup, required by %s and/or %s",
-		            c_cointerface_cpu_shares.to_string().c_str(),
-		            c_cointerface_cpu_quota.to_string().c_str());
-	}
+	cointerface_cpu_cgroup.create_if_needed();
 
 	process_helpers::subprocess_cpu_cgroup coldstart_manager_cpu_cgroup(
 	    "/lease_pool_manager",
 	    c_coldstart_manager_cpu_shares.get_value(),
 	    c_coldstart_manager_cpu_quota.get_value());
-	if (!coldstart_manager_cpu_cgroup.create())
-	{
-		LOG_WARNING("Could not create lease_pool_manager cgroup, required by %s and/or %s",
-		            c_coldstart_manager_cpu_shares.to_string().c_str(),
-		            c_coldstart_manager_cpu_quota.to_string().c_str());
-	}
+	coldstart_manager_cpu_cgroup.create_if_needed();
 
 	// immediately move ourselves to the default cpu group
 	// (the same the *monitored* processes belong to)

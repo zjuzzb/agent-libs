@@ -391,13 +391,13 @@ int agentone_app::main(const std::vector<std::string>& args)
 	process_helpers::subprocess_cpu_cgroup default_cpu_cgroup("/default",
 	                                                          c_default_cpu_shares.get_value(),
 	                                                          c_default_cpu_quota.get_value());
-	default_cpu_cgroup.create();
+	default_cpu_cgroup.create_if_needed();
 
 	process_helpers::subprocess_cpu_cgroup cointerface_cpu_cgroup(
 	    "/cointerface",
 	    c_cointerface_cpu_shares.get_value(),
 	    c_cointerface_cpu_quota.get_value());
-	cointerface_cpu_cgroup.create();
+	cointerface_cpu_cgroup.create_if_needed();
 
 	// Add our main process
 	monitor_process.emplace_process(
