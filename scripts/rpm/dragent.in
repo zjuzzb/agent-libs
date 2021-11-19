@@ -22,14 +22,18 @@
 [ -e /etc/rc.d/init.d/functions ] && . /etc/rc.d/init.d/functions
 [ -e /etc/rc.status ] && . /etc/rc.status
 
-exec="@CMAKE_INSTALL_PREFIX@/bin/dragent"
 prog="dragent"
+progdir="@CMAKE_INSTALL_PREFIX@/bin"
+exec="${progdir}/${prog}"
 # config="<path to major config file>"
+
+# init scripts don't have HOME
+export HOME=/root
 
 [ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
 
 lockfile=/var/lock/subsys/$prog
-pidfile="/var/run/dragent.pid"
+pidfile="/var/run/${prog}.pid"
 
 start() {
     if hash daemon > /dev/null 2>&1; then
@@ -74,8 +78,12 @@ start() {
     fi
 
     echo -n $"Starting $prog: "
-    if [ ! -d /sys/module/sysdigcloud_probe ]; then
-        /sbin/modprobe sysdigcloud-probe || return $?
+    if [ -v SYSDIG_BPF_PROBE ]; then
+        # use directly the probe loader
+        ${progdir}/sysdigcloud-probe-loader || return $?
+    else
+        # use the probe loader as a fallback
+        modprobe sysdigcloud-probe || ${progdir}/sysdigcloud-probe-loader || return $?
     fi
     ${DAEMONIZE} $exec --daemon --dragentpid=$pidfile
     retval=$?
@@ -89,7 +97,7 @@ stop() {
     killproc -p $pidfile $exec
     retval=$?
     echo
-    /sbin/rmmod sysdigcloud-probe
+    /sbin/rmmod sysdigcloud-probe || true
     [ $retval -eq 0 ] && rm -f $lockfile
     return $retval
 }

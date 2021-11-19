@@ -18,10 +18,14 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="Draios Agent"
 NAME=dragent
-DAEMON=@CMAKE_INSTALL_PREFIX@/bin/$NAME
+PROGDIR=@CMAKE_INSTALL_PREFIX@/bin
+DAEMON=$PROGDIR/$NAME
 PIDFILE=/var/run/$NAME.pid
 DAEMON_ARGS="--daemon --dragentpid=$PIDFILE"
 SCRIPTNAME=/etc/init.d/$NAME
+
+# init scripts don't have HOME
+export HOME=/root
 
 # Exit if the package is not installed
 [ -x "$DAEMON" ] || exit 0
@@ -48,8 +52,12 @@ do_start()
 	#   2 if daemon could not be started
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null \
 		|| return 1
-	if [ ! -d /sys/module/sysdigcloud_probe ]; then
-		/sbin/modprobe sysdigcloud-probe || exit 1
+	if [ -v SYSDIG_BPF_PROBE ]; then
+		# use directly the probe loader
+		$PROGDIR/sysdigcloud-probe-loader || return 2
+	else
+		# use the probe loader as a fallback
+		modprobe sysdigcloud-probe || $PROGDIR/sysdigcloud-probe-loader || return 2
 	fi
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON -- \
 		$DAEMON_ARGS \
@@ -80,7 +88,7 @@ do_stop()
 	# sleep for some time.
 	start-stop-daemon --stop --quiet --oknodo --retry=0/30/KILL/5 --exec $DAEMON
 	[ "$?" = 2 ] && return 2
-	/sbin/rmmod sysdigcloud-probe
+	/sbin/rmmod sysdigcloud-probe || true
 	# Many daemons don't delete their pidfiles when they exit.
 	rm -f $PIDFILE
 	return "$RETVAL"
