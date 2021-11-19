@@ -15,7 +15,14 @@ tar -xzf protobuf-cpp-$VERSION.tar.gz
 cd protobuf-$VERSION
 
 CPPFLAGS=-I$ZLIB_DIRECTORY LDFLAGS=-L$ZLIB_DIRECTORY ./configure --with-zlib --prefix=$DEPENDENCIES_DIR/protobuf-$VERSION/target
-ulimit -s 16384
+
+# Increase ulimit before running the make on s390x.
+# Otherwise, during the make, the protobuf-test fails with a stack overflow.
+ARCH=$(uname -m)
+if [[ "$ARCH" == "s390x" ]]; then
+    ulimit -S -s 16384 || true
+fi
+
 make -j $MAKE_JOBS
 make -j $MAKE_JOBS check
 make -j $MAKE_JOBS install
