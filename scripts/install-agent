@@ -43,6 +43,8 @@ function install_rpm {
 	fi
 	echo "* Installing Sysdig Agent"
 	yum -q -y install draios-agent
+
+	INIT_CONF=/etc/sysconfig/dragent
 }
 
 function install_deb {
@@ -62,6 +64,8 @@ function install_deb {
 	apt-get -qq -y install linux-headers-$(uname -r) < /dev/null || kernel_warning
 	echo "* Installing Sysdig Agent"
 	apt-get -qq -y install draios-agent < /dev/null
+
+	INIT_CONF=/etc/default/dragent
 }
 
 function unsupported {
@@ -79,7 +83,7 @@ function kernel_warning {
 function help {
 	echo "Usage: $(basename ${0}) -a | --access_key <value> [-t | --tags <value>] [-c | --collector <value>] \ "
         echo "                [-cp | --collector_port <value>] [-s | --secure <value>] [-cc | --check_certificate] \ "
-        echo "                [-ac | --additional_conf <value>] [-h | --help]"
+        echo "                [-ac | --additional_conf <value>] [-b | --bpf] [-h | --help]"
 	echo "  access_key: Secret access key, as shown in Sysdig Monitor"
 	echo "  tags: List of tags for this host."
 	echo "        The syntax can be a comma-separated list of"
@@ -94,6 +98,7 @@ function help {
 	echo "  check_certificate: disable strong SSL certificate check for Sysdig Monitor on-premises installation"
 	echo "          accepted values: true or false [default true]"
 	echo "  additional_conf: If provided, will be appended to agent configuration file"
+	echo "  bpf: Enable eBPF probe"
 	echo "  help: print this usage and exit"
 	echo
 	exit 1
@@ -198,6 +203,9 @@ if [[ ${BACKWARD} != true ]]; then
 				exit 1
 			fi
 			shift
+			;;
+		-b|--bpf)
+			BPF=true
 			;;
 		-h|--help)
 			help
@@ -384,6 +392,15 @@ if [ ! -z "$ADDITIONAL_CONF" ]; then
 	echo "* Adding additional configuration to dragent.yaml"
 
 	echo -e "$ADDITIONAL_CONF" >> $CONFIG_FILE
+fi
+
+
+if [ ! -z "$BPF" ]; then
+	echo "* Setting eBPF"
+
+	[ -e "$INIT_CONF" ] || touch $INIT_CONF
+	grep -qw 'SYSDIG_BPF_PROBE' $INIT_CONF || \
+		echo 'export SYSDIG_BPF_PROBE=' >> $INIT_CONF
 fi
 
 service dragent restart
