@@ -1,3 +1,11 @@
+if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
+    set(TEMPLATE_FILE "Dockerfile-ubi8-aarch64.jinja2")
+elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "s390x")
+    set(TEMPLATE_FILE "Dockerfile-ubi8-s390x.jinja2")
+else()
+    set(TEMPLATE_FILE "Dockerfile.jinja2")
+endif()
+
 foreach(repo dev stable rc)
 
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${repo})
@@ -10,11 +18,12 @@ foreach(repo dev stable rc)
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${repo}/Dockerfile
         COMMAND
             ${DRAIOS_DEPENDENCIES_DIR}/Python-2.7.16/target/bin/python
-            ${CMAKE_CURRENT_SOURCE_DIR}/../generate_agent_docker.py --image agent-kmodule --repo
-            ${repo} > ${CMAKE_CURRENT_BINARY_DIR}/${repo}/Dockerfile
+            ${CMAKE_CURRENT_SOURCE_DIR}/../generate_agent_docker.py --image agent-kmodule
+	    --template ${TEMPLATE_FILE}
+	    --repo ${repo} > ${CMAKE_CURRENT_BINARY_DIR}/${repo}/Dockerfile
         DEPENDS jinja
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../generate_agent_docker.py
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../Dockerfile.jinja2
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../${TEMPLATE_FILE}
     )
 
     add_custom_target(
@@ -29,6 +38,18 @@ foreach(repo dev stable rc)
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../docker-entrypoint.sh
     )
 
+    add_custom_target(
+        agent-kmodule-getrpmurl-${repo} ALL
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${repo}/get-rpm-url.py
+    )
+
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${repo}/get-rpm-url.py
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/../get-rpm-url.py
+                ${CMAKE_CURRENT_BINARY_DIR}/${repo}
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../get-rpm-url.py
+    )
+
     install(
         FILES ${CMAKE_CURRENT_BINARY_DIR}/${repo}/Dockerfile
         DESTINATION ${CMAKE_INSTALL_PREFIX}/docker/agent-kmodule/${repo}
@@ -37,6 +58,12 @@ foreach(repo dev stable rc)
 
     install(
         PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${repo}/docker-entrypoint.sh
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/docker/agent-kmodule/${repo}
+        COMPONENT dockerfiles
+    )
+
+    install(
+        PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${repo}/get-rpm-url.py
         DESTINATION ${CMAKE_INSTALL_PREFIX}/docker/agent-kmodule/${repo}
         COMPONENT dockerfiles
     )

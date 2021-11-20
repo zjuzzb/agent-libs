@@ -1,0 +1,98 @@
+FROM centos:8.2.2004
+
+ARG max_parallelism=1
+
+RUN dnf clean packages
+
+RUN dnf -y install ca-certificates && \
+    update-ca-trust force-enable && \
+    curl -o /etc/pki/ca-trust/source/anchors/lets-encrypt-r3-cross-signed.pem https://letsencrypt.org/certs/lets-encrypt-r3-cross-signed.pem && \
+    update-ca-trust extract
+
+RUN dnf -y install \
+	libstdc++-devel \
+	createrepo \
+	expect \
+	gcc \
+	gcc-c++ \
+	git \
+	make \
+	pkg-config \
+	rpm-build \
+	unzip \
+	wget \
+	tar \
+	autoconf \
+	automake \
+	libtool \
+	valgrind \
+	libffi-devel \
+	zlib-devel \
+	readline-devel \
+	rsync \
+	rsync-daemon \
+	openssl-devel \
+	which
+
+RUN dnf -y groupinstall "Development Tools"
+
+RUN dnf -y install dnf-plugins-core
+RUN dnf config-manager --enable PowerTools
+
+RUN dnf --showduplicates list glibc-devel
+RUN dnf -y install \
+	glibc-devel \
+	glibc \
+	glibc-common \
+	glibc-headers \
+	libstdc++-devel \
+	libstdc++ \
+	libstdc++-static \
+	glibc-static \
+	java-1.8.0-openjdk \
+	java-1.8.0-openjdk-devel \
+	python2 \
+	python2-devel \
+	python3 \
+	python3-devel \
+	elfutils-libelf-devel
+
+# protobuf 3.18 doesn't support python 2. stick to 3.17
+RUN pip2 install 'protobuf<3.18'
+
+RUN pip3 install certifi
+
+RUN dnf config-manager \
+	--add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+
+RUN dnf -y install \
+	docker-ce --nobest
+
+RUN yum clean all
+
+RUN ln -s /bin/pip2 /bin/pip
+RUN ln -s /bin/python2 /bin/python
+
+# For sonar to work, set JAVA_HOME and add it to the PATH
+ENV JAVA_HOME=/usr/lib/jvm/jre-openjdk \
+    PATH="$JAVA_HOME/bin:${PATH}"
+
+RUN mkdir -p /boot
+
+RUN mkdir -p /code/agent/dependency_install_scripts
+COPY dependency_install_scripts/* /code/agent/dependency_install_scripts/
+# Used to prefetch go modules in the builder
+COPY go_mods/ /code/agent/dependencies/go_mods/
+
+RUN mkdir -p /code/oss-falco/userspace/engine/lua
+# ADD https://raw.githubusercontent.com/draios/oss-falco/master/scripts/build-lpeg.sh /code/oss-falco/scripts/build-lpeg.sh
+ADD build-lpeg-with-so.sh /code/oss-falco/scripts/build-lpeg-with-so.sh
+RUN chmod +x /code/oss-falco/scripts/build-lpeg-with-so.sh
+
+ARG PROMSCRAPE_VERSION
+RUN /code/agent/dependency_install_scripts/install-deps.sh /code/agent/dependencies ${max_parallelism} && \
+    rm -rf /code/agent/dependencies/go_mods/
+
+COPY entrypoint.sh /
+VOLUME [ "/code/agent/build", "/code/sysdig/build", "/out", "/root/.cache" ]
+ENTRYPOINT [ "/entrypoint.sh" ]

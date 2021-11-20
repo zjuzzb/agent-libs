@@ -10,10 +10,21 @@ PACKAGE_DIR=/out #certain targets provide a specific set of packages. they go he
 MAKE_JOBS=${MAKE_JOBS:-1}
 
 DEPENDENCIES_DIR=$WORK_DIR/agent/dependencies
-JAVA_DIR=$DEPENDENCIES_DIR/$(
-    cd $DEPENDENCIES_DIR
-    ls | grep jdk | head -n 1
-)
+
+# Determine JDK to use: container environment for aarch/s390x, retrieved from
+# dependencies URL for others.
+ARCH=$(uname -m)
+case $ARCH in
+    "aarch64" | "s390x" )
+        JAVA_DIR=/usr/lib/jvm/java-1.8.0-openjdk/jre
+        ;;
+    *)
+        JAVA_DIR=$DEPENDENCIES_DIR/$(
+            cd $DEPENDENCIES_DIR
+            ls | grep jdk | head -n 1
+        )
+        ;;
+esac
 
 if [ -z "$AGENT_VERSION" ]; then
     AGENT_VERSION="0.1.1dev"
@@ -35,31 +46,38 @@ rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE
 
 configure_build()
 {
-    # Determine architecture-specific CMAKE options
-    ARCH=$(uname -m)
-    if [[ "$ARCH" == "s390x" ]]; then
-    	CMAKE_ARCH_SPECIFIC_OPTIONS=(
-    		"-DDRAIOS_ARCH_YAML_VERSION="5.2"
-    		"-DDRAIOS_ARCH_LUA_VERSION="5.2.4"
-    	)
-    elif [[ "$ARCH" == "aarch64" ]]; then
-    	CMAKE_ARCH_SPECIFIC_OPTIONS=(
-    		"-DDRAIOS_ARCH_YAML_VERSION="5.2"
-    		"-DDRAIOS_ARCH_LUA_VERSION="5.2.4"
-    	)
-    else
-    	CMAKE_ARCH_SPECIFIC_OPTIONS=(
-    		"-DDRAIOS_ARCH_YAML_VERSION=5.1"
-    		"-DDRAIOS_ARCH_LUA_VERSION=2.0.3"
-    		"-DDRAIOS_ARCH_SUPPORTS_LUAJIT=TRUE"
-    		"-DDRAIOS_ARCH_SUPPORTS_PYTHON_35=TRUE"
-    		"-DDRAIOS_ARCH_BUILD_32_BIT_TESTS=TRUE"
-    	)
-    fi
+    # Determine architecture-specific options
+    case $ARCH in
+        "aarch64" | "s390x" )
+            CMAKE_ARCH_SPECIFIC_OPTIONS=(
+                "-DDRAIOS_ARCH_YAML_VERSION=5.2"
+                "-DDRAIOS_ARCH_LUA_VERSION=5.2.4"
+            )
+            USE_SCL=false
+            ;;
+        *)
+            CMAKE_ARCH_SPECIFIC_OPTIONS=(
+                "-DDRAIOS_ARCH_YAML_VERSION=5.1"
+                "-DDRAIOS_ARCH_LUA_VERSION=2.0.3"
+                "-DDRAIOS_ARCH_SUPPORTS_LUAJIT=TRUE"
+                "-DDRAIOS_ARCH_SUPPORTS_PYTHON_35=TRUE"
+                "-DDRAIOS_ARCH_BUILD_32_BIT_TESTS=TRUE"
+    	    )
+            USE_SCL=true
+            ;;
+    esac
 
     mkdir -p $BUILD_DIR/$VARIANT
     pushd $BUILD_DIR/$VARIANT
-    scl enable devtoolset-2 "$DEPENDENCIES_DIR/cmake-3.5.2/bin/cmake \
+
+    if [[ "${USE_SCL}" == "true" ]]; then
+        SCL_ENABLE_COMMAND="scl enable devtoolset-2 --"
+    else
+        SCL_ENABLE_COMMAND=""
+    fi
+
+    ${SCL_ENABLE_COMMAND} \
+        $DEPENDENCIES_DIR/cmake-3.5.2/bin/cmake \
 		-DCMAKE_BUILD_TYPE=$VARIANT \
 		-DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES_DIR \
 		-DJAVA_HOME=$JAVA_DIR \
@@ -78,7 +96,8 @@ configure_build()
 		-DLIBSINSP_DIR=$WORK_DIR/agent-libs \
 		-DLIBSCAP_DIR=$WORK_DIR/agent-libs \
 		${CMAKE_ARCH_SPECIFIC_OPTIONS[@]} \
-		$WORK_DIR/agent"
+		$WORK_DIR/agent
+
     popd
 }
 

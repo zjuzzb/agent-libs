@@ -1,0 +1,86 @@
+FROM clefos:7.7.1908
+
+ARG max_parallelism=2
+
+RUN yum -y update
+
+RUN yum install -y ca-certificates && \
+    update-ca-trust force-enable && \
+    curl -o /etc/pki/ca-trust/source/anchors/lets-encrypt-r3-cross-signed.pem https://letsencrypt.org/certs/lets-encrypt-r3-cross-signed.pem && \
+    update-ca-trust extract
+
+RUN yum -y install \
+	createrepo \
+	dpkg \
+	dpkg-devel \
+	expect \
+	gcc \
+	gcc-c++ \
+	gettext \
+	gettext-common-devel \
+	gettext-devel \
+	git \
+	glibc-static \
+	glibc-devel \
+	glibc-devel.i686 \
+	libstdc++-static \
+	libtool \
+	elfutils-libelf-devel \
+	rsync \
+	make \
+	ncurses-devel \
+	rpm-build \
+	unzip \
+	wget \
+	tar \
+	autoconf \
+	automake \
+	which \
+	readline-devel \
+	perl \
+	perl-version \
+	perl-Data-Dumper \
+	libtool \
+	valgrind \
+	lcov \
+	libffi-devel \
+	openssl-devel \
+	zlib-devel
+
+RUN yum -y install \
+	java-1.8.0-openjdk \
+	java-1.8.0-openjdk-devel
+
+RUN yum -y install \
+    http://mirror.centos.org/centos/7/extras/x86_64/Packages/container-selinux-2.119.1-1.c57a6f9.el7.noarch.rpm
+
+RUN yum -y install \
+    docker-ce
+
+# protobuf 3.18 doesn't support python 2. stick to 3.17
+RUN yum install -y python-pip
+RUN pip install 'protobuf<3.18'
+
+# Some versions of go assume all s390x builds are cross-compiled, using s390x-linux-gnu-gcc.
+# So, make sure s390x-linux-gnu-gcc exists as a link to /usr/bin/gcc.
+RUN rm -f /usr/bin/s390x-linux-gnu-gcc && ln -s /usr/bin/gcc /usr/bin/s390x-linux-gnu-gcc
+
+RUN yum clean all
+
+RUN mkdir -p /code/agent/dependency_install_scripts
+COPY dependency_install_scripts/* /code/agent/dependency_install_scripts/
+# Used to prefetch go modules in the builder
+COPY go_mods/ /code/agent/dependencies/go_mods/
+
+RUN mkdir -p /code/oss-falco/userspace/engine/lua
+# ADD https://raw.githubusercontent.com/draios/oss-falco/master/scripts/build-lpeg.sh /code/oss-falco/scripts/build-lpeg.sh
+ADD build-lpeg-with-so.sh /code/oss-falco/scripts/build-lpeg-with-so.sh
+RUN chmod +x /code/oss-falco/scripts/build-lpeg-with-so.sh
+
+ARG PROMSCRAPE_VERSION
+RUN /code/agent/dependency_install_scripts/install-deps.sh /code/agent/dependencies ${max_parallelism} && \
+    rm -rf /code/agent/dependencies/go_mods/
+
+COPY entrypoint.sh /
+VOLUME [ "/code/agent/build", "/code/sysdig/build", "/out", "/root/.cache" ]
+ENTRYPOINT [ "/entrypoint.sh" ]

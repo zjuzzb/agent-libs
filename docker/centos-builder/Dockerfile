@@ -63,6 +63,9 @@ COPY dependency_install_scripts/* /code/agent/dependency_install_scripts/
 # Used to prefetch go modules in the builder
 COPY go_mods/ /code/agent/dependencies/go_mods/
 
+ADD build-lpeg-with-so.sh /code/oss-falco/scripts/build-lpeg-with-so.sh
+RUN chmod +x /code/oss-falco/scripts/build-lpeg-with-so.sh
+
 ARG PROMSCRAPE_VERSION
 RUN scl enable devtoolset-2 "/code/agent/dependency_install_scripts/install-deps.sh /code/agent/dependencies ${max_parallelism}" && \
     rm -rf /code/agent/dependencies/go_mods/

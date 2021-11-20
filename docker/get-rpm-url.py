@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 ### Usage: get-rpm-url.py repo_url package_name
 ###

@@ -13,6 +13,6 @@ cd $DEPENDENCIES_DIR
 wget $DEPENDENCIES_URL/lpeg-$VERSION.tar.gz
 tar -xzf lpeg-$VERSION.tar.gz
 cd lpeg-$VERSION
-wget https://raw.githubusercontent.com/draios/oss-falco/master/scripts/build-lpeg.sh
-chmod 755 build-lpeg.sh
-LUA_INCLUDE=${LUAJIT_DIRECTORY}/src "${DEPENDENCIES_DIR}/lpeg-${VERSION}/build-lpeg.sh" "${DEPENDENCIES_DIR}/lpeg-${VERSION}/target"
+cp /code/oss-falco/scripts/build-lpeg-with-so.sh build-lpeg-with-so.sh
+chmod 755 build-lpeg-with-so.sh
+LUA_INCLUDE=${LUAJIT_DIRECTORY}/src "${DEPENDENCIES_DIR}/lpeg-${VERSION}/build-lpeg-with-so.sh" "${DEPENDENCIES_DIR}/lpeg-${VERSION}/target"
