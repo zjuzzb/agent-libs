@@ -20,7 +20,7 @@ pipeline {
     stage('Check out dependencies') {
         steps {
             dir('agent') {
-                checkout scm
+                checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/agent']]])
             }
             dir('oss-falco') {
                 checkout([$class: 'GitSCM', branches: [[name: 'master-sync']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
@@ -86,7 +86,8 @@ pipeline {
                     sh label: '', script: """
                         git checkout -b fargate-release-${params.RELEASE_VERSION}
                         export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-                        git push -u origin fargate-release-${params.RELEASE_VERSION}
+                        git remote add origin2 ssh://git@github.com/draios/agent.git
+                        git push -u origin2 fargate-release-${params.RELEASE_VERSION}
                     """
                 }
                 dir('agent-libs') {
