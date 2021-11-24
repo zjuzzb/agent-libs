@@ -116,7 +116,60 @@ public:
 	void stop_k8s_audit_server();
 	void check_pending_k8s_audit_events();
 
+	/*
+	 * A short primer on policy loading:
+	 *
+	 * POLICIES_V2 message
+	 * received from collector
+	 *          ||
+	 *  connection_manager
+	 *  calls message handler
+	 *          ||
+	 *  message handler has a
+	 *  reference to a
+	 *  security_policy_v2_loader,
+	 *  which is a security_mgr
+	 *          ||
+	 *  message handler calls
+	 *  request_load_policies_v2  =======  load_policies_v2_async
+	 *  on the policy loader                      ||
+	 *                                     Loads the policies from the protobuf
+	 *                                            ||
+	 *                                     Sets m_received_policies to true
+	 *                                     if the policy load completes
+	 *                                     successfully
+	 *                                            ||
+	 *  security_mgr checks for            Lets the security mgr know (via
+	 *  loaded policies on every  =======  std::future) that the policies are
+	 *  process_event call from            loaded
+	 *  the inspector
+	 *           ||
+	 *  once the security_mgr finds
+	 *  loaded policies, sets the
+	 *  policies in m_loaded_polices
+	 *  and begind scoping.
+	 *           ||
+	 *  Once scoping is complete,
+	 *  policies are fully ready.
+	 */
+
+	/**
+	 * Has the security manager received policy data?
+	 *
+	 * Note: m_received_policies starts as false and is moved to true the
+	 * very first time a policies message is received. It is never set back
+	 * to false.
+	 */
 	bool has_received_policies();
+
+	/**
+	 * Has the async policy loader finished loading policy data?
+	 *
+	 * Note: m_loaded_policies is currently NEVER set back to nullptr, so the
+	 * very first time policies are loaded from the async thread, this function
+	 * goes to true and never goes back to false.
+	 */
+	bool has_loaded_policies();
 
 	// configs
 	static type_config<bool> c_event_labels_enabled;

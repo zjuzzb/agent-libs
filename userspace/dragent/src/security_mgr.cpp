@@ -553,6 +553,7 @@ void security_mgr::load_policies_v2_async()
 			LOG_ERROR("Could not load policies_v2 message: " + errstr);
 			ret.successful = false;
 		} else {
+			LOG_DEBUG("Successfully received policies");
 			ret.successful = true;
 			m_received_policies = true;
 		}
@@ -1652,5 +1653,10 @@ void security_mgr::configure_event_labels_set(){
 bool security_mgr::has_received_policies()
 {
 	return m_received_policies;
+}
+
+bool security_mgr::has_loaded_policies()
+{
+	return (bool)m_loaded_policies;
 }
 #endif // CYGWING_AGENT

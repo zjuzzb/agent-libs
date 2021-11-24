@@ -2,6 +2,7 @@
 #include "docker_utils.h"
 #include "scoped_config.h"
 #include "security_config.h"
+#include "security_policies_v2_message_handler.h"
 #include "sys_call_test.h"
 #include "test_security_stub.h"
 #include <Poco/AutoPtr.h>
@@ -37,6 +38,7 @@ using namespace std;
 using namespace libsanalyzer;
 using namespace Poco;
 
+
 class test_helper
 {
 public:
@@ -49,7 +51,7 @@ public:
 class security_policy_error_handler : public Poco::ErrorHandler
 {
 public:
-	security_policy_error_handler(){};
+	security_policy_error_handler() {}
 
 	void exception(const Poco::Exception& exc)
 	{
@@ -1036,7 +1038,7 @@ TEST_F(security_policies_v2_test, readonly_fs_only)
 		 {security_policies_v2_test::expected_internal_metric::CMP_EQ, 0}}};
 
 	check_expected_internal_metrics(metrics);
-};
+}
 
 TEST_F(security_policies_v2_test, readwrite_fs_only)
 {
@@ -1192,7 +1194,7 @@ TEST_F(security_policies_v2_test_cointerface, kill_action_docker_test)
 
 	// Perform cleanup in case the action failed
 	dutils_kill_container_if_exists("kill_me_docker_test");
-};
+}
 
 TEST_F(security_policies_v2_test_cointerface, stop_action_cri_test)
 {
@@ -1242,7 +1244,7 @@ TEST_F(security_policies_v2_test_cointerface, kill_action_cri_test)
 		 ""}};
 
 	check_policy_events(expected);
-};
+}
 
 TEST_F(security_policies_v2_test, fs_prefixes)
 {
@@ -1279,7 +1281,7 @@ TEST_F(security_policies_v2_test, fs_prefixes)
 	     {{"fd.name", "/tmp/two/three"}, {"evt.type", "open"}}}};
 
 	check_policy_events(expected);
-};
+}
 
 TEST_F(security_policies_v2_test, fs_root_dir)
 {
@@ -1310,7 +1312,7 @@ TEST_F(security_policies_v2_test, fs_root_dir)
 	     {{"fd.name", "/not-allowed"}, {"evt.type", "open"}}}};
 
 	check_policy_events(expected);
-};
+}
 
 TEST_F(security_policies_v2_test, tcp_listenport_only)
 {
@@ -1347,7 +1349,7 @@ TEST_F(security_policies_v2_test, tcp_listenport_only)
 		    {security_policies_v2_test::expected_internal_metric::CMP_EQ, 0}}};
 
 	check_expected_internal_metrics(metrics);
-};
+}
 
 TEST_F(security_policies_v2_test, udp_listenport_only)
 {
@@ -1389,7 +1391,7 @@ TEST_F(security_policies_v2_test, udp_listenport_only)
 		    {security_policies_v2_test::expected_internal_metric::CMP_EQ, 0}}};
 
 	check_expected_internal_metrics(metrics);
-};
+}
 
 TEST_F(security_policies_v2_test, syscall_only)
 {
@@ -1410,7 +1412,7 @@ TEST_F(security_policies_v2_test, syscall_only)
 		    {security_policies_v2_test::expected_internal_metric::CMP_EQ, 0}}};
 
 	check_expected_internal_metrics(metrics);
-};
+}
 
 TEST_F(security_policies_v2_test, syscall_only_whitelist)
 {
@@ -1452,7 +1454,7 @@ TEST_F(security_policies_v2_test, syscall_only_whitelist)
 		    {security_policies_v2_test::expected_internal_metric::CMP_GE, 1}}};
 
 	check_expected_internal_metrics(metrics);
-};
+}
 
 TEST_F(security_policies_v2_test, container_only)
 {
@@ -1547,13 +1549,13 @@ TEST_F(security_policies_v2_dont_match_container_test, container_dont_match)
 {
 	bool both_policies_match = false;
 	return run_non_alpine_container(this, both_policies_match);
-};
+}
 
 TEST_F(security_policies_v2_dont_match_container_test_multi, container_dont_match)
 {
 	bool both_policies_match = true;
 	return run_non_alpine_container(this, both_policies_match);
-};
+}
 
 TEST_F(security_policies_v2_test, container_match_multi_policies_one_rule)
 {
@@ -1597,7 +1599,7 @@ TEST_F(security_policies_v2_test, container_match_multi_policies_one_rule)
 	            {security_policies_v2_test::expected_internal_metric::CMP_EQ, 0}}};
 
 	check_expected_internal_metrics(metrics);
-};
+}
 
 TEST_F(security_policies_v2_test, container_only_scope)
 {
@@ -1723,7 +1725,7 @@ TEST_F(security_policies_v2_test, falco_only)
 		    {security_policies_v2_test::expected_internal_metric::CMP_EQ, 0}}};
 
 	check_expected_internal_metrics(metrics);
-};
+}
 
 TEST_F(security_policies_v2_test, falco_no_evttype)
 {
@@ -1762,7 +1764,7 @@ TEST_F(security_policies_v2_test, falco_no_evttype)
 		    {security_policies_v2_test::expected_internal_metric::CMP_EQ, 0}}};
 
 	check_expected_internal_metrics(metrics);
-};
+}
 
 TEST_F(security_policies_v2_test, DISABLED_falco_fqdn)
 {
@@ -1835,6 +1837,129 @@ TEST_F(security_policies_v2_test, DISABLED_custom_falco_files_override)
 	    "some output");
 }
 
+TEST(policy_load_test, load_policy)
+{
+	std::string falco_rule_content = "- required_engine_version: 2\n"
+	                                 "- rule: read_sensitive_file\n"
+	                                 "  desc: some desc\n"
+	                                 "  condition: proc.name in (tests,memcheck-amd64-)"
+	                                 " and evt.type in (open, openat)"
+	                                 " and evt.is_open_read=true"
+	                                 " and evt.arg.name in (/tmp/i-am-sensitive.txt)\n"
+	                                 "  output: some output\n"
+	                                 "  priority: WARNING\n";
+	// First create a useful config
+	bool old_config_val = libsanalyzer::security_config::instance().get_enabled();
+	bool old_kas_val = libsanalyzer::security_config::instance().get_k8s_audit_server_enabled();
+	dragent_configuration config;
+	config.init(nullptr, false);
+	libsanalyzer::security_config::instance().set_enabled(true);
+	libsanalyzer::security_config::instance().set_k8s_audit_server_enabled(false);
+
+	// Now build the world
+	std::string container_id; // intentionally empty
+	protocol_queue pq(5);
+	protocol_handler ph(pq);
+	// Explicitly allocate the security mgr to control the lifetime
+	security_mgr* sm = new security_mgr(".", ph);
+	// We have to use a real inspector because the event processing step
+	// is part of finishing the policy load workflow :/
+	sinsp inspector;
+
+	inspector.set_debug_mode(true);
+	inspector.set_internal_events_mode(true);
+	inspector.set_hostname_and_port_resolution_mode(false);
+	inspector.open();
+
+	sm->init(&inspector,
+	         container_id,
+	         nullptr,
+	         nullptr,
+	         nullptr,
+	         &config,
+	         nullptr);
+	auto mhp = std::make_shared<dragent::security_policies_v2_message_handler>(*sm);
+
+	// Build a policy message
+	draiosproto::policies_v2 pv2;
+	draiosproto::policy_v2* pol;
+	draiosproto::scope_predicate* sp;
+	draiosproto::falco_rules_group* frg;
+	draiosproto::falco_rules_files* frfs;
+	draiosproto::falco_rules_file* frf;
+	draiosproto::falco_rules_variant* frv;
+	pol = pv2.mutable_policy_list()->Add();
+	pol->set_id(42);
+	pol->set_name("Test policy for policy load test");
+	pol->set_enabled(true);
+	pol->add_rule_names("read_sensitive_file");
+	sp = pol->mutable_scope_predicates()->Add();
+	sp->set_key("container.id");
+	sp->add_values("");
+	sp->set_op(draiosproto::EQ);
+	frg = pv2.mutable_falco_group();
+	frfs = frg->mutable_default_files();
+	frfs->set_tag("0.1.1test");
+	frf = frfs->mutable_files()->Add();
+	frf->set_filename("unit_test_rule.yaml");
+	frv = frf->mutable_variants()->Add();
+	frv->set_required_engine_version(2);
+	frv->set_content(falco_rule_content);
+
+	// Serialize the policy
+	auto gz = protobuf_compressor_factory::get(protocol_compression_method::GZIP);
+	std::shared_ptr<serialized_buffer> buf = dragent_protocol::message_to_buffer(
+	                                             1,
+	                                             draiosproto::message_type::POLICIES_V2,
+	                                             pv2,
+	                                             gz);
+
+	ASSERT_FALSE(sm->has_received_policies());
+	ASSERT_FALSE(sm->has_loaded_policies());
+
+	// Give the policy to the policy message handler
+	mhp->handle_message(draiosproto::message_type::POLICIES_V2,
+	                    (uint8_t*)buf->buffer.c_str(),
+	                    buf->buffer.length());
+
+	for (uint32_t loops = 0; !sm->has_received_policies() && loops < 5000; ++loops)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+
+	ASSERT_TRUE(sm->has_received_policies());
+
+	// Now that we've received the policies, need to let them load
+	bool received_evt = false;
+	for (uint32_t loops = 0; !sm->has_loaded_policies() && loops < 5000; ++loops)
+	{
+		sinsp_evt* evt;
+		int32_t ret = inspector.next(&evt);
+		if (ret != SCAP_SUCCESS)
+		{
+			continue;
+		}
+		received_evt = true;
+
+		// The security mgr receives its events directly from the sinsp_worker,
+		// So we have to mock that up.
+		sm->process_event(evt);
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+
+	ASSERT_TRUE(received_evt);
+	ASSERT_TRUE(sm->has_loaded_policies());
+
+	// Tear down the security mgr before restoring previous config
+	delete sm;
+	sm = nullptr;
+
+	// Restore the previous config (this whole thing is gross and awful)
+	libsanalyzer::security_config::instance().set_enabled(old_config_val);
+	libsanalyzer::security_config::instance().set_k8s_audit_server_enabled(old_kas_val);
+}
+
 static void falco_k8s_audit(security_policies_v2_test_cointerface* ptest)
 {
 	// send a single event (the first line of the file)
@@ -1876,7 +2001,7 @@ static void falco_k8s_audit(security_policies_v2_test_cointerface* ptest)
 TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit)
 {
 	return falco_k8s_audit(this);
-};
+}
 
 TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_restart_security_mgr)
 {
@@ -1887,7 +2012,7 @@ TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_restart_security_m
 	WaitForK8sAuditServer();
 
 	return falco_k8s_audit(this);
-};
+}
 
 TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_scope)
 {
@@ -1921,7 +2046,7 @@ TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_scope)
 	     {security_policies_v2_test::expected_internal_metric::CMP_EQ, 0}}};
 
 	check_expected_internal_metrics(metrics);
-};
+}
 
 TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_wo_policy_type)
 {
@@ -1960,7 +2085,7 @@ TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_wo_policy_type)
 	     {security_policies_v2_test::expected_internal_metric::CMP_EQ, 0}}};
 
 	check_expected_internal_metrics(metrics);
-};
+}
 
 TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_multi_events)
 {
@@ -2230,7 +2355,7 @@ TEST_F(security_policies_v2_test, fs_usecase)
 	     {{"fd.name", "/bin/not-allowed"}, {"evt.type", "open"}}}};
 
 	check_policy_events(expected);
-};
+}
 
 TEST_F(security_policies_v2_test, nofd_operations)
 {
@@ -2305,7 +2430,7 @@ TEST_F(security_policies_v2_test, nofd_operations)
 		  0}}};
 
 	check_expected_internal_metrics(metrics);
-};
+}
 
 TEST_F(security_policies_v2_test, DISABLED_events_flood)
 {
