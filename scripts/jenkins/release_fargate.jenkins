@@ -195,10 +195,10 @@ pipeline {
         }
         post {
             success {
-                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Build container successfully built for release.", tokenCredentialId: 'slack'
+                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Build container successfully built for Fargate release.", tokenCredentialId: 'slack'
             }
             failure {
-                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release failed to build build container. Aborting release. Please fix in the new release branch and rerun with CREATE_RELEASE_BRANCH unchecked.", tokenCredentialId: 'slack'
+                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Fargate release failed to build build container. Aborting release. Please fix in the new release branch and rerun with CREATE_RELEASE_BRANCH unchecked.", tokenCredentialId: 'slack'
             }
         }
     }
@@ -221,10 +221,10 @@ pipeline {
         }
         post {
             success {
-                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release branch passed presubmit tests.", tokenCredentialId: 'slack'
+                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Fargate release branch passed presubmit tests.", tokenCredentialId: 'slack'
             }
             failure {
-                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release failed presubmit tests. Aborting release. Please fix in the new release branch and rerun with CREATE_RELEASE_BRANCH unchecked.", tokenCredentialId: 'slack'
+                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Fargate release failed presubmit tests. Aborting release. Please fix in the new release branch and rerun with CREATE_RELEASE_BRANCH unchecked.", tokenCredentialId: 'slack'
             }
         }
     }
@@ -249,13 +249,13 @@ pipeline {
         }
         post {
             success {
-                slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "RC successfully built.", tokenCredentialId: 'slack'
+                slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Fargate RC successfully built.", tokenCredentialId: 'slack'
                 // The following QA folks are sent the notice and approval link explicitly.
                 // Kelly Tucker (U01F2TW4V4Z)
-                slackSend channel: '#qa-agent,@U01F2TW4V4Z', message: "RC successfully built. Testing can begin which does not depend on probes.", tokenCredentialId: 'slack'
+                slackSend channel: '#qa-agent,@U01F2TW4V4Z', message: "RC for Fargate ${params.RELEASE_VERSION} successfully built. Testing can begin.", tokenCredentialId: 'slack'
             }
             failure {
-                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release failed to build RC. Aborting release. Please fix in the new release branch and rerun with CREATE_RELEASE_BRANCH unchecked.", tokenCredentialId: 'slack'
+                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Fargate release failed to build RC. Aborting release. Please fix in the new release branch and rerun with CREATE_RELEASE_BRANCH unchecked.", tokenCredentialId: 'slack'
             }
         }
 
@@ -434,7 +434,7 @@ pipeline {
     }
     stage('Promote Fargate') {
         steps {
-             slackSend channel: "#sds-f-fargate-dev", message: "Promote is in progress.", tokenCredentialId: 'slack'
+            slackSend channel: "#sds-f-fargate-dev", message: "Promote is in progress.", tokenCredentialId: 'slack'
             build job:'Fargate Artifact Promote',parameters:[
                 string(name:'VERSION',value:"${params.RELEASE_VERSION}-rc"),
                 string(name:'PROMOTE',value:"${params.RELEASE_VERSION}"),
@@ -471,12 +471,12 @@ pipeline {
             cleanWs()
         }
         success {
-            slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job success!", tokenCredentialId: 'slack'
+            slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Fargate release job success!", tokenCredentialId: 'slack'
             slackSend channel: "sds-f-fargate-dev", message: "Release job success!", tokenCredentialId: 'slack'
             slackSend channel: "sds-f-fargate", message: "Fargate agent ${params.RELEASE_VERSION} has been promoted.", tokenCredentialId: 'slack'
         }
         failure {
-            slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job failure.", tokenCredentialId: 'slack'
+            slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Fargate release job failure.", tokenCredentialId: 'slack'
             slackSend channel: "#sds-f-fargate-dev", message: "Release job failure!", tokenCredentialId: 'slack'
         }
     }
