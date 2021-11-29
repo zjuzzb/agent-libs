@@ -12,11 +12,7 @@ cd $DEPENDENCIES_DIR
 mkdir promscrape
 cd promscrape
 
-#note: you can download and link whatever version you want at run-time if you don't want
-#      dev at the time the container was built
-wget -O promscrape_v1-$VERSION $DEPENDENCIES_URL/promscrape/v1/promscrape_v1-$VERSION
-ln -s promscrape_v1-$VERSION promscrape_v1
-
-wget -O promscrape_v2-$VERSION $DEPENDENCIES_URL/promscrape/v2/promscrape_v2-$VERSION
-ln -s promscrape_v2-$VERSION promscrape_v2
-
+# Not allowing use of symbolic link here any more because CMAKE installs would just
+# install the link and forget the binary
+wget -O promscrape_v1 $DEPENDENCIES_URL/promscrape/v1/promscrape_v1-$VERSION
+wget -O promscrape_v2 $DEPENDENCIES_URL/promscrape/v2/promscrape_v2-$VERSION
