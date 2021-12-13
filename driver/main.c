@@ -409,6 +409,14 @@ static int ppm_open(struct inode *inode, struct file *filp)
 
 		list_add_rcu(&consumer->node, &g_consumer_list);
 		in_list = true;
+
+		/*
+		 * When adding the first consumer, initialize the events_bitmap
+		 * to its default value -- enable all syscall to be passed to userspace.
+		 */
+		if (num_consumers == 0) {
+			bitmap_fill(g_events_mask, PPM_EVENT_MAX);
+		}
 	} else {
 		vpr_info("found already existent consumer %p\n", consumer_id);
 	}
@@ -452,7 +460,7 @@ static int ppm_open(struct inode *inode, struct file *filp)
 	consumer->fullcapture_port_range_start = 0;
 	consumer->fullcapture_port_range_end = 0;
 	consumer->statsd_port = PPM_PORT_STATSD;
-	bitmap_fill(g_events_mask, PPM_EVENT_MAX); /* Enable all syscall to be passed to userspace */
+
 	reset_ring_buffer(ring);
 	ring->open = true;
 
