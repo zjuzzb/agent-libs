@@ -1597,9 +1597,9 @@ int32_t scap_bpf_handle_eventmask(scap_t* handle, uint32_t op, uint32_t event_id
 	case PPM_IOCTL_MASK_ZERO_EVENTS:
 		for (int j = 0; j < PPM_EVENT_MAX; j++)
 		{
-			const struct ppm_event_info *event = g_event_info[j];
+			const struct ppm_event_info event = g_event_info[j];
 			// event with flag EF_MODIFIES_STATE cannot be dropped, so we preserve.
-			if (event->flags & EF_MODIFIES_STATE)
+			if (event.flags & EF_MODIFIES_STATE)
 			{
 				continue;
 			}
@@ -1610,8 +1610,8 @@ int32_t scap_bpf_handle_eventmask(scap_t* handle, uint32_t op, uint32_t event_id
 		settings.events_mask[event_id] = true;
 		break;
 	case PPM_IOCTL_MASK_UNSET_EVENT:
-		const struct ppm_event_info *event = g_event_info[event_id];
-		if (!(event->flags & EF_MODIFIES_STATE))
+		const struct ppm_event_info event = g_event_info[event_id];
+		if (!(event.flags & EF_MODIFIES_STATE))
 		{
 			settings.events_mask[event_id] = false;
 		}
