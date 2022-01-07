@@ -311,7 +311,7 @@ static __always_inline u32 bpf_compute_snaplen(struct filler_data *data,
 		}
 	} else if (data->state->tail_ctx.evt_type == PPME_SOCKET_SENDMSG_X) {
 		struct sockaddr *usrsockaddr;
-		#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
             struct user_msghdr mh;
         #else
             struct msghdr mh;

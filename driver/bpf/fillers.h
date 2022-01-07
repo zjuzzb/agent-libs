@@ -1613,7 +1613,9 @@ static __always_inline pid_t bpf_task_pid_vnr(struct task_struct *task)
 
 static __always_inline pid_t bpf_task_tgid_vnr(struct task_struct *task)
 {
-#if (PPM_RHEL_RELEASE_CODE > 0 && PPM_RHEL_RELEASE_CODE >= PPM_RHEL_RELEASE_VERSION(8, 1))
+#if (PPM_RHEL_RELEASE_CODE > 0 && PPM_RHEL_RELEASE_CODE >= PPM_RHEL_RELEASE_VERSION(7, 6) && PPM_RHEL_RELEASE_CODE < PPM_RHEL_RELEASE_VERSION(8, 0))
+    return bpf_task_pid_nr_ns(task, PIDTYPE_MAX, NULL);
+#elif (PPM_RHEL_RELEASE_CODE > 0 && PPM_RHEL_RELEASE_CODE >= PPM_RHEL_RELEASE_VERSION(8, 1))
 	return bpf_task_pid_nr_ns(task, PIDTYPE_TGID, NULL);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
 	return bpf_task_pid_nr_ns(task, __PIDTYPE_TGID, NULL);
@@ -1688,20 +1690,18 @@ static __always_inline int __bpf_append_cgroup(struct css_set *cgroups,
 	#pragma unroll MAX_CGROUP_PATHS
 	for (int k = 0; k < MAX_CGROUP_PATHS; ++k) {
 #if (PPM_RHEL_RELEASE_CODE > 0 && PPM_RHEL_RELEASE_CODE >= PPM_RHEL_RELEASE_VERSION(7, 6) && PPM_RHEL_RELEASE_CODE < PPM_RHEL_RELEASE_VERSION(8, 0))
-	    if (dentry) {
+		if (dentry) {
 			cgroup_path[k] = (char *)_READ(dentry->d_name.name);
-//			if (k) {
-                char c[10];
-                bpf_probe_read_str(&c, 10, cgroup_path[k]);
-                if (c[0] == '/') {
-                    cgroup_path[k] = NULL;
-                }
-//			}
+			char c[10];
+			bpf_probe_read_str(&c, 10, cgroup_path[k]);
+			if (c[0] == '/') {
+				cgroup_path[k] = NULL;
+			}
 			cgroup = _READ(cgroup->parent);
 			if (!cgroup)
-			    dentry = NULL;
+				dentry = NULL;
 			else
-			    dentry = _READ(cgroup->dentry);
+				dentry = _READ(cgroup->dentry);
 		} else {
 			cgroup_path[k] = NULL;
 		}
@@ -1719,7 +1719,7 @@ static __always_inline int __bpf_append_cgroup(struct css_set *cgroups,
 	for (int k = MAX_CGROUP_PATHS - 1; k >= 0 ; --k) {
 		if (cgroup_path[k]) {
 #if (PPM_RHEL_RELEASE_CODE > 0 && PPM_RHEL_RELEASE_CODE >= PPM_RHEL_RELEASE_VERSION(7, 6) && PPM_RHEL_RELEASE_CODE < PPM_RHEL_RELEASE_VERSION(8, 0))
-		    only_root = true;
+			only_root = true;
 #endif
 			if (!prev_empty) {
 				if (off > SCRATCH_SIZE_HALF)
@@ -1740,8 +1740,8 @@ static __always_inline int __bpf_append_cgroup(struct css_set *cgroups,
 						 cgroup_path[k]);
 
 			if (res == 2 && buf[off & SCRATCH_SIZE_HALF] == '/') {
-                goto end;
-            }
+				goto end;
+            		}
 			if (res > 1)
 			{
 				off += res - 1;
@@ -1755,13 +1755,13 @@ static __always_inline int __bpf_append_cgroup(struct css_set *cgroups,
 	}
 #if (PPM_RHEL_RELEASE_CODE > 0 && PPM_RHEL_RELEASE_CODE >= PPM_RHEL_RELEASE_VERSION(7, 6) && PPM_RHEL_RELEASE_CODE < PPM_RHEL_RELEASE_VERSION(8, 0))
 	if (!only_root) {
-        buf[off & SCRATCH_SIZE_HALF] = '/';
-        ++off;
+        	buf[off & SCRATCH_SIZE_HALF] = '/';
+        	++off;
 	}
 #endif
 	if (off > SCRATCH_SIZE_HALF)
 		return PPM_FAILURE_BUFFER_FULL;
-
+end:
 	buf[off_bounded] = 0;
 	++off;
 	*len = off;
@@ -1778,7 +1778,7 @@ static __always_inline int bpf_append_cgroup(struct task_struct *task,
 
 #if IS_ENABLED(CONFIG_CPUSETS)
 #if (PPM_RHEL_RELEASE_CODE > 0 && PPM_RHEL_RELEASE_CODE >= PPM_RHEL_RELEASE_VERSION(7, 6) && PPM_RHEL_RELEASE_CODE < PPM_RHEL_RELEASE_VERSION(8, 0))
-    res = __bpf_append_cgroup(cgroups, "cpuset", cpuset_subsys_id, buf, len);
+	res = __bpf_append_cgroup(cgroups, "cpuset", cpuset_subsys_id, buf, len);
 #else
 	res = __bpf_append_cgroup(cgroups, cpuset_cgrp_id, buf, len);
 #endif
@@ -1788,7 +1788,7 @@ static __always_inline int bpf_append_cgroup(struct task_struct *task,
 
 #if IS_ENABLED(CONFIG_CGROUP_SCHED)
 #if (PPM_RHEL_RELEASE_CODE > 0 && PPM_RHEL_RELEASE_CODE >= PPM_RHEL_RELEASE_VERSION(7, 6) && PPM_RHEL_RELEASE_CODE < PPM_RHEL_RELEASE_VERSION(8, 0))
-    res = __bpf_append_cgroup(cgroups, "cpu_cgroup", cpu_cgroup_subsys_id, buf, len);
+	res = __bpf_append_cgroup(cgroups, "cpu_cgroup", cpu_cgroup_subsys_id, buf, len);
 #else
 	res = __bpf_append_cgroup(cgroups, cpu_cgrp_id, buf, len);
 #endif
@@ -1797,18 +1797,18 @@ static __always_inline int bpf_append_cgroup(struct task_struct *task,
 #endif
 
 #if IS_ENABLED(CONFIG_CGROUP_CPUACCT)
+#endif
 #if (PPM_RHEL_RELEASE_CODE > 0 && PPM_RHEL_RELEASE_CODE >= PPM_RHEL_RELEASE_VERSION(7, 6) && PPM_RHEL_RELEASE_CODE < PPM_RHEL_RELEASE_VERSION(8, 0))
-    res = __bpf_append_cgroup(cgroups, "cpuacct", cpuacct_subsys_id, buf, len);
+	res = __bpf_append_cgroup(cgroups, "cpuacct", cpuacct_subsys_id, buf, len);
 #else
 	res = __bpf_append_cgroup(cgroups, cpuacct_cgrp_id, buf, len);
 #endif
 	if (res != PPM_SUCCESS)
 		return res;
-#endif
 
 #if IS_ENABLED(CONFIG_BLK_CGROUP)
 #if (PPM_RHEL_RELEASE_CODE > 0 && PPM_RHEL_RELEASE_CODE >= PPM_RHEL_RELEASE_VERSION(7, 6) && PPM_RHEL_RELEASE_CODE < PPM_RHEL_RELEASE_VERSION(8, 0))
-    res = __bpf_append_cgroup(cgroups, "blkio", blkio_subsys_id, buf, len);
+	res = __bpf_append_cgroup(cgroups, "blkio", blkio_subsys_id, buf, len);
 #else
 	res = __bpf_append_cgroup(cgroups, io_cgrp_id, buf, len);
 #endif
@@ -1818,7 +1818,7 @@ static __always_inline int bpf_append_cgroup(struct task_struct *task,
 
 #if IS_ENABLED(CONFIG_MEMCG)
 #if (PPM_RHEL_RELEASE_CODE > 0 && PPM_RHEL_RELEASE_CODE >= PPM_RHEL_RELEASE_VERSION(7, 6) && PPM_RHEL_RELEASE_CODE < PPM_RHEL_RELEASE_VERSION(8, 0))
-    res = __bpf_append_cgroup(cgroups, "mem_cgroup", mem_cgroup_subsys_id, buf, len);
+	res = __bpf_append_cgroup(cgroups, "mem_cgroup", mem_cgroup_subsys_id, buf, len);
 #else
 	res = __bpf_append_cgroup(cgroups, memory_cgrp_id, buf, len);
 #endif

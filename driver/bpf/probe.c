@@ -276,7 +276,6 @@ BPF_PROBE("net/", net_dev_start_xmit, net_dev_start_xmit_args)
 	bpf_probe_read((void *)dev_name, 16, ctx->dev->name);
 #else
 	skb = (struct sk_buff*) ctx->skbaddr;
-	struct net_dev_start_xmit_args *args = ctx;
 	TP_DATA_LOC_READ(dev_name, name, 16);
 #endif
 
