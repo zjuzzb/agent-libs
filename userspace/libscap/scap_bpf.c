@@ -1584,6 +1584,11 @@ int32_t scap_bpf_disable_skb_capture(scap_t *handle)
 
 int32_t scap_bpf_handle_eventmask(scap_t* handle, uint32_t op, uint32_t event_id)
 {
+	if (event_id >= PPM_EVENT_MAX || event_id < 0)
+	{
+		snprintf(handle->m_lasterr, SCAP_LASTERR_SIZE, "illegal event type");
+		return SCAP_FAILURE;
+	}
 	struct sysdig_bpf_settings settings;
 	int k = 0;
 
