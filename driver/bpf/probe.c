@@ -255,6 +255,7 @@ int bpf_sched_process_fork(struct sched_process_fork_args *ctx)
 }
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 BPF_PROBE("net/", net_dev_start_xmit, net_dev_start_xmit_args)
 {
 	struct sysdig_bpf_settings *settings;
@@ -275,6 +276,7 @@ BPF_PROBE("net/", net_dev_start_xmit, net_dev_start_xmit_args)
 	bpf_probe_read((void *)dev_name, 16, ctx->dev->name);
 #else
 	skb = (struct sk_buff*) ctx->skbaddr;
+	struct net_dev_start_xmit_args *args = ctx;
 	TP_DATA_LOC_READ(dev_name, name, 16);
 #endif
 
@@ -286,6 +288,7 @@ BPF_PROBE("net/", net_dev_start_xmit, net_dev_start_xmit_args)
 	call_filler(ctx, ctx, evt_type, settings, UF_NEVER_DROP);
 	return 0;
 }
+#endif
 /*
 BPF_PROBE("net/", netif_receive_skb, netif_receive_skb_args)
 {
