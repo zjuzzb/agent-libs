@@ -87,7 +87,8 @@ static __always_inline int push_evt_frame(void *ctx,
 			return PPM_FAILURE_BUG;
 
 		state->hotplug_cpu = bpf_get_smp_processor_id();
-		bpf_printk("detected hotplug event, cpu=%d\n", state->hotplug_cpu);
+		char s[] = "detected hotplug event, cpu=%d, res=%d\n";
+		bpf_trace_printk(s, sizeof(s), state->hotplug_cpu, res);
 	} else if (res) {
 		bpf_printk("bpf_perf_event_output failed, res=%d\n", res);
 		return PPM_FAILURE_BUG;
